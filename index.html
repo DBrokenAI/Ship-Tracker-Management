@@ -289,12 +289,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-<script>
-window.onerror = function(msg, url, line, col, err) {
-    document.body.style.background = '#1a1a2e';
-    document.body.innerHTML = '<div style="padding:40px;color:#ff6b6b;font-family:monospace"><h2>⚠️ Script Error</h2><pre style="white-space:pre-wrap;margin-top:16px">' + msg + '\nLine: ' + line + ', Col: ' + col + '\n' + (err ? err.stack : '') + '</pre></div>';
-};
-</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
 <!-- Firebase SDK -->
@@ -1108,7 +1102,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel })
         { id: 8, label: 'Data / Import', icon: 'settings' },
         ...(isAdmin ? [{ id: 10, label: 'Suggestions', icon: 'issues', badge: suggestions.filter(s => s.status === 'new').length }] : []),
     ];
-    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2] }, { title: 'Equipment', items: [4, 5, 6] }, { title: 'Comms', items: [7] }, { title: 'System', items: isAdmin ? [8, 10] : [8] }, { title: 'Fun', items: [11] }];
+    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2] }, { title: 'Equipment', items: [4, 5, 6] }, { title: 'Comms', items: [7] }, { title: 'System', items: isAdmin ? [8, 10] : [8] }];
 
     return (
         <div className="app">
@@ -6028,22 +6022,7 @@ function DataSettings({ ships, setShips, issues, setIssues, dailyChecks, setDail
 }
 
 
-class ErrorBoundary extends React.Component {
-    constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-    static getDerivedStateFromError(error) { return { hasError: true, error }; }
-    componentDidCatch(error, info) { console.error('React Error:', error, info); }
-    render() {
-        if (this.state.hasError) {
-            return React.createElement('div', {style:{padding:'40px',color:'#ff6b6b',background:'#1a1a2e',minHeight:'100vh',fontFamily:'monospace'}},
-                React.createElement('h2', null, '⚠️ Render Error'),
-                React.createElement('pre', {style:{whiteSpace:'pre-wrap',fontSize:'13px',marginTop:'16px'}}, String(this.state.error)),
-                React.createElement('button', {onClick: () => this.setState({hasError:false}), style:{marginTop:'16px',padding:'8px 16px',background:'#19a974',color:'#fff',border:'none',borderRadius:'6px',cursor:'pointer'}}, 'Try Again')
-            );
-        }
-        return this.props.children;
-    }
-}
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary, null, React.createElement(AuthWrapper)));
+ReactDOM.createRoot(document.getElementById('root')).render(<AuthWrapper/>);
 </script>
 </body>
 </html>
