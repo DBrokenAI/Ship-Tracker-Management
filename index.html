@@ -185,7 +185,7 @@
         
         /* Dashboard Grid */
         .dash-grid { display: grid; grid-template-columns: 555px 1fr; gap: 20px; }
-        .detail-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+        .detail-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; overflow: hidden; }
         .section-title { font-size: 10px; font-weight: 600; color: var(--primary); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
         
         /* Quick Actions */
@@ -2416,23 +2416,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             {detailTab === 'email' && (
                                 <div>
                                     {/* Quick Actions Bar */}
-                                    <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap',padding:'14px 16px',background:'linear-gradient(135deg, var(--bg-input), var(--bg-card))',borderRadius:'12px',border:'1px solid var(--border)',alignItems:'center'}}>
-                                        <button className="btn btn-success btn-sm" style={{borderRadius:'8px',fontWeight:700,padding:'8px 16px',fontSize:'12px'}} onClick={openContactModal}>✉️ Log New Email</button>
-                                        <div style={{flex:1}}/>
-                                        <div style={{display:'flex',gap:'10px',alignItems:'center',fontSize:'12px'}}>
-                                            <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'6px 12px',borderRadius:'8px',background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                                                <span style={{color:'var(--text-muted)',fontSize:'11px'}}>Last:</span>
-                                                <strong style={{fontSize:'12px'}}>{sel.lastContact ? fmtDate(sel.lastContact) : 'Never'}</strong>
-                                            </div>
-                                            {sel.poc && (
-                                                <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'6px 12px',borderRadius:'8px',background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                                                    <span style={{fontSize:'11px'}}>👤</span>
-                                                    <strong style={{fontSize:'12px'}}>{sel.poc}</strong>
-                                                    {sel.email && <span style={{color:'var(--text-muted)',fontSize:'10px'}}>({sel.email})</span>}
-                                                </div>
-                                            )}
-                                            <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'4px 10px',fontSize:'10px'}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
-                                            {sel.waitingReply && <span className="badge badge-info" style={{padding:'4px 10px',fontSize:'10px'}}>⏳ Waiting Reply</span>}
+                                    <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap',padding:'10px 12px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)',alignItems:'center'}}>
+                                        <button className="btn btn-success btn-sm" style={{borderRadius:'8px',fontWeight:700,padding:'7px 14px',fontSize:'12px'}} onClick={openContactModal}>✉️ Log New Email</button>
+                                        <div style={{display:'flex',gap:'6px',alignItems:'center',fontSize:'11px',flexWrap:'wrap',marginLeft:'auto'}}>
+                                            <span style={{color:'var(--text-muted)'}}>Last: <strong style={{color:'var(--text)'}}>{sel.lastContact ? fmtDate(sel.lastContact) : 'Never'}</strong></span>
+                                            {sel.poc && <span style={{color:'var(--text-muted)'}}>| 👤 <strong style={{color:'var(--text)'}}>{sel.poc}</strong></span>}
+                                            <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'3px 8px',fontSize:'9px'}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
+                                            {sel.waitingReply && <span className="badge badge-info" style={{padding:'3px 8px',fontSize:'9px'}}>⏳ Waiting</span>}
                                         </div>
                                     </div>
 
@@ -2477,51 +2467,44 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                         
                                                         {/* Collapsed Row - always visible */}
                                                         <div style={{
-                                                            display:'flex',alignItems:'center',gap:'10px',
-                                                            padding: isLatest ? '12px 14px' : '8px 12px',
+                                                            display:'flex',alignItems:'center',gap:'8px',
+                                                            padding: isLatest ? '10px 12px' : '7px 10px',
+                                                            overflow:'hidden'
                                                         }}>
                                                             {/* Avatar */}
                                                             <div style={{
-                                                                width:'32px',height:'32px',borderRadius:'8px',flexShrink:0,
+                                                                width:'28px',height:'28px',borderRadius:'6px',flexShrink:0,
                                                                 background: isLatest ? `${accentColor}15` : 'var(--bg-input)',
                                                                 border: `2px solid ${accentColor}`,
                                                                 display:'flex',alignItems:'center',justifyContent:'center',
-                                                                fontSize:'11px',fontWeight:800,color:accentColor
+                                                                fontSize:'10px',fontWeight:800,color:accentColor
                                                             }}>
                                                                 {initials}
                                                             </div>
                                                             
-                                                            {/* Name */}
-                                                            <div style={{flex:'0 0 auto',minWidth:'60px',maxWidth:'120px'}}>
-                                                                <div style={{fontSize:'13px',fontWeight:700,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                                                                    {senderName || <span style={{fontStyle:'italic',color:'var(--text-muted)',fontWeight:400}}>No name</span>}
+                                                            {/* Middle: name + summary stacked */}
+                                                            <div style={{flex:1,minWidth:0,overflow:'hidden'}}>
+                                                                <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                                                    <span style={{fontSize:'12px',fontWeight:700,color:'var(--text)',whiteSpace:'nowrap'}}>
+                                                                        {senderName || <span style={{fontStyle:'italic',color:'var(--text-muted)',fontWeight:400,fontSize:'11px'}}>No name</span>}
+                                                                    </span>
+                                                                    {isLatest && <span style={{fontSize:'8px',fontWeight:700,padding:'1px 5px',borderRadius:'3px',background:accentColor,color:'#fff'}}>LATEST</span>}
+                                                                    {isWaiting && <span style={{fontSize:'8px',fontWeight:600,padding:'1px 5px',borderRadius:'3px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳</span>}
+                                                                    {isIssue && <span style={{fontSize:'8px',fontWeight:600,padding:'1px 5px',borderRadius:'3px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}}>⚠️</span>}
+                                                                    <span style={{fontSize:'10px',color:'var(--text-muted)',marginLeft:'auto',whiteSpace:'nowrap',flexShrink:0}}>
+                                                                        {fmtDate(h.timestamp)}{age > 0 ? ` (${age}d)` : ''}
+                                                                    </span>
                                                                 </div>
-                                                            </div>
-                                                            
-                                                            {/* Badges */}
-                                                            <div style={{display:'flex',gap:'4px',alignItems:'center',flex:'0 0 auto'}}>
-                                                                {isLatest && <span style={{fontSize:'8px',fontWeight:700,padding:'2px 6px',borderRadius:'3px',background:accentColor,color:'#fff',letterSpacing:'0.5px'}}>LATEST</span>}
-                                                                {isWaiting && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'3px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳ WAITING</span>}
-                                                                {isIssue && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'3px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}}>⚠️ {h.result.issue.threat}</span>}
-                                                            </div>
-                                                            
-                                                            {/* Summary preview (collapsed only) */}
-                                                            {!isExpanded && summary && (
-                                                                <div style={{flex:1,minWidth:0,fontSize:'11px',color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                                                                    {summary}
-                                                                </div>
-                                                            )}
-                                                            {isExpanded && <div style={{flex:1}}/>}
-                                                            
-                                                            {/* Date */}
-                                                            <div style={{flexShrink:0,textAlign:'right',fontSize:'10px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>
-                                                                {fmtDate(h.timestamp)} {new Date(h.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
-                                                                {age > 0 && <span style={{opacity:0.7}}> ({age}d)</span>}
+                                                                {!isExpanded && summary && (
+                                                                    <div style={{fontSize:'11px',color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginTop:'1px'}}>
+                                                                        {summary}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             
                                                             {/* Expand chevron (not on latest) */}
                                                             {!isLatest && (
-                                                                <div style={{flexShrink:0,fontSize:'12px',color:'var(--text-muted)',transition:'transform 0.15s',transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}}>▾</div>
+                                                                <div style={{flexShrink:0,fontSize:'11px',color:'var(--text-muted)',transition:'transform 0.15s',transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',padding:'0 2px'}}>▾</div>
                                                             )}
                                                         </div>
                                                         
@@ -2560,18 +2543,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                                 )}
                                                                 
                                                                 {/* Action Buttons */}
-                                                                <div style={{display:'flex',gap:'6px',marginTop:'12px',paddingTop:'10px',borderTop:'1px solid var(--border)'}}>
-                                                                    {isWaiting && (
-                                                                        <button style={{padding:'6px 14px',fontSize:'11px',background:'#22c55e',color:'#fff',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:700,display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation(); 
-                                                                            const updated = {...sel, waitingReply: false};
-                                                                            setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s));
-                                                                            const updHist = emailHistory.map(x => x.id === h.id ? {...x, result: {...x.result, waitingReply: false}} : x);
-                                                                            setEmailHistory(updHist); localStorage.setItem('emailParseHistory', JSON.stringify(updHist));
-                                                                            logActivity(`Cleared waiting status for ${sel.name}`);
-                                                                            toast('Waiting status cleared', 'success');
-                                                                        }}>✓ Clear Waiting</button>
-                                                                    )}
-                                                                    <button style={{padding:'6px 14px',fontSize:'11px',background:'var(--primary)',color:'#000',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:600,display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' }); }}>↩️ Continue</button>
+                                                                <div style={{display:'flex',gap:'6px',marginTop:'12px',paddingTop:'10px',borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
+                                                                    <button style={{padding:'6px 14px',fontSize:'11px',background:'var(--primary)',color:'#000',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:600,display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' }); }}>📧 Add Update</button>
                                                                     <button style={{padding:'6px 10px',fontSize:'11px',background:'var(--bg-input)',color:'var(--text-muted)',borderRadius:'6px',border:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation();
                                                                         const d = new Date(h.timestamp); 
                                                                         setEditEmailForm({ 
