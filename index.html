@@ -2413,159 +2413,172 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             {detailTab === 'email' && (
                                 <div>
                                     {/* Quick Actions Bar */}
-                                    <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap',padding:'12px',background:'var(--bg-input)',borderRadius:'8px',border:'1px solid var(--border)'}}>
-                                        <button className="btn btn-success btn-sm" onClick={openContactModal}>✉️ Log New Email</button>
-                                    </div>
-
-                                    {/* Status Header */}
-                                    <div style={{display:'flex',gap:'12px',marginBottom:'16px',flexWrap:'wrap',alignItems:'center'}}>
-                                        <div style={{padding:'8px 12px',background:'var(--bg-card)',borderRadius:'6px',border:'1px solid var(--border)',fontSize:'12px'}}>
-                                            <span style={{color:'var(--text-muted)'}}>Last Contact:</span> <strong>{sel.lastContact ? fmtDate(sel.lastContact) : 'Never'}</strong>
+                                    <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap',padding:'14px 16px',background:'linear-gradient(135deg, var(--bg-input), var(--bg-card))',borderRadius:'12px',border:'1px solid var(--border)',alignItems:'center'}}>
+                                        <button className="btn btn-success btn-sm" style={{borderRadius:'8px',fontWeight:700,padding:'8px 16px',fontSize:'12px'}} onClick={openContactModal}>✉️ Log New Email</button>
+                                        <div style={{flex:1}}/>
+                                        <div style={{display:'flex',gap:'10px',alignItems:'center',fontSize:'12px'}}>
+                                            <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'6px 12px',borderRadius:'8px',background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                                                <span style={{color:'var(--text-muted)',fontSize:'11px'}}>Last:</span>
+                                                <strong style={{fontSize:'12px'}}>{sel.lastContact ? fmtDate(sel.lastContact) : 'Never'}</strong>
+                                            </div>
+                                            {sel.poc && (
+                                                <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'6px 12px',borderRadius:'8px',background:'var(--bg-card)',border:'1px solid var(--border)'}}>
+                                                    <span style={{fontSize:'11px'}}>👤</span>
+                                                    <strong style={{fontSize:'12px'}}>{sel.poc}</strong>
+                                                    {sel.email && <span style={{color:'var(--text-muted)',fontSize:'10px'}}>({sel.email})</span>}
+                                                </div>
+                                            )}
+                                            <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'4px 10px',fontSize:'10px'}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
+                                            {sel.waitingReply && <span className="badge badge-info" style={{padding:'4px 10px',fontSize:'10px'}}>⏳ Waiting Reply</span>}
                                         </div>
-                                        <div style={{padding:'8px 12px',background:'var(--bg-card)',borderRadius:'6px',border:'1px solid var(--border)',fontSize:'12px'}}>
-                                            <span style={{color:'var(--text-muted)'}}>POC:</span> <strong>{sel.poc || '—'}</strong> {sel.email && <span style={{color:'var(--text-muted)'}}>({sel.email})</span>}
-                                        </div>
-                                        <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
-                                        {sel.waitingReply && <span className="badge badge-info">⏳ Waiting Reply</span>}
                                     </div>
 
                                     {/* Email Conversation Log */}
                                     <div style={{marginBottom:'16px'}}>
-                                        <div style={{fontSize:'12px',fontWeight:600,color:'var(--text-muted)',marginBottom:'12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                            <span>📧 EMAIL CONVERSATION LOG ({emailHistory.filter(h => h.shipId === sel.id).length} entries)</span>
+                                        <div style={{fontSize:'12px',fontWeight:700,color:'var(--text-muted)',marginBottom:'12px',letterSpacing:'0.5px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                            <span>📧 CONVERSATION LOG ({emailHistory.filter(h => h.shipId === sel.id).length})</span>
                                         </div>
 
                                         {emailHistory.filter(h => h.shipId === sel.id).length === 0 ? (
-                                            <div style={{padding:'40px',textAlign:'center',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'8px',border:'1px dashed var(--border)'}}>
-                                                <div style={{fontSize:'24px',marginBottom:'8px'}}>📭</div>
-                                                <div>No emails logged yet</div>
-                                                <div style={{fontSize:'11px',marginTop:'4px'}}>Click "Log New Email" to record contact</div>
+                                            <div style={{padding:'48px 20px',textAlign:'center',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'12px',border:'1px dashed var(--border)'}}>
+                                                <div style={{fontSize:'32px',marginBottom:'10px',opacity:0.5}}>📭</div>
+                                                <div style={{fontWeight:600,marginBottom:'4px'}}>No emails logged yet</div>
+                                                <div style={{fontSize:'11px'}}>Click "Log New Email" to start tracking</div>
                                             </div>
                                         ) : (
-                                            <div style={{maxHeight:'500px',overflow:'auto',position:'relative'}}>
-                                                {/* Timeline line */}
-                                                <div style={{position:'absolute',left:'15px',top:'8px',bottom:'8px',width:'2px',background:'var(--border)'}}/>
-                                                
-                                                <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-                                                    {emailHistory.filter(h => h.shipId === sel.id).map((h, idx, arr) => {
-                                                        const isLatest = idx === 0;
-                                                        const isFollowup = h.changes?.some(c => c.includes('Follow-up'));
-                                                        const isReply = h.changes?.some(c => c.includes('Reply received') || c.includes('Waiting on our'));
-                                                        const isIssue = h.result?.issue?.hasIssue;
-                                                        const dotColor = isIssue ? (h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)') 
-                                                            : h.result?.waitingReply ? 'var(--blue)' 
-                                                            : isReply ? 'var(--green)' 
-                                                            : isFollowup ? 'var(--blue)' 
-                                                            : 'var(--green)';
-                                                        const senderName = h.result?.sender?.name;
-                                                        const age = (Date.now() - new Date(h.timestamp).getTime()) / 86400000;
-                                                        const dimLevel = isLatest ? 1 : Math.max(0.55, 1 - (idx * 0.08));
-                                                        
-                                                        return (
-                                                        <div key={h.id} style={{display:'flex',gap:'12px',paddingLeft:'0',position:'relative',opacity: dimLevel}}>
-                                                            {/* Timeline dot */}
-                                                            <div style={{width:'32px',flexShrink:0,display:'flex',justifyContent:'center',paddingTop: isLatest ? '16px' : '14px',zIndex:1}}>
-                                                                <div style={{width: isLatest ? '14px' : '8px',height: isLatest ? '14px' : '8px',borderRadius:'50%',background:dotColor,border: isLatest ? '3px solid var(--bg)' : '2px solid var(--bg)',boxShadow: isLatest ? `0 0 0 3px ${dotColor}, 0 0 12px ${dotColor}` : `0 0 0 2px ${dotColor}`,transition:'all 0.2s'}}/>
+                                            <div style={{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'500px',overflow:'auto',paddingRight:'4px'}}>
+                                                {emailHistory.filter(h => h.shipId === sel.id).map((h, idx) => {
+                                                    const isLatest = idx === 0;
+                                                    const isFollowup = h.changes?.some(c => c.includes('Follow-up'));
+                                                    const isReply = h.changes?.some(c => c.includes('Reply received') || c.includes('Waiting on our'));
+                                                    const isIssue = h.result?.issue?.hasIssue;
+                                                    const senderName = h.result?.sender?.name || 'Unknown';
+                                                    const initials = senderName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+                                                    const age = (Date.now() - new Date(h.timestamp).getTime()) / 86400000;
+                                                    const accentColor = isIssue ? (h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)') 
+                                                        : h.result?.waitingReply ? 'var(--blue)' 
+                                                        : isReply ? '#22c55e' 
+                                                        : isFollowup ? 'var(--blue)' 
+                                                        : 'var(--green)';
+                                                    const avatarBg = isIssue ? (h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)') 
+                                                        : h.result?.waitingReply ? 'var(--blue-glow)' : 'var(--primary-glow)';
+                                                    const avatarBorder = isIssue ? (h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)') 
+                                                        : h.result?.waitingReply ? 'var(--blue)' : 'var(--primary)';
+                                                    
+                                                    return (
+                                                    <div key={h.id} style={{
+                                                        background: isLatest ? 'var(--bg-card)' : 'var(--bg-input)',
+                                                        borderRadius:'12px',
+                                                        border: isLatest ? `2px solid ${accentColor}` : '1px solid var(--border)',
+                                                        overflow:'hidden',
+                                                        opacity: isLatest ? 1 : Math.max(0.6, 1 - (idx * 0.06)),
+                                                        transition:'all 0.2s',
+                                                        boxShadow: isLatest ? `0 4px 20px rgba(0,0,0,0.15), 0 0 0 1px ${accentColor}33` : 'none'
+                                                    }}>
+                                                        {/* Card Header - Name + Actions + Date */}
+                                                        <div style={{
+                                                            display:'flex',alignItems:'center',gap:'10px',
+                                                            padding: isLatest ? '14px 16px 10px' : '10px 14px 8px',
+                                                            background: isLatest ? `linear-gradient(135deg, ${accentColor}08, ${accentColor}03)` : 'transparent',
+                                                            borderBottom:'1px solid var(--border)'
+                                                        }}>
+                                                            {/* Avatar */}
+                                                            <div style={{
+                                                                width: isLatest ? '38px' : '30px', height: isLatest ? '38px' : '30px',
+                                                                borderRadius:'10px', flexShrink:0,
+                                                                background: avatarBg, border:`2px solid ${avatarBorder}`,
+                                                                display:'flex',alignItems:'center',justifyContent:'center',
+                                                                fontSize: isLatest ? '13px' : '11px', fontWeight:800,
+                                                                color: avatarBorder, letterSpacing:'-0.5px'
+                                                            }}>
+                                                                {initials}
                                                             </div>
                                                             
-                                                            {/* Content card */}
-                                                            <div style={{flex:1,padding: isLatest ? '14px 16px' : '10px 12px',background: isLatest ? 'var(--bg-card)' : 'var(--bg-input)',borderRadius: isLatest ? '10px' : '8px',border: isLatest ? '1px solid var(--primary)' : '1px solid var(--border)',marginBottom:'4px',boxShadow: isLatest ? '0 2px 12px rgba(0,0,0,0.15)' : 'none',
-                                                                ...(isIssue ? {borderLeft: `3px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`} : {})
-                                                            }}>
-                                                                {/* Top row: date + actions */}
-                                                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom: isLatest ? '10px' : '6px'}}>
-                                                                    <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                                                                        {isLatest && (
-                                                                            <span style={{fontSize:'9px',fontWeight:700,padding:'2px 8px',borderRadius:'4px',background:'var(--primary)',color:'#000',letterSpacing:'0.5px'}}>LATEST</span>
-                                                                        )}
-                                                                        <span style={{fontSize: isLatest ? '13px' : '11px',fontWeight:600,color:'var(--text)'}}>
-                                                                            {fmtDate(h.timestamp)}
-                                                                        </span>
-                                                                        <span style={{fontSize:'10px',color:'var(--text-muted)'}}>
-                                                                            {new Date(h.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
-                                                                        </span>
-                                                                        {senderName && (
-                                                                            <span style={{fontSize:'11px',color:'var(--text-dim)',background:'var(--bg-input)',padding:'1px 8px',borderRadius:'10px',border:'1px solid var(--border)'}}>
-                                                                                {senderName}
-                                                                            </span>
-                                                                        )}
-                                                                        {!isLatest && age > 14 && (
-                                                                            <span style={{fontSize:'9px',color:'var(--text-muted)'}}>({Math.floor(age)}d ago)</span>
-                                                                        )}
-                                                                    </div>
-                                                                    <div style={{display:'flex',gap:'2px',alignItems:'center'}}>
-                                                                        {h.result?.waitingReply && (
-                                                                            <button className="btn btn-sm" style={{padding:'2px 8px',fontSize:'9px',background:'var(--green)',color:'#fff',borderRadius:'4px'}} onClick={(e) => { e.stopPropagation(); 
-                                                                                const updated = {...sel, waitingReply: false};
-                                                                                setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s));
-                                                                                const updHist = emailHistory.map(x => x.id === h.id ? {...x, result: {...x.result, waitingReply: false}} : x);
-                                                                                setEmailHistory(updHist); localStorage.setItem('emailParseHistory', JSON.stringify(updHist));
-                                                                                logActivity(`Cleared waiting status for ${sel.name}`);
-                                                                                toast('Waiting status cleared', 'success');
-                                                                            }}>✓ Clear</button>
-                                                                        )}
-                                                                        <button className="btn btn-sm" style={{padding:'2px 8px',fontSize:'9px',background:'var(--blue)',color:'#fff',borderRadius:'4px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' }); }}>↩️ Continue</button>
-                                                                        <button className="btn btn-sm" style={{padding:'2px 5px',fontSize:'10px',background:'transparent',color:'var(--text-muted)',minWidth:'auto'}} title="Edit" onClick={() => { 
-                                                                            const d = new Date(h.timestamp); 
-                                                                            setEditEmailForm({ 
-                                                                                date: toDateString(d), 
-                                                                                time: d.toTimeString().slice(0,5), 
-                                                                                summary: h.result?.emailSummary || '', 
-                                                                                emailText: h.emailText || '', 
-                                                                                contactedBy: h.result?.sender?.name || '' 
-                                                                            }); 
-                                                                            setEditEmailEntry(h); 
-                                                                        }}>✏️</button>
-                                                                        <button className="btn btn-sm" style={{padding:'2px 5px',fontSize:'10px',background:'transparent',color:'var(--text-muted)',minWidth:'auto'}} title="Delete" onClick={() => { if(confirm('Delete this entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); toast('Entry deleted', 'info'); } }}>✕</button>
-                                                                    </div>
+                                                            {/* Name + badges */}
+                                                            <div style={{flex:1,minWidth:0}}>
+                                                                <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                                                                    <span style={{fontSize: isLatest ? '14px' : '12px',fontWeight:700,color:'var(--text)'}}>{senderName}</span>
+                                                                    {isLatest && <span style={{fontSize:'9px',fontWeight:700,padding:'2px 8px',borderRadius:'4px',background:accentColor,color:'#fff',letterSpacing:'0.5px'}}>LATEST</span>}
+                                                                    {h.result?.waitingReply && <span style={{fontSize:'9px',fontWeight:600,padding:'2px 8px',borderRadius:'4px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳ WAITING</span>}
+                                                                    {isIssue && <span style={{fontSize:'9px',fontWeight:600,padding:'2px 8px',borderRadius:'4px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',border:`1px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`}}>⚠️ {h.result.issue.threat}</span>}
+                                                                    {h.result?.inPort && <span style={{fontSize:'9px',fontWeight:600,padding:'2px 8px',borderRadius:'4px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⚓ IN PORT</span>}
                                                                 </div>
-
-                                                                {/* Status badges row */}
-                                                                {(h.result?.waitingReply || h.result?.inPort || isIssue) && (
-                                                                    <div style={{display:'flex',gap:'6px',marginBottom: isLatest ? '10px' : '6px',flexWrap:'wrap'}}>
-                                                                        {h.result?.waitingReply && <span className="badge badge-info" style={{fontSize:'9px'}}>⏳ Awaiting Reply</span>}
-                                                                        {h.result?.inPort && <span className="badge" style={{background:'var(--blue)',color:'#fff',fontSize:'9px'}}>⚓ In Port</span>}
-                                                                        {isIssue && <span className={`badge badge-${(h.result.issue.threat || 'mild').toLowerCase()}`} style={{fontSize:'9px'}}>⚠️ {h.result.issue.threat || 'Issue'}</span>}
-                                                                    </div>
+                                                                <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'2px'}}>
+                                                                    {fmtDate(h.timestamp)} at {new Date(h.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+                                                                    {!isLatest && age > 7 && <span style={{marginLeft:'6px',opacity:0.7}}>({Math.floor(age)}d ago)</span>}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {/* Action Buttons - right side of header */}
+                                                            <div style={{display:'flex',alignItems:'center',gap:'4px',flexShrink:0}}>
+                                                                {h.result?.waitingReply && (
+                                                                    <button style={{padding:'5px 10px',fontSize:'10px',background:'#22c55e',color:'#fff',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:700,display:'flex',alignItems:'center',gap:'3px',transition:'all 0.15s'}} title="Clear waiting - got reply" onClick={(e) => { e.stopPropagation(); 
+                                                                        const updated = {...sel, waitingReply: false};
+                                                                        setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s));
+                                                                        const updHist = emailHistory.map(x => x.id === h.id ? {...x, result: {...x.result, waitingReply: false}} : x);
+                                                                        setEmailHistory(updHist); localStorage.setItem('emailParseHistory', JSON.stringify(updHist));
+                                                                        logActivity(`Cleared waiting status for ${sel.name}`);
+                                                                        toast('Waiting status cleared', 'success');
+                                                                    }}>✓ Clear</button>
                                                                 )}
-
-                                                                {/* Issue details callout */}
-                                                                {isIssue && h.result.issue.details && (
-                                                                    <div style={{padding:'8px 10px',marginBottom:'8px',borderRadius:'6px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',border: `1px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`,fontSize:'12px',lineHeight:'1.4'}}>
-                                                                        {h.result.issue.details}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Summary / main content */}
-                                                                {h.result?.emailSummary && (
-                                                                    <div style={{fontSize: isLatest ? '13px' : '12px',color:'var(--text)',lineHeight:'1.5'}}>
-                                                                        {h.result.emailSummary}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Full email - collapsible */}
-                                                                {h.emailText && (
-                                                                    <details style={{marginTop:'8px'}} {...(isLatest ? {open:true} : {})}>
-                                                                        <summary style={{fontSize:'10px',color:'var(--primary)',cursor:'pointer',userSelect:'none',fontWeight:500}}>📄 View full email</summary>
-                                                                        <div style={{padding:'10px',marginTop:'6px',background:'var(--bg-input)',borderRadius:'6px',fontSize:'11px',fontFamily:'JetBrains Mono',whiteSpace:'pre-wrap',maxHeight:'200px',overflow:'auto',border:'1px solid var(--border)',lineHeight:'1.5'}}>{h.emailText}</div>
-                                                                    </details>
-                                                                )}
-
-                                                                {/* Changes footer */}
-                                                                {h.changes?.length > 0 && (
-                                                                    <div style={{marginTop:'8px',paddingTop:'6px',borderTop:'1px solid var(--border)',fontSize:'10px',color:'var(--green)'}}>
-                                                                        ✓ {h.changes.join(' • ')}
-                                                                    </div>
-                                                                )}
+                                                                <button style={{padding:'5px 10px',fontSize:'10px',background:'var(--primary)',color:'#000',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:700,display:'flex',alignItems:'center',gap:'3px',transition:'all 0.15s'}} title="Continue conversation" onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' }); }}>↩️ Continue</button>
+                                                                <button style={{padding:'5px 8px',fontSize:'11px',background:'var(--bg-input)',color:'var(--text-muted)',borderRadius:'6px',border:'1px solid var(--border)',cursor:'pointer',transition:'all 0.15s'}} title="Edit entry" onClick={() => { 
+                                                                    const d = new Date(h.timestamp); 
+                                                                    setEditEmailForm({ 
+                                                                        date: toDateString(d), 
+                                                                        time: d.toTimeString().slice(0,5), 
+                                                                        summary: h.result?.emailSummary || '', 
+                                                                        emailText: h.emailText || '', 
+                                                                        contactedBy: h.result?.sender?.name || '' 
+                                                                    }); 
+                                                                    setEditEmailEntry(h); 
+                                                                }}>✏️</button>
+                                                                <button style={{padding:'5px 8px',fontSize:'11px',background:'var(--bg-input)',color:'var(--red)',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.2)',cursor:'pointer',transition:'all 0.15s'}} title="Delete entry" onClick={() => { if(confirm('Delete this entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); toast('Entry deleted', 'info'); } }}>🗑</button>
                                                             </div>
                                                         </div>
-                                                        );
-                                                    })}
-                                                </div>
+                                                        
+                                                        {/* Card Body */}
+                                                        <div style={{padding: isLatest ? '12px 16px 14px' : '10px 14px 12px'}}>
+                                                            {/* Issue callout */}
+                                                            {isIssue && h.result.issue.details && (
+                                                                <div style={{padding:'10px 12px',marginBottom:'10px',borderRadius:'8px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',border: `1px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`,fontSize:'12px',lineHeight:'1.5',display:'flex',gap:'8px',alignItems:'flex-start'}}>
+                                                                    <span style={{fontSize:'14px',flexShrink:0}}>{h.result.issue.threat === 'Urgent' ? '🚨' : '⚠️'}</span>
+                                                                    <span>{h.result.issue.details}</span>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {/* Summary */}
+                                                            {h.result?.emailSummary && (
+                                                                <div style={{fontSize: isLatest ? '13px' : '12px',color:'var(--text)',lineHeight:'1.6'}}>
+                                                                    {h.result.emailSummary}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Full email - collapsible */}
+                                                            {h.emailText && (
+                                                                <details style={{marginTop:'10px'}} {...(isLatest ? {open:true} : {})}>
+                                                                    <summary style={{fontSize:'10px',color:'var(--primary)',cursor:'pointer',userSelect:'none',fontWeight:600,display:'flex',alignItems:'center',gap:'6px'}}>
+                                                                        <span style={{width:'16px',height:'16px',borderRadius:'4px',background:'var(--primary-glow)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'9px'}}>📄</span>
+                                                                        View full email
+                                                                    </summary>
+                                                                    <div style={{padding:'12px',marginTop:'8px',background:'var(--bg-input)',borderRadius:'8px',fontSize:'11px',fontFamily:'JetBrains Mono',whiteSpace:'pre-wrap',maxHeight:'200px',overflow:'auto',border:'1px solid var(--border)',lineHeight:'1.6'}}>{h.emailText}</div>
+                                                                </details>
+                                                            )}
+
+                                                            {/* Changes footer */}
+                                                            {h.changes?.length > 0 && (
+                                                                <div style={{marginTop:'10px',paddingTop:'8px',borderTop:'1px solid var(--border)',fontSize:'10px',color:'var(--green)',display:'flex',alignItems:'center',gap:'6px'}}>
+                                                                    <span style={{width:'16px',height:'16px',borderRadius:'50%',background:'rgba(34,197,94,0.15)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'8px'}}>✓</span>
+                                                                    {h.changes.join(' • ')}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
-
                                     {/* Current Notes (editable) */}
                                     <div style={{padding:'12px',background:'var(--bg-input)',borderRadius:'8px',border:'1px solid var(--border)'}}>
                                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
@@ -4398,6 +4411,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     const [savedShipAddresses, setSavedShipAddresses] = useState({});
     const [showAddrMgmt, setShowAddrMgmt] = useState(false);
     const [addrEdits, setAddrEdits] = useState({});
+    const [expandedAddrs, setExpandedAddrs] = useState({});
     
     // Load saved shipping addresses from Firebase
     useEffect(() => {
@@ -4826,7 +4840,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
             {/* Shipping Template Modal */}
             {showShipping && (
                 <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={(e) => { if(e.target === e.currentTarget) { setShowShipping(false); setShowAddrMgmt(false); } }}>
-                    <div style={{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width: showAddrMgmt ? '640px' : '580px',maxWidth:'95vw',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)',transition:'width 0.2s'}}>
+                    <div style={{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width: showAddrMgmt ? '720px' : '580px',maxWidth:'95vw',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)',transition:'width 0.2s'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
                             <div>
                                 <div style={{fontSize:'18px',fontWeight:700}}>📦 Shipping Template</div>
@@ -4842,87 +4856,121 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         
                         {showAddrMgmt ? (
                             <div>
-                                <div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'16px',padding:'10px 14px',borderRadius:'8px',background:'var(--bg-input)',border:'1px solid var(--border)'}}>
-                                    Enter destination info for each base. Saved to Firebase so your team shares the same addresses.
+                                {/* Header banner */}
+                                <div style={{padding:'16px 20px',borderRadius:'12px',background:'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(59,130,246,0.08))',border:'1px solid rgba(99,102,241,0.2)',marginBottom:'16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                                        <div style={{width:'40px',height:'40px',borderRadius:'10px',background:'rgba(99,102,241,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px'}}>📍</div>
+                                        <div>
+                                            <div style={{fontSize:'14px',fontWeight:700,color:'var(--text)'}}>Shipping Address Book</div>
+                                            <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>Synced to Firebase — all team members see updates instantly</div>
+                                        </div>
+                                    </div>
+                                    <div style={{fontSize:'11px',color:'var(--text-muted)',textAlign:'right'}}>
+                                        <span style={{color:'#22c55e',fontWeight:600}}>{defaultShipDests.filter(d => { const e = addrEdits[d.key]||{}; return e.unclassAttn || e.classAttn || e.address; }).length}</span>/{defaultShipDests.length} configured
+                                    </div>
                                 </div>
-                                <div style={{display:'flex',flexDirection:'column',gap:'12px',maxHeight:'55vh',overflow:'auto',paddingRight:'4px'}}>
+                                
+                                {/* Base cards - 2-column grid */}
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',maxHeight:'52vh',overflow:'auto',paddingRight:'4px',paddingBottom:'4px'}}>
                                     {defaultShipDests.map(d => {
                                         const e = addrEdits[d.key] || {};
-                                        const hasData = e.unclassAttn || e.classAttn || (e.address && e.address !== d.address);
+                                        const hasData = e.unclassAttn || e.classAttn || (e.address && e.address.trim());
+                                        const isOpen = expandedAddrs[d.key] || false;
                                         return (
-                                            <div key={d.key} style={{padding:'14px',borderRadius:'10px',border: hasData ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',background: hasData ? 'rgba(34,197,94,0.03)' : 'var(--bg-input)'}}>
-                                                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
-                                                    <span style={{fontSize:'14px'}}>{d.key==='yokosuka'?'🇯🇵':d.key==='rota'?'🇪🇸':'🇺🇸'}</span>
-                                                    <span style={{fontSize:'14px',fontWeight:700,color:'var(--text)'}}>{d.label}</span>
-                                                    {hasData && <span style={{fontSize:'10px',padding:'2px 8px',borderRadius:'4px',background:'rgba(34,197,94,0.15)',color:'#22c55e',fontWeight:600}}>✓ Saved</span>}
-                                                </div>
-                                                <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'8px'}}>
-                                                    <div>
-                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Location / Command</label>
-                                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'12px'}} value={e.location||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, location: ev.target.value}})} placeholder="e.g. PEO IWS PMR Norfolk" />
-                                                    </div>
-                                                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                                            <div key={d.key} style={{borderRadius:'10px',border: hasData ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',background:'var(--bg-input)',overflow:'hidden',gridColumn: isOpen ? '1 / -1' : 'auto'}}>
+                                                {/* Card header */}
+                                                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',cursor:'pointer',userSelect:'none',background: hasData ? 'rgba(34,197,94,0.04)' : 'transparent'}} onClick={() => setExpandedAddrs(prev => ({...prev, [d.key]: !prev[d.key]}))}>
+                                                    <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                                                        <span style={{fontSize:'18px'}}>{d.key==='yokosuka'?'\u{1F1EF}\u{1F1F5}':d.key==='rota'?'\u{1F1EA}\u{1F1F8}':'\u{1F1FA}\u{1F1F8}'}</span>
                                                         <div>
-                                                            <label style={{fontSize:'10px',color:'#22c55e',display:'block',marginBottom:'3px',fontWeight:600}}>🟢 Unclassified ATTN</label>
-                                                            <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(34,197,94,0.3)',background:'rgba(34,197,94,0.03)',color:'var(--text)',fontSize:'12px'}} value={e.unclassAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, unclassAttn: ev.target.value}})} placeholder="e.g. Randall Black / REAP" />
-                                                        </div>
-                                                        <div>
-                                                            <label style={{fontSize:'10px',color:'#ef4444',display:'block',marginBottom:'3px',fontWeight:600}}>🔴 Classified ATTN</label>
-                                                            <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.03)',color:'var(--text)',fontSize:'12px'}} value={e.classAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, classAttn: ev.target.value}})} placeholder="e.g. Document Control" />
+                                                            <div style={{fontSize:'13px',fontWeight:700,color:'var(--text)'}}>{d.label}</div>
+                                                            {hasData && !isOpen && <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'1px',maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.unclassAttn || e.classAttn || 'Address set'}</div>}
                                                         </div>
                                                     </div>
-                                                    <div>
-                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Full Address</label>
-                                                        <textarea style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'12px',fontFamily:'inherit',resize:'vertical',minHeight:'45px'}} value={e.address||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, address: ev.target.value}})} placeholder={"9583 Maryland Ave. BLDG X-70\nNorfolk, VA 23511-2911"} />
+                                                    <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                                        {hasData ? (
+                                                            <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#22c55e'}}></span>
+                                                        ) : (
+                                                            <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#f59e0b',animation:'pulse 2s infinite'}}></span>
+                                                        )}
+                                                        <span style={{fontSize:'11px',color:'var(--text-muted)',transition:'transform 0.2s',transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
                                                     </div>
                                                 </div>
+                                                {/* Expanded form */}
+                                                {isOpen && (
+                                                    <div style={{padding:'0 14px 14px 14px',borderTop:'1px solid var(--border)'}}>
+                                                        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'8px',marginTop:'12px'}}>
+                                                            <div>
+                                                                <label style={{fontSize:'9px',color:'var(--text-muted)',display:'block',marginBottom:'3px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px'}}>Location / Command</label>
+                                                                <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'12px'}} value={e.location||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, location: ev.target.value}})} placeholder="e.g. PEO IWS PMR Norfolk" />
+                                                            </div>
+                                                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                                                                <div style={{padding:'8px 10px',borderRadius:'8px',background:'rgba(34,197,94,0.05)',border:'1px solid rgba(34,197,94,0.2)'}}>
+                                                                    <label style={{fontSize:'9px',color:'#22c55e',display:'block',marginBottom:'3px',fontWeight:700}}>UNCLASS ATTN</label>
+                                                                    <input style={{width:'100%',padding:'7px 8px',borderRadius:'5px',border:'1px solid rgba(34,197,94,0.2)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px'}} value={e.unclassAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, unclassAttn: ev.target.value}})} placeholder="e.g. Randall Black / REAP" />
+                                                                </div>
+                                                                <div style={{padding:'8px 10px',borderRadius:'8px',background:'rgba(239,68,68,0.05)',border:'1px solid rgba(239,68,68,0.2)'}}>
+                                                                    <label style={{fontSize:'9px',color:'#ef4444',display:'block',marginBottom:'3px',fontWeight:700}}>CLASS ATTN</label>
+                                                                    <input style={{width:'100%',padding:'7px 8px',borderRadius:'5px',border:'1px solid rgba(239,68,68,0.2)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px'}} value={e.classAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, classAttn: ev.target.value}})} placeholder="e.g. Document Control" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label style={{fontSize:'9px',color:'var(--text-muted)',display:'block',marginBottom:'3px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px'}}>Full Address</label>
+                                                                <textarea style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px',fontFamily:'monospace',resize:'vertical',minHeight:'42px',lineHeight:'1.5'}} value={e.address||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, address: ev.target.value}})} placeholder={"9583 Maryland Ave. BLDG X-70\nNorfolk, VA 23511-2911"} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
                                 </div>
-                                <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>
-                                    <button style={{flex:1,padding:'14px',borderRadius:'10px',border:'none',background:'var(--primary)',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer'}} onClick={() => {
+                                {/* Save footer */}
+                                <div style={{display:'flex',gap:'8px',marginTop:'14px'}}>
+                                    <button style={{flex:1,padding:'12px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg, var(--primary), #6366f1)',color:'#fff',fontSize:'13px',fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow:'0 4px 12px rgba(99,102,241,0.3)'}} onClick={() => {
                                         saveShipAddresses(addrEdits);
                                         setShowAddrMgmt(false);
                                     }}>
                                         💾 Save All Addresses
                                     </button>
-                                    <button style={{padding:'14px 20px',borderRadius:'10px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text-muted)',fontSize:'13px',fontWeight:600,cursor:'pointer'}} onClick={() => setShowAddrMgmt(false)}>
+                                    <button style={{padding:'12px 20px',borderRadius:'10px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text-muted)',fontSize:'12px',fontWeight:600,cursor:'pointer'}} onClick={() => setShowAddrMgmt(false)}>
                                         Cancel
                                     </button>
                                 </div>
                             </div>
                         ) : (<>
                         {/* Classification Toggle */}
-                        <div style={{display:'flex',gap:'8px',marginBottom:'20px'}}>
-                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border: shipType==='unclass' ? '2px solid #22c55e' : '1px solid var(--border)',background: shipType==='unclass' ? 'rgba(34,197,94,0.1)' : 'var(--bg-input)',color: shipType==='unclass' ? '#22c55e' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}} onClick={() => { setShipType('unclass'); const base = {...emptyShipForm}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.unclassAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
-                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#22c55e',display:'inline-block'}}></span> Unclassified
+                        <div style={{display:'flex',gap:'0',marginBottom:'20px',background:'var(--bg-input)',borderRadius:'12px',padding:'4px',border:'1px solid var(--border)'}}>
+                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border:'none',background: shipType==='unclass' ? 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1))' : 'transparent',color: shipType==='unclass' ? '#22c55e' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow: shipType==='unclass' ? '0 2px 8px rgba(34,197,94,0.15), inset 0 0 0 1.5px rgba(34,197,94,0.4)' : 'none'}} onClick={() => { setShipType('unclass'); const base = {...emptyShipForm}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.unclassAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
+                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#22c55e',display:'inline-block',boxShadow: shipType==='unclass' ? '0 0 8px rgba(34,197,94,0.5)' : 'none'}}></span> Unclassified
                             </button>
-                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border: shipType==='class' ? '2px solid #ef4444' : '1px solid var(--border)',background: shipType==='class' ? 'rgba(239,68,68,0.1)' : 'var(--bg-input)',color: shipType==='class' ? '#ef4444' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}} onClick={() => { setShipType('class'); const base = {...classDefaults}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.classAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
-                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#ef4444',display:'inline-block'}}></span> Classified
+                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border:'none',background: shipType==='class' ? 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1))' : 'transparent',color: shipType==='class' ? '#ef4444' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow: shipType==='class' ? '0 2px 8px rgba(239,68,68,0.15), inset 0 0 0 1.5px rgba(239,68,68,0.4)' : 'none'}} onClick={() => { setShipType('class'); const base = {...classDefaults}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.classAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
+                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#ef4444',display:'inline-block',boxShadow: shipType==='class' ? '0 0 8px rgba(239,68,68,0.5)' : 'none'}}></span> Classified
                             </button>
                         </div>
                         
                         {/* Base Location Buttons */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px'}}>📍 DESTINATION</div>
-                        <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'14px'}}>
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}><span>📍 DESTINATION</span>{shipDestinations.filter(d=>!d.unclassAttn && !d.classAttn && !d.address).length > 0 && <span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>⚠️ {shipDestinations.filter(d=>!d.unclassAttn && !d.classAttn && !d.address).length} bases need addresses</span>}</div>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))',gap:'6px',marginBottom:'16px'}}>
                             {shipDestinations.map((dest) => {
                                 const hasSaved = dest.unclassAttn || dest.classAttn || dest.address;
+                                const isActive = activeShipDest===dest.key;
                                 return (
-                                <button key={dest.key} style={{padding:'8px 14px',borderRadius:'8px',border: activeShipDest===dest.key ? '2px solid var(--primary)' : '1px solid var(--border)',background: activeShipDest===dest.key ? 'var(--primary-glow)' : 'var(--bg-input)',color: activeShipDest===dest.key ? 'var(--primary)' : 'var(--text)',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s',opacity: hasSaved ? 1 : 0.5}} onClick={() => {
+                                <button key={dest.key} style={{padding:'10px 8px',borderRadius:'10px',border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',background: isActive ? 'var(--primary-glow)' : hasSaved ? 'var(--bg-input)' : 'transparent',color: isActive ? 'var(--primary)' : hasSaved ? 'var(--text)' : 'var(--text-muted)',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s',opacity: hasSaved ? 1 : 0.45,textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',boxShadow: isActive ? '0 2px 12px rgba(var(--primary-rgb,59,130,246),0.2)' : 'none'}} onClick={() => {
                                     setActiveShipDest(dest.key);
                                     const attn = shipType === 'class' ? (dest.classAttn || '') : (dest.unclassAttn || '');
                                     setShipForm(prev => ({...prev, location: dest.location, attn: attn, address: dest.address || ''}));
                                 }}>
-                                    {dest.key==='yokosuka'?'🇯🇵':dest.key==='rota'?'🇪🇸':'🇺🇸'} {dest.label}
-                                    {!hasSaved && <span style={{fontSize:'9px',marginLeft:'4px'}}>⚠️</span>}
+                                    <span style={{fontSize:'16px'}}>{dest.key==='yokosuka'?'🇯🇵':dest.key==='rota'?'🇪🇸':'🇺🇸'}</span>
+                                    <span>{dest.label}</span>
+                                    {hasSaved ? <span style={{fontSize:'8px',color:'var(--green)'}}>● Ready</span> : <span style={{fontSize:'8px',color:'var(--amber)'}}>⚠ No addr</span>}
                                 </button>
                                 );
                             })}
                         </div>
                         
                         {/* Origin & Dates */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',marginTop:'8px'}}>📋 SHIPMENT INFO</div>
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',marginTop:'8px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>📋</span> SHIPMENT INFO</div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'14px'}}>
                             <div>
                                 <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Shipment Origin</label>
@@ -4939,7 +4987,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         </div>
 
                         {/* Package Dimensions */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px'}}>📐 PACKAGE</div>
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>📐</span> PACKAGE</div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:'8px',marginBottom:'14px'}}>
                             <div>
                                 <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>L (inches)</label>
@@ -4960,7 +5008,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         </div>
                         
                         {/* Destination fields */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px'}}>📬 DESTINATION</div>
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>📬</span> DESTINATION</div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
                             <div>
                                 <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>ATTN</label>
@@ -5001,14 +5049,14 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         )}
                         
                         {/* Live Preview */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px'}}>👁️ PREVIEW</div>
-                        <div style={{padding:'16px',background: shipType==='class' ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',borderRadius:'10px',border: shipType==='class' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(34,197,94,0.2)',fontFamily:'monospace',fontSize:'11px',whiteSpace:'pre-wrap',lineHeight:'1.8',color:'var(--text)'}}>
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>👁️</span> PREVIEW</div>
+                        <div style={{padding:'16px',background: shipType==='class' ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',borderRadius:'12px',border: shipType==='class' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(34,197,94,0.2)',fontFamily:'JetBrains Mono, monospace',fontSize:'11px',whiteSpace:'pre-wrap',lineHeight:'1.8',color:'var(--text)',boxShadow:'inset 0 2px 4px rgba(0,0,0,0.05)'}}>
                             {buildShippingText()}
                         </div>
                         
                         {/* Action Buttons */}
                         <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>
-                            <button style={{flex:1,padding:'14px',borderRadius:'10px',border:'none',background:'var(--primary)',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}} onClick={() => {
+                            <button style={{flex:1,padding:'14px',borderRadius:'12px',border:'none',background:'linear-gradient(135deg, var(--primary), #2563eb)',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow:'0 4px 12px rgba(59,130,246,0.3)',transition:'all 0.2s'}} onClick={() => {
                                 const text = buildShippingText();
                                 navigator.clipboard.writeText(text).then(() => { toast('Copied to clipboard!', 'success'); }).catch(() => {
                                     const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); toast('Copied to clipboard!', 'success');
@@ -5016,7 +5064,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                             }}>
                                 📋 Copy to Clipboard
                             </button>
-                            <button style={{padding:'14px 20px',borderRadius:'10px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text-muted)',fontSize:'13px',fontWeight:600,cursor:'pointer'}} onClick={resetShipForm}>
+                            <button style={{padding:'14px 20px',borderRadius:'12px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text-muted)',fontSize:'13px',fontWeight:600,cursor:'pointer',transition:'all 0.2s'}} onClick={resetShipForm}>
                                 🔄 Reset
                             </button>
                         </div>
