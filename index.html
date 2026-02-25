@@ -2384,7 +2384,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     <div className="form-row">
                                         <div className="form-group"><label className="form-label">Hull Number</label><input className="form-input" value={sel.name} onChange={e => setSel({...sel, name: e.target.value})}/></div>
                                         <div className="form-group"><label className="form-label">Ship Type</label><select className="form-select" value={sel.type} onChange={e => setSel({...sel, type: e.target.value})}><option>Full REAP</option><option>Mini REAP</option></select></div>
-                                        <div className="form-group"><label className="form-label">Homeport</label><select className="form-select" value={sel.location || ''} onChange={e => setSel({...sel, location: e.target.value})}><option value="">Select...</option><option>San Diego, CA</option><option>Norfolk, VA</option><option>Mayport, FL</option><option>Pearl Harbor, HI</option><option>Yokosuka, Japan</option><option>Rota, Spain</option><option>Everett, WA</option><option>Deployed</option><option>In Port</option><option>Other</option></select></div>
+                                        <div className="form-group"><label className="form-label">Homeport</label><select className="form-select" value={sel.location || ''} onChange={e => setSel({...sel, location: e.target.value})}><option value="">Select...</option><option>San Diego, CA</option><option>Norfolk, VA</option><option>Mayport, FL</option><option>Pearl Harbor, HI</option><option>Yokosuka, Japan</option><option>Rota, Spain</option><option>Everett, WA</option><option>Point Mugu, CA</option><option>Deployed</option><option>In Port</option><option>Other</option></select></div>
                                     </div>
                                     <div className="form-row">
                                         <div className="form-group"><label className="form-label">POC Name</label><input className="form-input" placeholder="Point of contact..." value={sel.poc || ''} onChange={e => setSel({...sel, poc: e.target.value})}/></div>
@@ -4189,7 +4189,7 @@ function DailyChecks({ ships, checks, setChecks, toast, logActivity }) {
 function AddShip({ ships, setShips, toast, editing, setEditing, setPage, logActivity }) {
     const [form, setForm] = useState({ name: '', type: 'Full REAP', location: 'San Diego, CA', poc: '', email: '', reminder: '7', lastSaid: '', ciscoRouter: '', hdd: '', crna1: '', crna2: '', notes: '', tags: [] });
     const [tagInput, setTagInput] = useState('');
-    const locations = ['San Diego, CA', 'Norfolk, VA', 'Mayport, FL', 'Pearl Harbor, HI', 'Yokosuka, Japan', 'Rota, Spain', 'Everett, WA', 'Deployed', 'In Port', 'Other'];
+    const locations = ['San Diego, CA', 'Norfolk, VA', 'Mayport, FL', 'Pearl Harbor, HI', 'Yokosuka, Japan', 'Rota, Spain', 'Everett, WA', 'Point Mugu, CA', 'Deployed', 'In Port', 'Other'];
     
     useEffect(() => { if (editing) setForm({ name: editing.name, type: editing.type, location: editing.location || 'San Diego, CA', poc: editing.poc, email: editing.email, reminder: '7', lastSaid: editing.lastSaid, ciscoRouter: editing.ciscoRouter, hdd: editing.hdd, crna1: editing.crna1, crna2: editing.crna2, notes: editing.notes, tags: editing.tags || [] }); }, [editing]);
     
@@ -4301,7 +4301,8 @@ function Inventory({ ships, setShips, toast, logActivity }) {
 
 function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     const sorted = useMemo(() => [...ships].sort(sortHull), [ships]);
-    const [form, setForm] = useState({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled' });
+    const [form, setForm] = useState({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: '' });
+    const [editingTrip, setEditingTrip] = useState(null);
     const [viewMode, setViewMode] = useState('list');
     const [calMonth, setCalMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(null);
@@ -4328,6 +4329,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
         { key: 'norfolk', label: 'Norfolk', location: 'NAVSTA Norfolk', attn: 'Randall Black / REAP PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911' },
         { key: 'yokosuka', label: 'Yokosuka', location: 'CFAY Yokosuka' },
         { key: 'rota', label: 'Rota', location: 'NAVSTA Rota' },
+        { key: 'pointmugu', label: 'Pt Mugu', location: 'NBVC Point Mugu' },
     ];
     const [activeShipDest, setActiveShipDest] = useState(null);
     const resetShipForm = () => {
@@ -4353,8 +4355,28 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     useEffect(() => { localStorage.setItem('sitePOCs', JSON.stringify(sitePOCs)); }, [sitePOCs]);
     useEffect(() => { localStorage.setItem('siteNotes', JSON.stringify(siteNotes)); }, [siteNotes]);
     
-    const locations = ['San Diego, CA', 'Norfolk, VA', 'Mayport, FL', 'Pearl Harbor, HI', 'Yokosuka, Japan', 'Rota, Spain', 'Everett, WA', 'Washington D.C.', 'Other'];
-    const statuses = ['Scheduled', 'In Progress', 'Completed', 'Delayed', 'Cancelled'];
+    const locations = ['San Diego, CA', 'Norfolk, VA', 'Mayport, FL', 'Pearl Harbor, HI', 'Yokosuka, Japan', 'Rota, Spain', 'Everett, WA', 'Point Mugu, CA', 'Washington D.C.', 'Other'];
+    const statuses = ['Scheduled', 'In Progress', 'Completed', 'Delayed', 'Cancelled', 'On Hold'];
+    
+    // Auto-update trip statuses based on dates
+    const autoStatusRan = React.useRef(false);
+    useEffect(() => {
+        if (autoStatusRan.current || installs.length === 0) return;
+        const today = new Date(); today.setHours(0,0,0,0);
+        let changed = false;
+        const updated = installs.map(trip => {
+            if (trip.status === 'Scheduled' && trip.start) {
+                const start = parseLocalDate(trip.start);
+                if (start <= today) { changed = true; return { ...trip, status: 'In Progress' }; }
+            }
+            if (trip.status === 'In Progress' && trip.end) {
+                const end = parseLocalDate(trip.end);
+                if (end < today) { changed = true; return { ...trip, status: 'Completed' }; }
+            }
+            return trip;
+        });
+        if (changed) { autoStatusRan.current = true; setInstalls(updated); }
+    }, [installs]);
     
     const siteData = {
         everett: {
@@ -4510,6 +4532,26 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                 { id:'rp2', name: '', role: 'NAVSTA Rota Logistics', phone: '', email: '', notes: '' },
                 { id:'rp3', name: '', role: 'Base IT POC', phone: '', email: '', notes: '' },
             ]
+        },
+        pointmugu: {
+            name: 'Naval Base Ventura County (Point Mugu)', abbr: 'NBVC Pt Mugu', city: 'Point Mugu, CA',
+            osmQuery: 'Naval Base Ventura County, California',
+            lat: 34.1208, lng: -119.1205, mapZoom: 14,
+            gate: { lat: 34.1117, lng: -119.1007, label: 'Main Gate (Pacific Coast Hwy)' },
+            dock: { lat: 34.1230, lng: -119.1250, label: 'Port Area' },
+            parking: { lat: 34.1130, lng: -119.1050, label: 'Visitor Parking' },
+            base_info: 'Naval Base Ventura County — Point Mugu site. Supports Pacific Fleet weapons testing, NAWCWD operations, and fleet readiness.',
+            gate_info: 'Main Gate: Pacific Coast Highway (PCH/Hwy 1). 24/7 access with valid CAC/DBIDS.',
+            parking_info: 'Visitor parking near main gate. Coordinate for interior access.',
+            route_info: 'Enter via PCH Main Gate → follow base road to destination.',
+            ships_homeported: [],
+            addresses: {
+                unclass: { label: 'UNCLASSIFIED Shipping', lines: ['Naval Base Ventura County', 'ATTN: [Your Command/Code]', 'Point Mugu, CA 93042'] },
+                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Base Ventura County', 'ATTN: Command Security Manager', 'Point Mugu, CA 93042'] }
+            },
+            pocs_default: [
+                { id:'pm1', name: '', role: 'Base POC', phone: '', email: '', notes: '' },
+            ]
         }
     };
     
@@ -4587,10 +4629,17 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     const add = () => { 
         if (!form.ship) { toast('Select a ship', 'error'); return; } 
         if (!form.start) { toast('Select a start date', 'error'); return; }
-        setInstalls(p => [...p, { id: genId('T'), ...form }]); 
-        logActivity(`Scheduled trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`, { ship: form.ship, location: form.location, start: form.start, end: form.end });
-        setForm({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled' }); 
-        toast('Trip added!', 'success'); 
+        if (editingTrip) {
+            setInstalls(p => p.map(i => i.id === editingTrip ? { ...i, ...form } : i));
+            logActivity(`Updated trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`, { ship: form.ship, location: form.location, start: form.start, end: form.end });
+            setEditingTrip(null);
+            toast('Trip updated!', 'success');
+        } else {
+            setInstalls(p => [...p, { id: genId('T'), ...form }]); 
+            logActivity(`Scheduled trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`, { ship: form.ship, location: form.location, start: form.start, end: form.end });
+            toast('Trip added!', 'success'); 
+        }
+        setForm({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: '' }); 
     };
     const del = (id) => { 
         const trip = installs.find(i => i.id === id);
@@ -5032,41 +5081,56 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                     </div>
                 </div>
             ) : !selectedSite ? (
-                <div className="card">
-                    <span className="card-title">All Trips</span>
+                <div>
                     {installs.length === 0 ? (
                         <div className="empty">No trips scheduled</div>
                     ) : (
-                        <table className="table mt-md">
-                            <thead>
-                                <tr>
-                                    <th>Ship</th>
-                                    <th>Dates</th>
-                                    <th>Location</th>
-                                    <th>Purpose</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {installs.sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start)).map(i => (
-                                    <tr key={i.id}>
-                                        <td style={{fontWeight:600}}>{i.ship}</td>
-                                        <td style={{fontSize:'12px'}}>{fmtDate(i.start)}{i.end ? ` - ${fmtDate(i.end)}` : ''}</td>
-                                        <td>{i.location}</td>
-                                        <td style={{fontSize:'12px',color:'var(--text-dim)'}}>{i.purpose || '—'}</td>
-                                        <td><span className={`badge ${i.status==='Completed'?'badge-success':i.status==='Cancelled'?'badge-mild':'badge-info'}`}>{i.status}</span></td>
-                                        <td><button className="btn btn-sm btn-danger" onClick={() => del(i.id)}>Del</button></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))',gap:'12px'}}>
+                            {installs.sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start)).map(i => {
+                                const isPast = i.end && parseLocalDate(i.end) < new Date(new Date().setHours(0,0,0,0));
+                                const isActive = parseLocalDate(i.start) <= new Date() && (!i.end || parseLocalDate(i.end) >= new Date(new Date().setHours(0,0,0,0)));
+                                const borderColor = i.status === 'Completed' ? 'var(--green)' : i.status === 'Cancelled' ? 'var(--red)' : i.status === 'Delayed' ? 'var(--amber)' : i.status === 'On Hold' ? 'var(--text-muted)' : isActive ? 'var(--blue)' : 'var(--primary)';
+                                return (
+                                    <div key={i.id} className="card" style={{padding:'16px',borderLeft:`3px solid ${borderColor}`,opacity: isPast && i.status !== 'Completed' ? 0.6 : 1}}>
+                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
+                                            <div style={{fontWeight:700,fontSize:'15px'}}>{i.ship}</div>
+                                            <span className={`badge ${i.status==='Completed'?'badge-success':i.status==='Cancelled'?'badge-urgent':i.status==='Delayed'?'badge-mild':i.status==='On Hold'?'':'badge-info'}`} style={{fontSize:'10px',...(i.status==='On Hold'?{background:'var(--bg-input)',color:'var(--text-muted)',border:'1px solid var(--border)'}:{})}}>{i.status === 'In Progress' ? '🟢 In Progress' : i.status === 'Delayed' ? '⚠️ Delayed' : i.status === 'On Hold' ? '⏸️ On Hold' : i.status}</span>
+                                        </div>
+                                        <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'12px'}}>
+                                            <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-dim)'}}>
+                                                <span>📍</span> <span>{i.location || '—'}</span>
+                                            </div>
+                                            <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-dim)'}}>
+                                                <span>📅</span> <span>{fmtDate(i.start)}{i.end ? ` → ${fmtDate(i.end)}` : ''}</span>
+                                            </div>
+                                            {i.purpose && (
+                                                <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-muted)'}}>
+                                                    <span>🎯</span> <span>{i.purpose}</span>
+                                                </div>
+                                            )}
+                                            {i.techs && (
+                                                <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-muted)'}}>
+                                                    <span>👤</span> <span>{i.techs}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div style={{display:'flex',gap:'6px',marginTop:'12px',borderTop:'1px solid var(--border)',paddingTop:'10px'}}>
+                                            <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={() => {
+                                                setForm({ship:i.ship,location:i.location,start:i.start,end:i.end||'',purpose:i.purpose||'',status:i.status,techs:i.techs||''});
+                                                setEditingTrip(i.id);
+                                            }}>✏️ Edit</button>
+                                            <button className="btn btn-sm btn-danger" style={{fontSize:'10px',padding:'4px 10px'}} onClick={() => del(i.id)}>🗑️</button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             ) : null}
             
             {!selectedSite && <div className="card">
-                <span className="card-title">Schedule New Trip</span>
+                <span className="card-title">{editingTrip ? '✏️ Edit Trip' : 'Schedule New Trip'}</span>
                 <div className="form-row mt-md">
                     <div className="form-group">
                         <label className="form-label">Ship *</label>
@@ -5102,11 +5166,20 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         <input className="form-input" placeholder="e.g., Install, Maintenance, Training..." value={form.purpose} onChange={e => setForm({...form, purpose: e.target.value})}/>
                     </div>
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Notes</label>
-                    <input className="form-input" placeholder="Additional details..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}/>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label className="form-label">Techs / Travelers</label>
+                        <input className="form-input" placeholder="e.g., Uriel, Jay, Moe..." value={form.techs || ''} onChange={e => setForm({...form, techs: e.target.value})}/>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Notes</label>
+                        <input className="form-input" placeholder="Additional details..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}/>
+                    </div>
                 </div>
-                <button className="btn btn-primary mt-md" onClick={add}>+ Add Trip</button>
+                <div style={{display:'flex',gap:'8px',marginTop:'12px'}}>
+                    <button className="btn btn-primary" onClick={add}>{editingTrip ? '💾 Update Trip' : '+ Add Trip'}</button>
+                    {editingTrip && <button className="btn btn-secondary" onClick={() => { setEditingTrip(null); setForm({ ship:'', start:'', end:'', location:'Mayport, FL', purpose:'', notes:'', status:'Scheduled', techs:'' }); }}>Cancel</button>}
+                </div>
             </div>}
         </div>
     );
