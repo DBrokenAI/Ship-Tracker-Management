@@ -4369,36 +4369,88 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     const [pocForm, setPocForm] = useState({ name:'', role:'', phone:'', email:'', notes:'' });
     const [showShipping, setShowShipping] = useState(false);
     const [shipType, setShipType] = useState('unclass');
-    const emptyShipForm = { dimL:'', dimW:'', dimH:'', weight:'', location:'', attn:'Randall Black / REAP PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911', shipWhat:'', voipSN:'', rtrSN:'', ssd1CRNA:'', ssd1SN:'', ssd2CRNA:'', ssd2SN:'' };
+    const emptyShipForm = { dimL:'', dimW:'', dimH:'', weight:'', origin:'NSWC CORONA', shipDate:'', delivDate:'', location:'', attn:'', address:'', contents:'', voipSN:'', rtrSN:'', ssd1SN:'', ssd2SN:'' };
     const [shipForm, setShipForm] = useState({...emptyShipForm});
     const classDefaults = {
         dimL:'9', dimW:'7', dimH:'6', weight:'<10',
-        location:'', attn:'Document Control PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911',
-        shipWhat:'', voipSN:'', rtrSN:'', ssd1CRNA:'', ssd1SN:'', ssd2CRNA:'', ssd2SN:''
+        origin:'NSWC CORONA', shipDate:'', delivDate:'', location:'', attn:'', address:'',
+        contents:'', voipSN:'', rtrSN:'', ssd1SN:'', ssd2SN:''
     };
-    const shipDestinations = [
-        { key: 'everett', label: 'Everett', location: 'NAVSTA Everett' },
-        { key: 'sandiego', label: 'San Diego', location: 'NBSD San Diego' },
-        { key: 'pearlharbor', label: 'Pearl Harbor', location: 'JBPHH Pearl Harbor' },
-        { key: 'pearlharbor2', label: 'PHD NSWC', location: 'N54501 NSWC PHD PEARL HARBOR DET\n801 FREDERICK ST BLDG 216\nPEARL HARBOR HI 96860-5097', attn: 'David Seros (Ku-band, 850-549-6641)' },
-        { key: 'mayport', label: 'Mayport', location: 'NAVSTA Mayport' },
-        { key: 'norfolk', label: 'Norfolk', location: 'NAVSTA Norfolk', attn: 'Randall Black / REAP PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911' },
-        { key: 'yokosuka', label: 'Yokosuka', location: 'CFAY Yokosuka' },
-        { key: 'rota', label: 'Rota', location: 'NAVSTA Rota' },
-        { key: 'pointmugu', label: 'Pt Mugu', location: 'NBVC Point Mugu' },
+    const defaultShipDests = [
+        { key: 'everett', label: 'Everett', location: 'NAVSTA Everett', unclassAttn: '', classAttn: '', address: '' },
+        { key: 'sandiego', label: 'San Diego', location: 'NBSD San Diego', unclassAttn: '', classAttn: '', address: '' },
+        { key: 'pearlharbor', label: 'Pearl Harbor', location: 'JBPHH Pearl Harbor', unclassAttn: '', classAttn: '', address: '' },
+        { key: 'pearlharbor2', label: 'PHD NSWC', location: 'N54501 NSWC PHD PEARL HARBOR DET', unclassAttn: 'David Seros (Ku-band, 850-549-6641)', classAttn: 'David Seros (Ku-band, 850-549-6641)', address: '801 FREDERICK ST BLDG 216\nPEARL HARBOR HI 96860-5097' },
+        { key: 'mayport', label: 'Mayport', location: 'NAVSTA Mayport', unclassAttn: '', classAttn: '', address: '' },
+        { key: 'norfolk', label: 'Norfolk', location: 'PEO IWS PMR Norfolk', unclassAttn: 'Randall Black / REAP', classAttn: 'Document Control', address: '9583 Maryland Ave. BLDG X-70\nNorfolk, VA 23511-2911' },
+        { key: 'yokosuka', label: 'Yokosuka', location: 'CFAY Yokosuka', unclassAttn: '', classAttn: '', address: '' },
+        { key: 'rota', label: 'Rota', location: 'NAVSTA Rota', unclassAttn: '', classAttn: '', address: '' },
     ];
+    const [savedShipAddresses, setSavedShipAddresses] = useState({});
+    const [showAddrMgmt, setShowAddrMgmt] = useState(false);
+    const [addrEdits, setAddrEdits] = useState({});
+    
+    // Load saved shipping addresses from Firebase
+    useEffect(() => {
+        const unsub = db.collection('config').doc('shippingAddresses').onSnapshot(snap => {
+            if (snap.exists) {
+                setSavedShipAddresses(snap.data() || {});
+            }
+        });
+        return () => unsub();
+    }, []);
+    
+    // Merge defaults with saved data
+    const shipDestinations = defaultShipDests.map(d => {
+        const saved = savedShipAddresses[d.key];
+        if (!saved) return d;
+        return {
+            ...d,
+            location: saved.location || d.location,
+            unclassAttn: saved.unclassAttn !== undefined ? saved.unclassAttn : d.unclassAttn,
+            classAttn: saved.classAttn !== undefined ? saved.classAttn : d.classAttn,
+            address: saved.address !== undefined ? saved.address : d.address,
+        };
+    });
+    
+    const saveShipAddresses = (updates) => {
+        const merged = { ...savedShipAddresses, ...updates };
+        db.collection('config').doc('shippingAddresses').set(merged, { merge: true })
+            .then(() => toast('Shipping addresses saved!', 'success'))
+            .catch(err => { console.error(err); toast('Save failed', 'error'); });
+    };
+    
+    const initAddrEdits = () => {
+        const edits = {};
+        defaultShipDests.forEach(d => {
+            const saved = savedShipAddresses[d.key] || {};
+            edits[d.key] = {
+                location: saved.location || d.location,
+                unclassAttn: saved.unclassAttn !== undefined ? saved.unclassAttn : d.unclassAttn,
+                classAttn: saved.classAttn !== undefined ? saved.classAttn : d.classAttn,
+                address: saved.address !== undefined ? saved.address : d.address,
+            };
+        });
+        setAddrEdits(edits);
+    };
+    
     const [activeShipDest, setActiveShipDest] = useState(null);
     const resetShipForm = () => {
         if (shipType === 'class') setShipForm({...classDefaults});
         else setShipForm({...emptyShipForm});
         setActiveShipDest(null);
     };
+    const fmtShipDate = (d) => { if (!d) return ''; const dt = new Date(d + 'T12:00:00'); const dd = String(dt.getDate()).padStart(2,'0'); const mon = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][dt.getMonth()]; return `${dd} ${mon} ${dt.getFullYear()}`; };
     const buildShippingText = () => {
         const f = shipForm;
+        const addrLines = (f.address||'').split('\n').filter(l=>l.trim()).join('\n            ');
+        const destBlock = `Shipment Destination:   \n            ATTN: ${f.attn||''}\n            ${f.location||''}\n            ${addrLines}`;
+        const datesBlock = `Requested Ship Date:      ${fmtShipDate(f.shipDate)||'TBD'}\nRequired Delivery Date:  ${fmtShipDate(f.delivDate)||'TBD'}`;
+        const dimsBlock = `Estimated Shipment Dimensions:  ${f.dimL||'__'}"(L) x ${f.dimW||'__'}"(W) x ${f.dimH||'__'}"(H)\nEstimated Shipment Weight: ${f.weight||'____'} lbs`;
         if (shipType === 'unclass') {
-            return `Unclassified:\n\nDimensions: ${f.dimL||'___'}L x ${f.dimW||'___'}W x ${f.dimH||'___'}H\nWeight: ${f.weight||'____'} lbs\nLocation: ${f.location||''}\nATTN: ${f.attn||''}`;
+            return `Shipment Origin: ${f.origin||'NSWC CORONA'}\n \n${destBlock}\n \n${datesBlock}\n \n${dimsBlock}\nContents (Please include asset barcodes and SN for each item):  \n${f.contents||'•\t'}`;
         } else {
-            return `Classified:\n\nDimensions: ${f.dimL||'9'}x${f.dimW||'7'}x${f.dimH||'6'}\nWeight: ${f.weight||'<10'} lbs\nLocation: ${f.location||''}\nATTN: ${f.attn||''}\n\nSerial Numbers:\n\n(${f.shipWhat||'What is shipping'})\nVOIP:\n   S/N: ${f.voipSN||''}\nRTR:\n   S/N: ${f.rtrSN||''}\nSSD\n   CRNA: ${f.ssd1CRNA||''}\n   S/N: ${f.ssd1SN||''}\nSSD\n   CRNA: ${f.ssd2CRNA||''}\n   S/N: ${f.ssd2SN||''}`;
+            return `(CLASSIFIED) / (OUTBOUND) FROM (${f.origin||'NSWC CORONA'}) TO (${f.location||''})\n \nShipment Origin: ${f.origin||'NSWC CORONA'}\n \n${destBlock}\n \n${datesBlock}\n \n${dimsBlock}\nContents (Please include asset barcodes and SN for each item):  \n•\tSSD: S/N: ${f.ssd1SN||''}\n•\tSSD: S/N: ${f.ssd2SN||''}`;
         }
     };
     const [sitePOCs, setSitePOCs] = useState(() => {
@@ -4764,22 +4816,80 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
             
             {/* Shipping Template Modal */}
             {showShipping && (
-                <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={(e) => { if(e.target === e.currentTarget) setShowShipping(false); }}>
-                    <div style={{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width:'580px',maxWidth:'95vw',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}}>
+                <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={(e) => { if(e.target === e.currentTarget) { setShowShipping(false); setShowAddrMgmt(false); } }}>
+                    <div style={{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width: showAddrMgmt ? '640px' : '580px',maxWidth:'95vw',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)',transition:'width 0.2s'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
                             <div>
                                 <div style={{fontSize:'18px',fontWeight:700}}>📦 Shipping Template</div>
                                 <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>Click a location → fill dims → copy</div>
                             </div>
-                            <button className="btn btn-sm btn-secondary" onClick={() => setShowShipping(false)} style={{width:'32px',height:'32px',padding:0,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%'}}>✕</button>
+                            <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                                <button className="btn btn-sm" style={{padding:'6px 12px',borderRadius:'8px',border:'1px solid var(--border)',background: showAddrMgmt ? 'var(--primary)' : 'var(--bg-input)',color: showAddrMgmt ? '#fff' : 'var(--text-muted)',fontSize:'11px',fontWeight:600,cursor:'pointer'}} onClick={() => { if(!showAddrMgmt) initAddrEdits(); setShowAddrMgmt(!showAddrMgmt); }}>
+                                    ⚙️ {showAddrMgmt ? 'Back to Template' : 'Manage Addresses'}
+                                </button>
+                                <button className="btn btn-sm btn-secondary" onClick={() => { setShowShipping(false); setShowAddrMgmt(false); }} style={{width:'32px',height:'32px',padding:0,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%'}}>✕</button>
+                            </div>
                         </div>
                         
+                        {showAddrMgmt ? (
+                            <div>
+                                <div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'16px',padding:'10px 14px',borderRadius:'8px',background:'var(--bg-input)',border:'1px solid var(--border)'}}>
+                                    Enter destination info for each base. Saved to Firebase so your team shares the same addresses.
+                                </div>
+                                <div style={{display:'flex',flexDirection:'column',gap:'12px',maxHeight:'55vh',overflow:'auto',paddingRight:'4px'}}>
+                                    {defaultShipDests.map(d => {
+                                        const e = addrEdits[d.key] || {};
+                                        const hasData = e.unclassAttn || e.classAttn || (e.address && e.address !== d.address);
+                                        return (
+                                            <div key={d.key} style={{padding:'14px',borderRadius:'10px',border: hasData ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',background: hasData ? 'rgba(34,197,94,0.03)' : 'var(--bg-input)'}}>
+                                                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
+                                                    <span style={{fontSize:'14px'}}>{d.key==='yokosuka'?'🇯🇵':d.key==='rota'?'🇪🇸':'🇺🇸'}</span>
+                                                    <span style={{fontSize:'14px',fontWeight:700,color:'var(--text)'}}>{d.label}</span>
+                                                    {hasData && <span style={{fontSize:'10px',padding:'2px 8px',borderRadius:'4px',background:'rgba(34,197,94,0.15)',color:'#22c55e',fontWeight:600}}>✓ Saved</span>}
+                                                </div>
+                                                <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'8px'}}>
+                                                    <div>
+                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Location / Command</label>
+                                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'12px'}} value={e.location||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, location: ev.target.value}})} placeholder="e.g. PEO IWS PMR Norfolk" />
+                                                    </div>
+                                                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                                                        <div>
+                                                            <label style={{fontSize:'10px',color:'#22c55e',display:'block',marginBottom:'3px',fontWeight:600}}>🟢 Unclassified ATTN</label>
+                                                            <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(34,197,94,0.3)',background:'rgba(34,197,94,0.03)',color:'var(--text)',fontSize:'12px'}} value={e.unclassAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, unclassAttn: ev.target.value}})} placeholder="e.g. Randall Black / REAP" />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{fontSize:'10px',color:'#ef4444',display:'block',marginBottom:'3px',fontWeight:600}}>🔴 Classified ATTN</label>
+                                                            <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.03)',color:'var(--text)',fontSize:'12px'}} value={e.classAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, classAttn: ev.target.value}})} placeholder="e.g. Document Control" />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Full Address</label>
+                                                        <textarea style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'12px',fontFamily:'inherit',resize:'vertical',minHeight:'45px'}} value={e.address||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, address: ev.target.value}})} placeholder={"9583 Maryland Ave. BLDG X-70\nNorfolk, VA 23511-2911"} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>
+                                    <button style={{flex:1,padding:'14px',borderRadius:'10px',border:'none',background:'var(--primary)',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer'}} onClick={() => {
+                                        saveShipAddresses(addrEdits);
+                                        setShowAddrMgmt(false);
+                                    }}>
+                                        💾 Save All Addresses
+                                    </button>
+                                    <button style={{padding:'14px 20px',borderRadius:'10px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text-muted)',fontSize:'13px',fontWeight:600,cursor:'pointer'}} onClick={() => setShowAddrMgmt(false)}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (<>
                         {/* Classification Toggle */}
                         <div style={{display:'flex',gap:'8px',marginBottom:'20px'}}>
-                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border: shipType==='unclass' ? '2px solid #22c55e' : '1px solid var(--border)',background: shipType==='unclass' ? 'rgba(34,197,94,0.1)' : 'var(--bg-input)',color: shipType==='unclass' ? '#22c55e' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}} onClick={() => { setShipType('unclass'); setShipForm({...emptyShipForm}); setActiveShipDest(null); }}>
+                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border: shipType==='unclass' ? '2px solid #22c55e' : '1px solid var(--border)',background: shipType==='unclass' ? 'rgba(34,197,94,0.1)' : 'var(--bg-input)',color: shipType==='unclass' ? '#22c55e' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}} onClick={() => { setShipType('unclass'); const base = {...emptyShipForm}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.unclassAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
                                 <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#22c55e',display:'inline-block'}}></span> Unclassified
                             </button>
-                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border: shipType==='class' ? '2px solid #ef4444' : '1px solid var(--border)',background: shipType==='class' ? 'rgba(239,68,68,0.1)' : 'var(--bg-input)',color: shipType==='class' ? '#ef4444' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}} onClick={() => { setShipType('class'); setShipForm({...classDefaults}); setActiveShipDest(null); }}>
+                            <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border: shipType==='class' ? '2px solid #ef4444' : '1px solid var(--border)',background: shipType==='class' ? 'rgba(239,68,68,0.1)' : 'var(--bg-input)',color: shipType==='class' ? '#ef4444' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}} onClick={() => { setShipType('class'); const base = {...classDefaults}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.classAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
                                 <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#ef4444',display:'inline-block'}}></span> Classified
                             </button>
                         </div>
@@ -4787,91 +4897,103 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         {/* Base Location Buttons */}
                         <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px'}}>📍 DESTINATION</div>
                         <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'14px'}}>
-                            {shipDestinations.map((dest) => (
-                                <button key={dest.key} style={{padding:'8px 14px',borderRadius:'8px',border: activeShipDest===dest.key ? '2px solid var(--primary)' : '1px solid var(--border)',background: activeShipDest===dest.key ? 'var(--primary-glow)' : 'var(--bg-input)',color: activeShipDest===dest.key ? 'var(--primary)' : 'var(--text)',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s'}} onClick={() => {
+                            {shipDestinations.map((dest) => {
+                                const hasSaved = dest.unclassAttn || dest.classAttn || dest.address;
+                                return (
+                                <button key={dest.key} style={{padding:'8px 14px',borderRadius:'8px',border: activeShipDest===dest.key ? '2px solid var(--primary)' : '1px solid var(--border)',background: activeShipDest===dest.key ? 'var(--primary-glow)' : 'var(--bg-input)',color: activeShipDest===dest.key ? 'var(--primary)' : 'var(--text)',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s',opacity: hasSaved ? 1 : 0.5}} onClick={() => {
                                     setActiveShipDest(dest.key);
-                                    setShipForm(prev => ({...prev, location: dest.location, ...(dest.attn ? {attn: dest.attn} : {})}));
+                                    const attn = shipType === 'class' ? (dest.classAttn || '') : (dest.unclassAttn || '');
+                                    setShipForm(prev => ({...prev, location: dest.location, attn: attn, address: dest.address || ''}));
                                 }}>
                                     {dest.key==='yokosuka'?'🇯🇵':dest.key==='rota'?'🇪🇸':'🇺🇸'} {dest.label}
+                                    {!hasSaved && <span style={{fontSize:'9px',marginLeft:'4px'}}>⚠️</span>}
                                 </button>
-                            ))}
+                                );
+                            })}
                         </div>
                         
-                        {/* Package Info */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',marginTop:'8px'}}>📐 PACKAGE</div>
+                        {/* Origin & Dates */}
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',marginTop:'8px'}}>📋 SHIPMENT INFO</div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'14px'}}>
+                            <div>
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Shipment Origin</label>
+                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.origin} onChange={e => setShipForm({...shipForm, origin: e.target.value})} />
+                            </div>
+                            <div>
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Ship Date</label>
+                                <input type="date" style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.shipDate} onChange={e => setShipForm({...shipForm, shipDate: e.target.value})} />
+                            </div>
+                            <div>
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Delivery Date</label>
+                                <input type="date" style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.delivDate} onChange={e => setShipForm({...shipForm, delivDate: e.target.value})} />
+                            </div>
+                        </div>
+
+                        {/* Package Dimensions */}
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px'}}>📐 PACKAGE</div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:'8px',marginBottom:'14px'}}>
                             <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Length</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder="L" value={shipForm.dimL} onChange={e => setShipForm({...shipForm, dimL: e.target.value})} />
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>L (inches)</label>
+                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='40' value={shipForm.dimL} onChange={e => setShipForm({...shipForm, dimL: e.target.value})} />
                             </div>
                             <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Width</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder="W" value={shipForm.dimW} onChange={e => setShipForm({...shipForm, dimW: e.target.value})} />
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>W (inches)</label>
+                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='24' value={shipForm.dimW} onChange={e => setShipForm({...shipForm, dimW: e.target.value})} />
                             </div>
                             <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Height</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder="H" value={shipForm.dimH} onChange={e => setShipForm({...shipForm, dimH: e.target.value})} />
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>H (inches)</label>
+                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='16' value={shipForm.dimH} onChange={e => setShipForm({...shipForm, dimH: e.target.value})} />
                             </div>
                             <div>
                                 <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Weight</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder="lbs" value={shipForm.weight} onChange={e => setShipForm({...shipForm, weight: e.target.value})} />
+                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='lbs' value={shipForm.weight} onChange={e => setShipForm({...shipForm, weight: e.target.value})} />
                             </div>
                         </div>
                         
-                        {/* Location & ATTN - still editable but auto-filled by buttons */}
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'14px'}}>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Location</label>
-                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} placeholder="Auto-filled or type" value={shipForm.location} onChange={e => setShipForm({...shipForm, location: e.target.value})} />
-                            </div>
+                        {/* Destination fields */}
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px'}}>📬 DESTINATION</div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
                             <div>
                                 <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>ATTN</label>
-                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} placeholder="Auto-filled or type" value={shipForm.attn} onChange={e => setShipForm({...shipForm, attn: e.target.value})} />
+                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} placeholder="e.g. Randall Black / REAP" value={shipForm.attn} onChange={e => setShipForm({...shipForm, attn: e.target.value})} />
+                            </div>
+                            <div>
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Location / Command</label>
+                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} placeholder="e.g. PEO IWS PMR Norfolk" value={shipForm.location} onChange={e => setShipForm({...shipForm, location: e.target.value})} />
                             </div>
                         </div>
+                        <div style={{marginBottom:'14px'}}>
+                            <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Address</label>
+                            <textarea style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px',fontFamily:'inherit',resize:'vertical',minHeight:'50px'}} placeholder="9583 Maryland Ave. BLDG X-70&#10;Norfolk, VA 23511-2911" value={shipForm.address} onChange={e => setShipForm({...shipForm, address: e.target.value})} />
+                        </div>
                         
-                        {/* Serial Numbers - Classified Only */}
-                        {shipType === 'class' && (
-                            <div>
-                                <div style={{fontSize:'11px',fontWeight:700,color:'#ef4444',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'6px'}}>
-                                    🔴 SERIAL NUMBERS
+                        {/* Contents */}
+                        <div style={{fontSize:'11px',fontWeight:700,color: shipType==='class' ? '#ef4444' : 'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'6px'}}>
+                            {shipType==='class' ? '🔴' : '📦'} CONTENTS
+                        </div>
+                        {shipType === 'unclass' ? (
+                            <div style={{marginBottom:'14px'}}>
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Items (one per line, use bullet format)</label>
+                                <textarea style={{width:'100%',padding:'12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px',fontFamily:'monospace',resize:'vertical',minHeight:'80px',lineHeight:'1.6'}} placeholder={"•\tROUTER            (S/N: FJC28431ZZQ)\n•\tVOIP PHONE  ( S/N: FJC27291VJQ)\n•\tCUSTOMIZE PC"} value={shipForm.contents} onChange={e => setShipForm({...shipForm, contents: e.target.value})} />
+                            </div>
+                        ) : (
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'14px'}}>
+                                <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
+                                    <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 1</div>
+                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
+                                    <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="S21CNXA6713535V" value={shipForm.ssd1SN} onChange={e => setShipForm({...shipForm, ssd1SN: e.target.value})} />
                                 </div>
-                                <div style={{marginBottom:'10px'}}>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>What is shipping?</label>
-                                    <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'13px'}} placeholder="e.g. REAP Kit, Server, etc." value={shipForm.shipWhat} onChange={e => setShipForm({...shipForm, shipWhat: e.target.value})} />
-                                </div>
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
-                                    <div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>VOIP — S/N</label>
-                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.voipSN} onChange={e => setShipForm({...shipForm, voipSN: e.target.value})} />
-                                    </div>
-                                    <div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>RTR — S/N</label>
-                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.rtrSN} onChange={e => setShipForm({...shipForm, rtrSN: e.target.value})} />
-                                    </div>
-                                </div>
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
-                                    <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
-                                        <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 1</div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>CRNA</label>
-                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace',marginBottom:'6px'}} placeholder="CRNA" value={shipForm.ssd1CRNA} onChange={e => setShipForm({...shipForm, ssd1CRNA: e.target.value})} />
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
-                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.ssd1SN} onChange={e => setShipForm({...shipForm, ssd1SN: e.target.value})} />
-                                    </div>
-                                    <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
-                                        <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 2</div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>CRNA</label>
-                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace',marginBottom:'6px'}} placeholder="CRNA" value={shipForm.ssd2CRNA} onChange={e => setShipForm({...shipForm, ssd2CRNA: e.target.value})} />
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
-                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.ssd2SN} onChange={e => setShipForm({...shipForm, ssd2SN: e.target.value})} />
-                                    </div>
+                                <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
+                                    <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 2</div>
+                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
+                                    <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="S21CNXAG715492D" value={shipForm.ssd2SN} onChange={e => setShipForm({...shipForm, ssd2SN: e.target.value})} />
                                 </div>
                             </div>
                         )}
                         
                         {/* Live Preview */}
                         <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px'}}>👁️ PREVIEW</div>
-                        <div style={{padding:'16px',background: shipType==='class' ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',borderRadius:'10px',border: shipType==='class' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(34,197,94,0.2)',fontFamily:'monospace',fontSize:'12px',whiteSpace:'pre-wrap',lineHeight:'1.8',color:'var(--text)'}}>
+                        <div style={{padding:'16px',background: shipType==='class' ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',borderRadius:'10px',border: shipType==='class' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(34,197,94,0.2)',fontFamily:'monospace',fontSize:'11px',whiteSpace:'pre-wrap',lineHeight:'1.8',color:'var(--text)'}}>
                             {buildShippingText()}
                         </div>
                         
@@ -4889,6 +5011,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                                 🔄 Reset
                             </button>
                         </div>
+                        </>)}
                     </div>
                 </div>
             )}
