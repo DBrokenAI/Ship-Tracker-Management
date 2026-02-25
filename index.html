@@ -1250,6 +1250,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [clearEmailWaitingModal, setClearEmailWaitingModal] = useState(null);
     const [clearEmailWaitingForm, setClearEmailWaitingForm] = useState({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' });
     const [editEmailEntry, setEditEmailEntry] = useState(null);
+    const [expandedEmails, setExpandedEmails] = useState({});
     const [editEmailForm, setEditEmailForm] = useState({ date: '', time: '', summary: '', emailText: '', contactedBy: '' });
     const [manualLogModal, setManualLogModal] = useState(false);
     const [directManualModal, setDirectManualModal] = useState(false);
@@ -2448,86 +2449,104 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                 <div style={{fontSize:'11px'}}>Click "Log New Email" to start tracking</div>
                                             </div>
                                         ) : (
-                                            <div style={{display:'flex',flexDirection:'column',gap:'6px',maxHeight:'500px',overflow:'auto',paddingRight:'4px'}}>
+                                            <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'500px',overflow:'auto',paddingRight:'4px'}}>
                                                 {emailHistory.filter(h => h.shipId === sel.id).map((h, idx) => {
                                                     const isLatest = idx === 0;
                                                     const isIssue = h.result?.issue?.hasIssue;
-                                                    // Smart name detection - check multiple fields
                                                     const senderName = h.result?.sender?.name 
                                                         || h.result?.contactedBy 
                                                         || (h.changes?.find(c => c.startsWith('By: '))?.replace('By: ', ''))
                                                         || null;
                                                     const summary = h.result?.emailSummary || '';
-                                                    const age = (Date.now() - new Date(h.timestamp).getTime()) / 86400000;
+                                                    const age = Math.floor((Date.now() - new Date(h.timestamp).getTime()) / 86400000);
                                                     const isWaiting = h.result?.waitingReply;
+                                                    const isExpanded = isLatest || expandedEmails[h.id];
                                                     const accentColor = isIssue ? (h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)') 
                                                         : isWaiting ? 'var(--blue)' : 'var(--green)';
+                                                    const initials = senderName ? senderName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase() : '—';
                                                     
                                                     return (
                                                     <div key={h.id} style={{
-                                                        background: isLatest ? 'var(--bg-card)' : 'var(--bg-input)',
-                                                        borderRadius:'10px',
-                                                        border: isLatest ? `2px solid ${accentColor}` : '1px solid var(--border)',
-                                                        borderLeft: !isLatest ? `3px solid ${accentColor}` : undefined,
-                                                        opacity: isLatest ? 1 : Math.max(0.65, 1 - (idx * 0.05)),
+                                                        borderRadius: isLatest ? '10px' : '8px',
+                                                        border: isLatest ? `2px solid ${accentColor}` : isExpanded ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                                        background: isLatest ? 'var(--bg-card)' : isExpanded ? 'var(--bg-card)' : 'transparent',
                                                         transition:'all 0.15s',
-                                                        boxShadow: isLatest ? '0 4px 16px rgba(0,0,0,0.12)' : 'none',
-                                                        position:'relative',
-                                                        overflow:'hidden'
-                                                    }}>
-                                                        {/* Single row layout: avatar | name+summary | badges | actions | date */}
-                                                        <div style={{padding: isLatest ? '14px 14px' : '10px 12px',display:'flex',gap:'10px',alignItems:'flex-start'}}>
-                                                            
-                                                            {/* Left: Colored dot / avatar */}
+                                                        boxShadow: isLatest ? '0 4px 16px rgba(0,0,0,0.1)' : 'none',
+                                                        cursor: isLatest ? 'default' : 'pointer'
+                                                    }} onClick={() => { if (!isLatest) setExpandedEmails(prev => ({...prev, [h.id]: !prev[h.id]})); }}>
+                                                        
+                                                        {/* Collapsed Row - always visible */}
+                                                        <div style={{
+                                                            display:'flex',alignItems:'center',gap:'10px',
+                                                            padding: isLatest ? '12px 14px' : '8px 12px',
+                                                        }}>
+                                                            {/* Avatar */}
                                                             <div style={{
-                                                                width: isLatest ? '36px' : '28px',height: isLatest ? '36px' : '28px',
-                                                                borderRadius: isLatest ? '10px' : '8px',flexShrink:0,marginTop:'1px',
-                                                                background: isIssue ? (h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)') : isWaiting ? 'var(--blue-glow)' : 'var(--primary-glow)',
-                                                                border:`2px solid ${accentColor}`,
+                                                                width:'32px',height:'32px',borderRadius:'8px',flexShrink:0,
+                                                                background: isLatest ? `${accentColor}15` : 'var(--bg-input)',
+                                                                border: `2px solid ${accentColor}`,
                                                                 display:'flex',alignItems:'center',justifyContent:'center',
-                                                                fontSize: isLatest ? '12px' : '10px',fontWeight:800,
-                                                                color: accentColor
+                                                                fontSize:'11px',fontWeight:800,color:accentColor
                                                             }}>
-                                                                {senderName ? senderName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase() : '✉️'}
+                                                                {initials}
                                                             </div>
                                                             
-                                                            {/* Middle: Name + summary (takes most space) */}
-                                                            <div style={{flex:1,minWidth:0}}>
-                                                                {/* Top line: name + badges */}
-                                                                <div style={{display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap',marginBottom: (summary || (isIssue && h.result.issue.details)) ? '4px' : '0'}}>
-                                                                    {senderName ? (
-                                                                        <span style={{fontSize: isLatest ? '13px' : '12px',fontWeight:700,color:'var(--text)'}}>{senderName}</span>
-                                                                    ) : (
-                                                                        <span style={{fontSize: isLatest ? '13px' : '12px',fontWeight:600,color:'var(--text-muted)',fontStyle:'italic'}}>No name</span>
-                                                                    )}
-                                                                    {isLatest && <span style={{fontSize:'8px',fontWeight:700,padding:'2px 6px',borderRadius:'3px',background:accentColor,color:'#fff',letterSpacing:'0.5px',lineHeight:'1.3'}}>LATEST</span>}
-                                                                    {isWaiting && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'3px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)',lineHeight:'1.3'}}>⏳ WAITING</span>}
-                                                                    {isIssue && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'3px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',border:`1px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`,lineHeight:'1.3'}}>⚠️ {h.result.issue.threat}</span>}
-                                                                    {h.result?.inPort && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'3px',background:'var(--blue-glow)',color:'var(--blue)',lineHeight:'1.3'}}>⚓</span>}
-                                                                    <span style={{fontSize:'10px',color:'var(--text-muted)',marginLeft:'auto',flexShrink:0,whiteSpace:'nowrap'}}>
-                                                                        {fmtDate(h.timestamp)} {new Date(h.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
-                                                                        {!isLatest && age > 7 ? ` (${Math.floor(age)}d)` : ''}
-                                                                    </span>
+                                                            {/* Name */}
+                                                            <div style={{flex:'0 0 auto',minWidth:'60px',maxWidth:'120px'}}>
+                                                                <div style={{fontSize:'13px',fontWeight:700,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                                                                    {senderName || <span style={{fontStyle:'italic',color:'var(--text-muted)',fontWeight:400}}>No name</span>}
                                                                 </div>
+                                                            </div>
+                                                            
+                                                            {/* Badges */}
+                                                            <div style={{display:'flex',gap:'4px',alignItems:'center',flex:'0 0 auto'}}>
+                                                                {isLatest && <span style={{fontSize:'8px',fontWeight:700,padding:'2px 6px',borderRadius:'3px',background:accentColor,color:'#fff',letterSpacing:'0.5px'}}>LATEST</span>}
+                                                                {isWaiting && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'3px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳ WAITING</span>}
+                                                                {isIssue && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'3px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}}>⚠️ {h.result.issue.threat}</span>}
+                                                            </div>
+                                                            
+                                                            {/* Summary preview (collapsed only) */}
+                                                            {!isExpanded && summary && (
+                                                                <div style={{flex:1,minWidth:0,fontSize:'11px',color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                                                                    {summary}
+                                                                </div>
+                                                            )}
+                                                            {isExpanded && <div style={{flex:1}}/>}
+                                                            
+                                                            {/* Date */}
+                                                            <div style={{flexShrink:0,textAlign:'right',fontSize:'10px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>
+                                                                {fmtDate(h.timestamp)} {new Date(h.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+                                                                {age > 0 && <span style={{opacity:0.7}}> ({age}d)</span>}
+                                                            </div>
+                                                            
+                                                            {/* Expand chevron (not on latest) */}
+                                                            {!isLatest && (
+                                                                <div style={{flexShrink:0,fontSize:'12px',color:'var(--text-muted)',transition:'transform 0.15s',transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}}>▾</div>
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {/* Expanded Content */}
+                                                        {isExpanded && (
+                                                            <div style={{padding:'0 14px 14px',borderTop:'1px solid var(--border)'}}>
                                                                 
                                                                 {/* Issue callout */}
                                                                 {isIssue && h.result.issue.details && (
-                                                                    <div style={{padding:'6px 8px',marginBottom:'4px',borderRadius:'6px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',fontSize:'11px',lineHeight:'1.4',display:'flex',gap:'6px',alignItems:'flex-start'}}>
+                                                                    <div style={{padding:'8px 10px',marginTop:'10px',borderRadius:'6px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',border:`1px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`,fontSize:'12px',lineHeight:'1.5',display:'flex',gap:'6px',alignItems:'flex-start'}}>
                                                                         <span style={{flexShrink:0}}>{h.result.issue.threat === 'Urgent' ? '🚨' : '⚠️'}</span>
-                                                                        <span style={{color:'var(--text)'}}>{h.result.issue.details}</span>
+                                                                        <span>{h.result.issue.details}</span>
                                                                     </div>
                                                                 )}
                                                                 
-                                                                {/* Summary text */}
+                                                                {/* Summary */}
                                                                 {summary && (
-                                                                    <div style={{fontSize: isLatest ? '12px' : '11px',color:'var(--text)',lineHeight:'1.5',opacity:0.9}}>
-                                                                        {summary.length > (isLatest ? 300 : 120) ? summary.substring(0, isLatest ? 300 : 120) + '...' : summary}
+                                                                    <div style={{marginTop:'10px',fontSize:'13px',color:'var(--text)',lineHeight:'1.6'}}>
+                                                                        {summary}
                                                                     </div>
                                                                 )}
                                                                 
-                                                                {/* Full email expandable - only on latest */}
-                                                                {isLatest && h.emailText && h.emailText !== 'Marked as contacted' && (
-                                                                    <details style={{marginTop:'8px'}}>
+                                                                {/* Full email text */}
+                                                                {h.emailText && h.emailText !== 'Marked as contacted' && (
+                                                                    <details style={{marginTop:'10px'}} {...(isLatest ? {open:true} : {})}>
                                                                         <summary style={{fontSize:'10px',color:'var(--primary)',cursor:'pointer',userSelect:'none',fontWeight:600}}>📄 View full email</summary>
                                                                         <div style={{padding:'10px',marginTop:'6px',background:'var(--bg-input)',borderRadius:'6px',fontSize:'11px',fontFamily:'JetBrains Mono',whiteSpace:'pre-wrap',maxHeight:'200px',overflow:'auto',border:'1px solid var(--border)',lineHeight:'1.5'}}>{h.emailText}</div>
                                                                     </details>
@@ -2535,39 +2554,40 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                                 
                                                                 {/* Changes */}
                                                                 {h.changes?.length > 0 && (
-                                                                    <div style={{marginTop:'4px',fontSize:'10px',color:'var(--green)',display:'flex',alignItems:'center',gap:'4px'}}>
+                                                                    <div style={{marginTop:'8px',fontSize:'10px',color:'var(--green)'}}>
                                                                         ✓ {h.changes.filter(c => !c.startsWith('By:')).join(' • ')}
                                                                     </div>
                                                                 )}
+                                                                
+                                                                {/* Action Buttons */}
+                                                                <div style={{display:'flex',gap:'6px',marginTop:'12px',paddingTop:'10px',borderTop:'1px solid var(--border)'}}>
+                                                                    {isWaiting && (
+                                                                        <button style={{padding:'6px 14px',fontSize:'11px',background:'#22c55e',color:'#fff',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:700,display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation(); 
+                                                                            const updated = {...sel, waitingReply: false};
+                                                                            setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s));
+                                                                            const updHist = emailHistory.map(x => x.id === h.id ? {...x, result: {...x.result, waitingReply: false}} : x);
+                                                                            setEmailHistory(updHist); localStorage.setItem('emailParseHistory', JSON.stringify(updHist));
+                                                                            logActivity(`Cleared waiting status for ${sel.name}`);
+                                                                            toast('Waiting status cleared', 'success');
+                                                                        }}>✓ Clear Waiting</button>
+                                                                    )}
+                                                                    <button style={{padding:'6px 14px',fontSize:'11px',background:'var(--primary)',color:'#000',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:600,display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' }); }}>↩️ Continue</button>
+                                                                    <button style={{padding:'6px 10px',fontSize:'11px',background:'var(--bg-input)',color:'var(--text-muted)',borderRadius:'6px',border:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation();
+                                                                        const d = new Date(h.timestamp); 
+                                                                        setEditEmailForm({ 
+                                                                            date: toDateString(d), 
+                                                                            time: d.toTimeString().slice(0,5), 
+                                                                            summary: h.result?.emailSummary || '', 
+                                                                            emailText: h.emailText || '', 
+                                                                            contactedBy: h.result?.sender?.name || senderName || '' 
+                                                                        }); 
+                                                                        setEditEmailEntry(h); 
+                                                                    }}>✏️ Edit</button>
+                                                                    <div style={{flex:1}}/>
+                                                                    <button style={{padding:'6px 10px',fontSize:'11px',background:'transparent',color:'var(--red)',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.2)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation(); if(confirm('Delete this email entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); toast('Entry deleted', 'info'); } }}>🗑 Delete</button>
+                                                                </div>
                                                             </div>
-                                                            
-                                                            {/* Right: Action buttons */}
-                                                            <div style={{display:'flex',alignItems:'center',gap:'3px',flexShrink:0}}>
-                                                                {isWaiting && (
-                                                                    <button style={{padding:'4px 8px',fontSize:'10px',background:'#22c55e',color:'#fff',borderRadius:'5px',border:'none',cursor:'pointer',fontWeight:700,whiteSpace:'nowrap'}} title="Clear waiting" onClick={(e) => { e.stopPropagation(); 
-                                                                        const updated = {...sel, waitingReply: false};
-                                                                        setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s));
-                                                                        const updHist = emailHistory.map(x => x.id === h.id ? {...x, result: {...x.result, waitingReply: false}} : x);
-                                                                        setEmailHistory(updHist); localStorage.setItem('emailParseHistory', JSON.stringify(updHist));
-                                                                        logActivity(`Cleared waiting status for ${sel.name}`);
-                                                                        toast('Waiting status cleared', 'success');
-                                                                    }}>✓</button>
-                                                                )}
-                                                                <button style={{padding:'4px 8px',fontSize:'10px',background:'var(--primary)',color:'#000',borderRadius:'5px',border:'none',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} title="Continue conversation" onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' }); }}>↩️</button>
-                                                                <button style={{padding:'4px 6px',fontSize:'10px',background:'var(--bg-card)',color:'var(--text-muted)',borderRadius:'5px',border:'1px solid var(--border)',cursor:'pointer'}} title="Edit" onClick={() => { 
-                                                                    const d = new Date(h.timestamp); 
-                                                                    setEditEmailForm({ 
-                                                                        date: toDateString(d), 
-                                                                        time: d.toTimeString().slice(0,5), 
-                                                                        summary: h.result?.emailSummary || '', 
-                                                                        emailText: h.emailText || '', 
-                                                                        contactedBy: h.result?.sender?.name || senderName || '' 
-                                                                    }); 
-                                                                    setEditEmailEntry(h); 
-                                                                }}>✏️</button>
-                                                                <button style={{padding:'4px 6px',fontSize:'10px',background:'var(--bg-card)',color:'var(--red)',borderRadius:'5px',border:'1px solid rgba(239,68,68,0.15)',cursor:'pointer'}} title="Delete" onClick={() => { if(confirm('Delete this entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); toast('Entry deleted', 'info'); } }}>🗑</button>
-                                                            </div>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                     );
                                                 })}
