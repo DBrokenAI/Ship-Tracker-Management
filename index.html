@@ -290,7 +290,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -321,95 +320,94 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 // Firebase real-time hook - loads instantly from localStorage, syncs with Firestore
 const useFirestore = (collectionName, initialData = []) => {
-    const [data, setData] = useState(initialData);
-    const [loading, setLoading] = useState(true);
-    const dataRef = useRef(initialData);
-    const pendingWrite = useRef(false);
-    
-    const cleanForFirestore = (obj) => {
-        if (!obj || typeof obj !== 'object') return obj;
-        if (Array.isArray(obj)) return obj.map(cleanForFirestore);
-        const cleaned = {};
-        for (const [k, v] of Object.entries(obj)) {
-            if (v === undefined) continue;
-            if (v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date)) {
-                cleaned[k] = cleanForFirestore(v);
-            } else if (Array.isArray(v)) {
-                cleaned[k] = v.map(item => typeof item === 'object' && item !== null ? cleanForFirestore(item) : (item === undefined ? null : item));
-            } else {
-                cleaned[k] = v === undefined ? null : v;
-            }
+    const [data, setData] = useState(() => {
+        try {
+            const saved = localStorage.getItem('fb_' + collectionName);
+            if (saved) return JSON.parse(saved);
+        } catch {}
+        if (initialData.length > 0) {
+            localStorage.setItem('fb_' + collectionName, JSON.stringify(initialData));
         }
-        return cleaned;
-    };
+        return initialData;
+    });
+    const [loading, setLoading] = useState(false);
+    const initialized = useRef(false);
+    const dataRef = useRef(data);
+    const pendingWrite = useRef(false);
+    const pendingData = useRef(null);
     
-    useEffect(() => { dataRef.current = data; }, [data]);
+    // Keep ref in sync with state
+    useEffect(() => {
+        dataRef.current = data;
+    }, [data]);
 
-    // Listen to Firestore — single source of truth
     useEffect(() => {
         const unsubscribe = db.collection(collectionName).onSnapshot((snapshot) => {
+            // If we have a pending write, don't overwrite with stale Firebase data
             if (pendingWrite.current) return;
-            const fbItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setData(fbItems);
-            dataRef.current = fbItems;
+            
+            if (!snapshot.empty) {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setData(items);
+                dataRef.current = items;
+                localStorage.setItem('fb_' + collectionName, JSON.stringify(items));
+            } else if (initialData.length > 0 && !initialized.current) {
+                initialized.current = true;
+                const batch = db.batch();
+                initialData.forEach(item => {
+                    const ref = db.collection(collectionName).doc(item.id);
+                    batch.set(ref, item);
+                });
+                batch.commit();
+            }
             setLoading(false);
         }, (error) => {
-            console.error('[' + collectionName + '] Firestore error:', error);
+            console.error('Firestore error:', error);
             setLoading(false);
         });
         return () => unsubscribe();
     }, [collectionName]);
 
-    // Seed initial data if Firestore collection is empty (one-time)
-    useEffect(() => {
-        if (!loading && data.length === 0 && initialData.length > 0) {
-            const ops = initialData.filter(item => item && item.id).map(item =>
-                db.collection(collectionName).doc(String(item.id)).set(cleanForFirestore(item))
-                    .catch(e => console.error('[' + collectionName + '] Seed failed:', e))
-            );
-            Promise.all(ops);
-        }
-    }, [loading]);
-
     const setDataWithSync = useCallback((newDataOrFn) => {
+        // Use ref to get fresh data for functional updates
         const currentData = dataRef.current;
         const newData = typeof newDataOrFn === 'function' ? newDataOrFn(currentData) : newDataOrFn;
         
-        // Optimistic local update
+        // Set pending flag to prevent snapshot from overwriting
         pendingWrite.current = true;
+        pendingData.current = newData;
+        
         setData(newData);
         dataRef.current = newData;
+        localStorage.setItem('fb_' + collectionName, JSON.stringify(newData));
         
-        // DIFF-BASED: Only write changed/added items, delete removed ones
-        const oldMap = {};
-        currentData.forEach(item => { if (item && item.id) oldMap[item.id] = JSON.stringify(item); });
-        const newIds = new Set();
-        const ops = [];
-        
+        const batch = db.batch();
         newData.forEach(item => {
-            if (!item || !item.id) return;
-            newIds.add(item.id);
-            const newJson = JSON.stringify(item);
-            if (oldMap[item.id] !== newJson) {
-                ops.push(db.collection(collectionName).doc(String(item.id)).set(cleanForFirestore(item))
-                    .catch(e => console.error('[' + collectionName + '] Write failed for ' + item.id + ':', e)));
+            if (item && item.id) {
+                const ref = db.collection(collectionName).doc(item.id);
+                batch.set(ref, item);
             }
         });
-        
+        const newIds = new Set(newData.map(item => item.id));
         currentData.forEach(item => {
             if (item && item.id && !newIds.has(item.id)) {
-                ops.push(db.collection(collectionName).doc(String(item.id)).delete()
-                    .catch(e => console.error('[' + collectionName + '] Delete failed:', e)));
+                const ref = db.collection(collectionName).doc(item.id);
+                batch.delete(ref);
             }
         });
-        
-        if (ops.length > 0) {
-            Promise.all(ops).finally(() => {
-                setTimeout(() => { pendingWrite.current = false; }, 500);
+        batch.commit()
+            .then(() => {
+                // Clear pending flag after write completes
+                setTimeout(() => {
+                    pendingWrite.current = false;
+                    pendingData.current = null;
+                }, 500);
+            })
+            .catch(err => {
+                console.error('Batch write error:', err);
+                pendingWrite.current = false;
+                pendingData.current = null;
             });
-        } else {
-            setTimeout(() => { pendingWrite.current = false; }, 100);
-        }
     }, [collectionName]);
 
     return [data, setDataWithSync, loading];
@@ -606,7 +604,12 @@ function AdminPanel({ users, onClose }) {
 
 function AuthWrapper() {
     const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem('shipTrackerUser')); } catch { return null; } });
-    const [users, setUsers] = useState([]);
+    const [users, setUsers] = useState(() => {
+        try { const s = localStorage.getItem('fb_users'); if (s) return JSON.parse(s); } catch {}
+        const admin = { id: 'UADMIN001', username: 'DBrown', passwordHash: hashPassword('admin123'), status: 'approved', isAdmin: true, createdAt: new Date().toISOString() };
+        localStorage.setItem('fb_users', JSON.stringify([admin]));
+        return [admin];
+    });
     const [showAdmin, setShowAdmin] = useState(false);
     const [loginAttempts, setLoginAttempts] = useState(() => {
         try { return JSON.parse(localStorage.getItem('loginAttempts') || '{}'); } catch { return {}; }
@@ -668,6 +671,7 @@ function AuthWrapper() {
                     db.collection('users').doc(adminUser.id).update({ passwordHash: correctAdminHash });
                 }
                 setUsers(list);
+                localStorage.setItem('fb_users', JSON.stringify(list));
             } else if (!init.current) {
                 init.current = true;
                 const admin = { id: 'UADMIN001', username: 'DBrown', passwordHash: correctAdminHash, status: 'approved', isAdmin: true, createdAt: new Date().toISOString() };
@@ -1019,9 +1023,9 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel })
             }).catch(() => {});
         };
         
-        // Update immediately and every 60 seconds
+        // Update immediately and every 20 seconds
         updatePresence();
-        const interval = setInterval(updatePresence, 60000);
+        const interval = setInterval(updatePresence, 20000);
         
         // Listen for ALL presence docs
         const unsubscribe = db.collection('presence').onSnapshot((snapshot) => {
@@ -1106,15 +1110,14 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel })
 
     const navItems = [
         { id: 0, label: 'Dashboard', icon: 'dashboard' }, { id: 1, label: 'Daily Checks', icon: 'checks' },
-        { id: 5, label: 'Trips & Info', icon: 'installs' },
         { id: 2, label: 'Add Ship', icon: 'add' },
-        { id: 4, label: 'Inventory', icon: 'inventory' },
+        { id: 4, label: 'Inventory', icon: 'inventory' }, { id: 5, label: 'Trips', icon: 'installs' },
         { id: 6, label: 'Parts', icon: 'parts' }, { id: 7, label: 'Email Status', icon: 'email', badge: overdueShips },
         { id: 8, label: 'Data / Import', icon: 'settings' },
         ...(isAdmin ? [{ id: 10, label: 'Suggestions', icon: 'issues', badge: suggestions.filter(s => s.status === 'new').length }] : []),
         { id: 11, label: 'Games', icon: 'star' },
     ];
-    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2, 5] }, { title: 'Comms', items: [7] }, { title: 'System', items: isAdmin ? [4, 6, 8, 10] : [4, 6, 8] }, { title: 'Fun', items: [11] }];
+    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2] }, { title: 'Equipment', items: [4, 5, 6] }, { title: 'Comms', items: [7] }, { title: 'System', items: isAdmin ? [8, 10] : [8] }, { title: 'Fun', items: [11] }];
 
     return (
         <div className="app">
@@ -1199,7 +1202,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel })
                 {page === 1 && <DailyChecks ships={ships} checks={dailyChecks} setChecks={setDailyChecks} toast={toast} logActivity={logActivity}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
                 {page === 4 && <Inventory ships={ships} setShips={setShips} toast={toast} logActivity={logActivity}/>}
-                {page === 5 && <Installs ships={ships} setShips={setShips} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
+                {page === 5 && <Installs ships={ships} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
                 {page === 6 && <Parts parts={parts} setParts={setParts} toast={toast} logActivity={logActivity}/>}
                 {page === 7 && <EmailStatus ships={ships} setShips={setShips} issues={issues} toast={toast} logActivity={logActivity}/>}
                 {page === 8 && <DataSettings ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} setDailyChecks={setDailyChecks} installs={installs} setInstalls={setInstalls} parts={parts} setParts={setParts} activityLog={activityLog} setActivityLog={setActivityLog} toast={toast} backupSettings={backupSettings} setBackupSettings={setBackupSettings} downloadBackup={downloadBackup}/>}
@@ -2499,8 +2502,16 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                                     </div>
                                                                     <div style={{display:'flex',gap:'2px',alignItems:'center'}}>
                                                                         {h.result?.waitingReply && (
-                                                                            <button className="btn btn-sm" style={{padding:'2px 8px',fontSize:'9px',background:'var(--blue)',color:'#fff',borderRadius:'4px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); }}>Clear</button>
+                                                                            <button className="btn btn-sm" style={{padding:'2px 8px',fontSize:'9px',background:'var(--green)',color:'#fff',borderRadius:'4px'}} onClick={(e) => { e.stopPropagation(); 
+                                                                                const updated = {...sel, waitingReply: false};
+                                                                                setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s));
+                                                                                const updHist = emailHistory.map(x => x.id === h.id ? {...x, result: {...x.result, waitingReply: false}} : x);
+                                                                                setEmailHistory(updHist); localStorage.setItem('emailParseHistory', JSON.stringify(updHist));
+                                                                                logActivity(`Cleared waiting status for ${sel.name}`);
+                                                                                toast('Waiting status cleared', 'success');
+                                                                            }}>✓ Clear</button>
                                                                         )}
+                                                                        <button className="btn btn-sm" style={{padding:'2px 8px',fontSize:'9px',background:'var(--blue)',color:'#fff',borderRadius:'4px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: '', followupEmail: '', date: '' }); }}>↩️ Continue</button>
                                                                         <button className="btn btn-sm" style={{padding:'2px 5px',fontSize:'10px',background:'transparent',color:'var(--text-muted)',minWidth:'auto'}} title="Edit" onClick={() => { 
                                                                             const d = new Date(h.timestamp); 
                                                                             setEditEmailForm({ 
@@ -2979,7 +2990,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             </Modal>
             
             {/* Clear Email Waiting Status Modal */}
-            <Modal open={!!clearEmailWaitingModal} onClose={() => setClearEmailWaitingModal(null)} title="📋 Update Email Status">
+            <Modal open={!!clearEmailWaitingModal} onClose={() => setClearEmailWaitingModal(null)} title="↩️ Continue Conversation">
                 {clearEmailWaitingModal && (() => {
                     const f = clearEmailWaitingForm;
                     const setF = (updates) => setClearEmailWaitingForm(prev => ({...prev, ...updates}));
@@ -4304,41 +4315,9 @@ function Inventory({ ships, setShips, toast, logActivity }) {
     );
 }
 
-function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }) {
+function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     const sorted = useMemo(() => [...ships].sort(sortHull), [ships]);
-    const [form, setForm] = useState({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: [] });
-    const [editingTripId, setEditingTripId] = useState(null);
-    const techNames = ['Daniel', 'Uriel', 'Jay', 'Moe'];
-    const toggleTech = (name) => setForm(f => ({ ...f, techs: f.techs.includes(name) ? f.techs.filter(t => t !== name) : [...f.techs, name] }));
-    const fmtShort = (d) => {
-        if (!d) return '';
-        let date;
-        if (typeof d === 'string' && d.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const [y, m, day] = d.split('-').map(Number);
-            date = new Date(y, m - 1, day);
-        } else if (typeof d === 'string' && d.includes('T')) {
-            const [y, m, day] = d.split('T')[0].split('-').map(Number);
-            date = new Date(y, m - 1, day);
-        } else { date = new Date(d); }
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
-    const startEditTrip = (trip) => {
-        setEditingTripId(trip.id);
-        setForm({ ship: trip.ship || '', start: fmtDateInput(trip.start) || '', end: fmtDateInput(trip.end) || '', location: trip.location || 'Mayport, FL', purpose: trip.purpose || '', notes: trip.notes || '', status: trip.status || 'Scheduled', techs: trip.techs || [] });
-    };
-    const saveEditTrip = () => {
-        if (!form.ship) { toast('Enter a ship name', 'error'); return; }
-        if (!form.start) { toast('Select a start date', 'error'); return; }
-        setInstalls(p => p.map(t => t.id === editingTripId ? { ...t, ...form } : t));
-        logActivity('Updated trip: ' + form.ship + ' to ' + form.location);
-        setEditingTripId(null);
-        setForm({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: [] });
-        toast('Trip updated!', 'success');
-    };
-    const cancelEditTrip = () => {
-        setEditingTripId(null);
-        setForm({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: [] });
-    };
+    const [form, setForm] = useState({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled' });
     const [viewMode, setViewMode] = useState('list');
     const [calMonth, setCalMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(null);
@@ -4349,69 +4328,35 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
     const [pocForm, setPocForm] = useState({ name:'', role:'', phone:'', email:'', notes:'' });
     const [showShipping, setShowShipping] = useState(false);
     const [shipType, setShipType] = useState('unclass');
-    const emptyShipForm = { dimL: '', dimW: '', dimH: '', weight: '', location: '', attn: '', serialSSD1: '', serialSSD2: '', serialRTR: '', serialPhone: '' };
+    const emptyShipForm = { dimL:'', dimW:'', dimH:'', weight:'', location:'', attn:'Randall Black / REAP PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911', shipWhat:'', voipSN:'', rtrSN:'', ssd1CRNA:'', ssd1SN:'', ssd2CRNA:'', ssd2SN:'' };
     const [shipForm, setShipForm] = useState({...emptyShipForm});
     const classDefaults = {
-        dimL: '6', dimW: '6', dimH: '4', weight: '<10',
-        location: '', attn: 'Document Control PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911',
-        serialSSD1: 'S1AXNSAF606778E', serialSSD2: 'S75BNL0X318559W', serialRTR: 'FLM25471047', serialPhone: 'WMP2603Z53U'
+        dimL:'9', dimW:'7', dimH:'6', weight:'<10',
+        location:'', attn:'Document Control PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911',
+        shipWhat:'', voipSN:'', rtrSN:'', ssd1CRNA:'', ssd1SN:'', ssd2CRNA:'', ssd2SN:''
     };
     const shipDestinations = [
-        { key: 'everett', label: 'Everett', location: 'NAVSTA Everett', attn: '' },
-        { key: 'sandiego', label: 'San Diego', location: 'NBSD San Diego', attn: '' },
-        { key: 'pearlharbor', label: 'Pearl Harbor', location: 'JBPHH Pearl Harbor', attn: '' },
-        { key: 'mayport', label: 'Mayport', location: 'PMR MAYPORT — NAVSTA Mayport BLDG 1488/SERMC, 1488 Massey Ave, Mayport, FL 32228', attn: 'SECURITY OFFICER' },
-        { key: 'norfolk', label: 'Norfolk', location: 'NAVSTA Norfolk', attn: '' },
-        { key: 'yokosuka', label: 'Yokosuka', location: 'CFAY Yokosuka', attn: '' },
-        { key: 'rota', label: 'Rota', location: 'NAVSTA Rota', attn: '' },
+        { key: 'everett', label: 'Everett', location: 'NAVSTA Everett' },
+        { key: 'sandiego', label: 'San Diego', location: 'NBSD San Diego' },
+        { key: 'pearlharbor', label: 'Pearl Harbor', location: 'JBPHH Pearl Harbor' },
+        { key: 'pearlharbor2', label: 'PHD NSWC', location: 'N54501 NSWC PHD PEARL HARBOR DET\n801 FREDERICK ST BLDG 216\nPEARL HARBOR HI 96860-5097', attn: 'David Seros (Ku-band, 850-549-6641)' },
+        { key: 'mayport', label: 'Mayport', location: 'NAVSTA Mayport' },
+        { key: 'norfolk', label: 'Norfolk', location: 'NAVSTA Norfolk', attn: 'Randall Black / REAP PEO IWS PMR Norfolk 9583 Maryland Ave. BLDG X-70 Norfolk, VA 23511-2911' },
+        { key: 'yokosuka', label: 'Yokosuka', location: 'CFAY Yokosuka' },
+        { key: 'rota', label: 'Rota', location: 'NAVSTA Rota' },
     ];
     const [activeShipDest, setActiveShipDest] = useState(null);
-    
-    // Ship management from trips
-    const [showShipManager, setShowShipManager] = useState(false);
-    const [editingShipId, setEditingShipId] = useState(null);
-    const shipLocations = ['San Diego, CA', 'Norfolk, VA', 'Mayport, FL', 'Pearl Harbor, HI', 'Yokosuka, Japan', 'Rota, Spain', 'Everett, WA', 'Deployed', 'In Port', 'Other'];
-    const emptyNewShip = { name: '', type: 'Full REAP', location: 'San Diego, CA', poc: '', email: '', notes: '', ciscoRouter: '', hdd: '', crna1: '', crna2: '', tags: [] };
-    const [newShipForm, setNewShipForm] = useState({...emptyNewShip});
-    const submitShip = () => {
-        if (!newShipForm.name.trim()) { toast('Ship name required', 'error'); return; }
-        const next = new Date(); next.setDate(next.getDate() + 7);
-        if (editingShipId) {
-            setShips(p => p.map(s => s.id === editingShipId ? { ...s, ...newShipForm } : s));
-            logActivity('Updated ship ' + newShipForm.name + ' from Trips');
-            toast('Ship updated!', 'success');
-        } else {
-            setShips(p => [...p, { id: genId('S'), ...newShipForm, threat: 'NoIssue', lastContact: new Date().toISOString(), nextCheck: next.toISOString(), contactedBy: '' }]);
-            logActivity('Added ship ' + newShipForm.name + ' from Trips');
-            toast('Ship added!', 'success');
-        }
-        setNewShipForm({...emptyNewShip});
-        setEditingShipId(null);
-    };
-    const startEditShip = (s) => {
-        setEditingShipId(s.id);
-        setNewShipForm({ name: s.name, type: s.type || 'Full REAP', location: s.location || 'San Diego, CA', poc: s.poc || '', email: s.email || '', notes: s.notes || '', ciscoRouter: s.ciscoRouter || '', hdd: s.hdd || '', crna1: s.crna1 || '', crna2: s.crna2 || '', tags: s.tags || [] });
-    };
-    const deleteShip = (s) => {
-        if (!confirm('Delete ' + s.name + '?')) return;
-        setShips(p => p.filter(x => x.id !== s.id));
-        logActivity('Deleted ship ' + s.name + ' from Trips');
-        toast(s.name + ' deleted', 'info');
-    };
     const resetShipForm = () => {
-        if (shipType === 'class') setShipForm({...classDefaults, location: '', attn: classDefaults.attn});
+        if (shipType === 'class') setShipForm({...classDefaults});
         else setShipForm({...emptyShipForm});
         setActiveShipDest(null);
     };
     const buildShippingText = () => {
         const f = shipForm;
-        const addrType = shipType === 'class' ? 'class' : 'unclass';
-        const destSite = activeShipDest && siteData[activeShipDest];
-        const addrBlock = destSite ? destSite.addresses[addrType].lines.filter(l => !l.startsWith('⚠️')).join('\n') : '';
         if (shipType === 'unclass') {
-            return `Unclassified:\nDimensions: ${f.dimL||'___'}L x ${f.dimW||'___'}W x ${f.dimH||'___'}H\nWeight: ${f.weight||'____'} lbs\n\nShip To:\n${addrBlock || f.location || ''}\n${f.attn ? 'ATTN: ' + f.attn : ''}`.trim();
+            return `Unclassified:\n\nDimensions: ${f.dimL||'___'}L x ${f.dimW||'___'}W x ${f.dimH||'___'}H\nWeight: ${f.weight||'____'} lbs\nLocation: ${f.location||''}\nATTN: ${f.attn||''}`;
         } else {
-            return `Classified:\nDimensions: ${f.dimL||'6'}x${f.dimW||'6'}x${f.dimH||'4'}\nWeight: ${f.weight||'<10'} lbs\n\nShip To:\n${addrBlock || f.location || ''}\n${f.attn ? 'ATTN: ' + f.attn : ''}\n\nSerial Numbers:\nSSD1: ${f.serialSSD1||''}\nSSD2: ${f.serialSSD2||''}\nRTR:   ${f.serialRTR||''}\nPHONE: ${f.serialPhone||''}`.trim();
+            return `Classified:\n\nDimensions: ${f.dimL||'9'}x${f.dimW||'7'}x${f.dimH||'6'}\nWeight: ${f.weight||'<10'} lbs\nLocation: ${f.location||''}\nATTN: ${f.attn||''}\n\nSerial Numbers:\n\n(${f.shipWhat||'What is shipping'})\nVOIP:\n   S/N: ${f.voipSN||''}\nRTR:\n   S/N: ${f.rtrSN||''}\nSSD\n   CRNA: ${f.ssd1CRNA||''}\n   S/N: ${f.ssd1SN||''}\nSSD\n   CRNA: ${f.ssd2CRNA||''}\n   S/N: ${f.ssd2SN||''}`;
         }
     };
     const [sitePOCs, setSitePOCs] = useState(() => {
@@ -4423,46 +4368,6 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
     
     useEffect(() => { localStorage.setItem('sitePOCs', JSON.stringify(sitePOCs)); }, [sitePOCs]);
     useEffect(() => { localStorage.setItem('siteNotes', JSON.stringify(siteNotes)); }, [siteNotes]);
-    
-    // Map markers - synced to Firebase for all users
-    const [mapMarkers, setMapMarkers] = useFirestore('mapMarkers', []);
-    const [mapEditMode, setMapEditMode] = useState(false);
-    const [markerPlaceType, setMarkerPlaceType] = useState('gate');
-    const [editingMarkerLabel, setEditingMarkerLabel] = useState(null);
-    const [markerLabelText, setMarkerLabelText] = useState('');
-    const mapMarkersRef = useRef([]);
-    useEffect(() => { mapMarkersRef.current = mapMarkers; }, [mapMarkers]);
-    
-    const getSiteMarkers = (siteKey) => mapMarkers.filter(m => m.siteKey === siteKey);
-    const addMapMarker = (siteKey, type, lat, lng) => {
-        const existing = getSiteMarkers(siteKey);
-        const typeCount = existing.filter(m => m.type === type).length;
-        const labels = { gate: 'Gate', pier: 'Pier', parking: 'Parking', route: 'Route Point', meetup: 'Meet Up Spot' };
-        const newMarker = {
-            id: 'mm_' + Date.now() + '_' + Math.random().toString(36).substr(2,4),
-            siteKey, type, lat, lng,
-            label: labels[type] + ' ' + (typeCount + 1),
-            order: typeCount,
-            createdAt: new Date().toISOString()
-        };
-        setMapMarkers(prev => [...prev, newMarker]);
-        toast(labels[type] + ' placed!', 'success');
-    };
-    const removeMapMarker = (markerId) => {
-        setMapMarkers(prev => prev.filter(m => m.id !== markerId));
-        toast('Marker removed', 'info');
-    };
-    const updateMarkerLabel = (markerId, newLabel) => {
-        setMapMarkers(prev => prev.map(m => m.id === markerId ? {...m, label: newLabel} : m));
-        setEditingMarkerLabel(null);
-        setMarkerLabelText('');
-        toast('Label updated', 'success');
-    };
-    const clearSiteMarkers = (siteKey, type) => {
-        if (!confirm('Clear all ' + type + ' markers for this site?')) return;
-        setMapMarkers(prev => prev.filter(m => !(m.siteKey === siteKey && m.type === type)));
-        toast('Markers cleared', 'info');
-    };
     
     const locations = ['San Diego, CA', 'Norfolk, VA', 'Mayport, FL', 'Pearl Harbor, HI', 'Yokosuka, Japan', 'Rota, Spain', 'Everett, WA', 'Washington D.C.', 'Other'];
     const statuses = ['Scheduled', 'In Progress', 'Completed', 'Delayed', 'Cancelled'];
@@ -4482,7 +4387,7 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
             ships_homeported: ['DDG-106 Stockdale', 'DDG-108 Wayne E. Meyer', 'DDG-109 Jason Dunham'],
             addresses: {
                 unclass: { label: 'UNCLASSIFIED Shipping', lines: ['Naval Station Everett', 'ATTN: [Your Command/Code]', '2000 Marine Drive', 'Everett, WA 98207-5001'] },
-                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Station Everett', 'ATTN: Command Security Manager', 'Building 2000, Classified Material Control', '2000 Marine Drive', 'Everett, WA 98207-5001'] }
+                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Station Everett', 'ATTN: Command Security Manager', 'Building 2000, Classified Material Control', '2000 Marine Drive', 'Everett, WA 98207-5001', '⚠️ Coordinate with local security office before shipping'] }
             },
             pocs_default: [
                 { id:'ep1', name: '', role: 'PMR Onsite Rep', phone: '', email: '', notes: 'Add PMR contact info' },
@@ -4492,6 +4397,7 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
         },
         sandiego: {
             name: 'Naval Base San Diego', abbr: 'NBSD', city: 'San Diego, CA',
+            osmQuery: 'Naval Base San Diego, California',
             lat: 32.6870, lng: -117.1280, mapZoom: 14,
             gate: { lat: 32.6863, lng: -117.1272, label: 'Main Gate / Visitor Control (Harbor Dr)' },
             dock: { lat: 32.6900, lng: -117.1370, label: 'Piers 1-13 (Wet Side / Bay)' },
@@ -4503,7 +4409,7 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
             ships_homeported: ['Multiple CGs and DDGs'],
             addresses: {
                 unclass: { label: 'UNCLASSIFIED Shipping', lines: ['Naval Base San Diego', 'ATTN: [Your Command/Code]', '3455 Senn Road', 'San Diego, CA 92136-5085'] },
-                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Base San Diego', 'ATTN: Command Security Manager', 'Classified Material Control Facility', '3455 Senn Road', 'San Diego, CA 92136-5085'] }
+                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Base San Diego', 'ATTN: Command Security Manager', 'Classified Material Control Facility', '3455 Senn Road', 'San Diego, CA 92136-5085', '⚠️ Coordinate with local security office before shipping'] }
             },
             pocs_default: [
                 { id:'sp1', name: '', role: 'PMR Onsite Rep', phone: '', email: '', notes: 'Add PMR contact info' },
@@ -4513,7 +4419,7 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
         },
         pearlharbor: {
             name: 'Joint Base Pearl Harbor-Hickam', abbr: 'JBPHH', city: 'Pearl Harbor, HI',
-            osmQuery: 'Pearl Harbor Naval Shipyard',
+            osmQuery: 'Joint Base Pearl Harbor-Hickam, Hawaii',
             lat: 21.3480, lng: -157.9500, mapZoom: 14,
             gate: { lat: 21.3440, lng: -157.9430, label: 'Main Gate (Kamehameha Hwy)' },
             dock: { lat: 21.3530, lng: -157.9523, label: 'PHNSY Dry Docks & Ship Piers' },
@@ -4525,7 +4431,7 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
             ships_homeported: ['Multiple DDGs and CGs homeported'],
             addresses: {
                 unclass: { label: 'UNCLASSIFIED Shipping', lines: ['Joint Base Pearl Harbor-Hickam', 'ATTN: [Your Command/Code]', '850 Ticonderoga Street, Suite 100', 'JBPHH, HI 96860-5101'] },
-                class: { label: 'CLASSIFIED Shipping', lines: ['Joint Base Pearl Harbor-Hickam', 'ATTN: Command Security Manager', 'Classified Material Control', '850 Ticonderoga Street', 'JBPHH, HI 96860-5101'] }
+                class: { label: 'CLASSIFIED Shipping', lines: ['Joint Base Pearl Harbor-Hickam', 'ATTN: Command Security Manager', 'Classified Material Control', '850 Ticonderoga Street', 'JBPHH, HI 96860-5101', '⚠️ Coordinate with local security office before shipping', '⚠️ OCONUS-adjacent: Allow extra transit time'] }
             },
             pocs_default: [
                 { id:'pp1', name: '', role: 'PMR Onsite Rep', phone: '', email: '', notes: 'Add PMR contact info' },
@@ -4546,12 +4452,12 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
             route_info: 'From Gate 5 → east across base on Massey Ave → Main base area & parking → continue NE to Turning Basin and ship piers on the St. Johns River.',
             ships_homeported: ['Multiple DDGs and CGs'],
             addresses: {
-                unclass: { label: 'UNCLASSIFIED Shipping', lines: ['PMR MAYPORT', 'ATTN: SECURITY OFFICER', 'NAVAL STATION MAYPORT BLDG 1488/SERMC', '1488 MASSEY AVE', 'MAYPORT, FL 32228'] },
-                class: { label: 'CLASSIFIED Shipping', lines: ['PMR MAYPORT', 'ATTN: SECURITY OFFICER', 'NAVAL STATION MAYPORT BLDG 1488/SERMC', '1488 MASSEY AVE', 'MAYPORT, FL 32228'] }
+                unclass: { label: 'UNCLASSIFIED Shipping', lines: ['Naval Station Mayport', 'ATTN: [Your Command/Code]', 'P.O. Box 280032 / Bldg 1', 'Mayport, FL 32228-0032'] },
+                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Station Mayport', 'ATTN: Command Security Manager', 'Classified Material Control', 'Building 1, Security Office', 'Mayport, FL 32228-0032', '⚠️ Coordinate with local security office before shipping'] }
             },
             pocs_default: [
-                { id:'mp1', name: 'Chris Williams', role: 'PMR Onsite Rep', phone: '', email: 'christopher.l.williams18.ctr@us.navy.mil', notes: '' },
-                { id:'mp2', name: 'Kevin Martin', role: 'PMR Onsite Rep', phone: '', email: 'kevin.l.martin46.civ@us.navy.mil', notes: '' },
+                { id:'mp1', name: '', role: 'PMR Onsite Rep', phone: '', email: '', notes: 'Add PMR contact info' },
+                { id:'mp2', name: '', role: 'SERMC Coordinator', phone: '', email: '', notes: '' },
                 { id:'mp3', name: '', role: 'Base IT/NMCI POC', phone: '', email: '', notes: '' },
             ]
         },
@@ -4569,7 +4475,7 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
             ships_homeported: ['Numerous DDGs, CGs, CVNs, LHDs'],
             addresses: {
                 unclass: { label: 'UNCLASSIFIED Shipping', lines: ['Naval Station Norfolk', 'ATTN: [Your Command/Code]', '1530 Gilbert Street', 'Norfolk, VA 23511-2797'] },
-                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Station Norfolk', 'ATTN: Command Security Manager', 'Classified Material Control Facility', '1530 Gilbert Street', 'Norfolk, VA 23511-2797'] }
+                class: { label: 'CLASSIFIED Shipping', lines: ['Naval Station Norfolk', 'ATTN: Command Security Manager', 'Classified Material Control Facility', '1530 Gilbert Street', 'Norfolk, VA 23511-2797', '⚠️ Coordinate with local security office before shipping'] }
             },
             pocs_default: [
                 { id:'np1', name: '', role: 'PMR Onsite Rep', phone: '', email: '', notes: 'Add PMR contact info' },
@@ -4590,8 +4496,8 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
             route_info: 'From Main Gate → west into base past Exchange → parking area → continue west to SRF-JRMC pier area and dry docks. Base is compact, ~10 min walk.',
             ships_homeported: ['USS Ronald Reagan (CVN-76)', 'Multiple FDNF DDGs and CGs'],
             addresses: {
-                unclass: { label: 'UNCLASSIFIED Shipping (APO)', lines: ['Commander Fleet Activities Yokosuka', 'ATTN: [Your Command/Code]', 'PSC 473 Box [Your Box #]', 'FPO AP 96349-1100'] },
-                class: { label: 'CLASSIFIED Shipping (DCS/OPREP)', lines: ['Commander Fleet Activities Yokosuka', 'ATTN: Command Security Manager', 'Defense Courier Service (DCS)', 'PSC 473', 'FPO AP 96349-1100'] }
+                unclass: { label: 'UNCLASSIFIED Shipping (APO)', lines: ['Commander Fleet Activities Yokosuka', 'ATTN: [Your Command/Code]', 'PSC 473 Box [Your Box #]', 'FPO AP 96349-1100', '⚠️ Use APO/FPO — Do NOT use Japanese address'] },
+                class: { label: 'CLASSIFIED Shipping (DCS/OPREP)', lines: ['Commander Fleet Activities Yokosuka', 'ATTN: Command Security Manager', 'Defense Courier Service (DCS)', 'PSC 473', 'FPO AP 96349-1100', '⚠️ OCONUS: Must use DCS for classified material', '⚠️ Allow 2-4 weeks additional transit time', '⚠️ Coordinate with CFAY security & receiving'] }
             },
             pocs_default: [
                 { id:'yp1', name: '', role: 'PMR Onsite Rep', phone: '', email: '', notes: 'Add PMR contact info' },
@@ -4612,8 +4518,8 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
             route_info: 'From Main Gate (SE) → northwest on main base road → Visitor Parking → continue NW to pier area and ship berths on the bay.',
             ships_homeported: ['FDNF-E DDGs (BMD mission)'],
             addresses: {
-                unclass: { label: 'UNCLASSIFIED Shipping (APO)', lines: ['Naval Station Rota', 'ATTN: [Your Command/Code]', 'PSC 819 Box [Your Box #]', 'FPO AE 09645-5500'] },
-                class: { label: 'CLASSIFIED Shipping (DCS)', lines: ['Naval Station Rota', 'ATTN: Command Security Manager', 'Defense Courier Service (DCS)', 'PSC 819', 'FPO AE 09645-5500'] }
+                unclass: { label: 'UNCLASSIFIED Shipping (APO)', lines: ['Naval Station Rota', 'ATTN: [Your Command/Code]', 'PSC 819 Box [Your Box #]', 'FPO AE 09645-5500', '⚠️ Use APO/FPO — Do NOT use Spanish address'] },
+                class: { label: 'CLASSIFIED Shipping (DCS)', lines: ['Naval Station Rota', 'ATTN: Command Security Manager', 'Defense Courier Service (DCS)', 'PSC 819', 'FPO AE 09645-5500', '⚠️ OCONUS: Must use DCS for classified material', '⚠️ Allow 2-4 weeks additional transit time', '⚠️ Coordinate with NAVSTA Rota security'] }
             },
             pocs_default: [
                 { id:'rp1', name: '', role: 'PMR Onsite Rep', phone: '', email: '', notes: 'Add PMR contact info' },
@@ -4624,77 +4530,6 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
     };
     
     // Leaflet map for site detail view
-    const mapEditModeRef = useRef(false);
-    const markerPlaceTypeRef = useRef('gate');
-    useEffect(() => { mapEditModeRef.current = mapEditMode; }, [mapEditMode]);
-    useEffect(() => { markerPlaceTypeRef.current = markerPlaceType; }, [markerPlaceType]);
-    
-    const renderCustomMarkers = (map, siteKey) => {
-        // Clear existing custom layers
-        if (map._customLayers) map._customLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
-        map._customLayers = [];
-        
-        const markers = mapMarkersRef.current.filter(m => m.siteKey === siteKey);
-        
-        const markerStyles = {
-            gate: { bg: '#ef4444', icon: '🚪', border: '#fff' },
-            pier: { bg: '#3b82f6', icon: '⚓', border: '#fff' },
-            parking: { bg: '#8b5cf6', icon: '🅿️', border: '#fff' },
-            meetup: { bg: '#10b981', icon: '📍', border: '#fff' },
-            route: { bg: '#f59e0b', icon: 'R', border: '#fff' }
-        };
-        
-        markers.filter(m => m.type !== 'route').forEach(m => {
-            const s = markerStyles[m.type] || markerStyles.meetup;
-            const icon = L.divIcon({
-                className: '', iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -36],
-                html: '<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:'+s.bg+';border:2px solid '+s.border+';border-radius:50%;font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,0.6);cursor:'+(mapEditModeRef.current?'grab':'pointer')+'">'+s.icon+'</div>'
-            });
-            const marker = L.marker([m.lat, m.lng], { icon, draggable: mapEditModeRef.current });
-            marker.bindPopup('<b style="color:'+s.bg+'">' + (m.label || m.type) + '</b>');
-            if (mapEditModeRef.current) {
-                marker.on('dragend', function(e) {
-                    const pos = e.target.getLatLng();
-                    setMapMarkers(prev => prev.map(x => x.id === m.id ? {...x, lat: pos.lat, lng: pos.lng} : x));
-                });
-            }
-            marker.addTo(map);
-            map._customLayers.push(marker);
-        });
-        
-        // Route points + polyline (only show drag handles in edit mode)
-        const routePts = markers.filter(m => m.type === 'route').sort((a,b) => a.order - b.order);
-        if (routePts.length > 0) {
-            if (mapEditModeRef.current) {
-                // Edit mode: show small draggable dots so user can reposition
-                routePts.forEach((m, idx) => {
-                    const icon = L.divIcon({
-                        className: '', iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -10],
-                        html: '<div style="width:14px;height:14px;background:#f59e0b;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 6px rgba(0,0,0,0.5);cursor:grab"></div>'
-                    });
-                    const marker = L.marker([m.lat, m.lng], { icon, draggable: true });
-                    marker.bindPopup('<b style="color:#f59e0b">' + (m.label || 'Route Point ' + (idx+1)) + '</b>');
-                    marker.on('dragend', function(e) {
-                        const pos = e.target.getLatLng();
-                        setMapMarkers(prev => prev.map(x => x.id === m.id ? {...x, lat: pos.lat, lng: pos.lng} : x));
-                    });
-                    marker.addTo(map);
-                    map._customLayers.push(marker);
-                });
-            }
-            
-            // Draw route polyline (always visible)
-            if (routePts.length >= 2) {
-                const latlngs = routePts.map(m => [m.lat, m.lng]);
-                const polyline = L.polyline(latlngs, {
-                    color: '#f59e0b', weight: 4, opacity: 0.9, dashArray: '10,8',
-                    lineCap: 'round', lineJoin: 'round'
-                }).addTo(map);
-                map._customLayers.push(polyline);
-            }
-        }
-    };
-    
     useEffect(() => {
         if (!selectedSite || !siteData[selectedSite]) return;
         let cancelled = false;
@@ -4715,14 +4550,14 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                 maxZoom: 19, opacity: 0.6
             }).addTo(map);
             
-            // Click to place markers in edit mode
-            map.on('click', function(e) {
-                if (!mapEditModeRef.current) return;
-                addMapMarker(selectedSite, markerPlaceTypeRef.current, e.latlng.lat, e.latlng.lng);
+            // Gate marker
+            const gateIcon = L.divIcon({
+                className: '', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34],
+                html: '<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#ef4444;border:2px solid #fff;border-radius:50%;font-size:13px;font-weight:900;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.6);font-family:Arial,sans-serif">G</div>'
             });
-            
-            // Render custom markers (replaces hardcoded gate marker)
-            renderCustomMarkers(map, selectedSite);
+            L.marker([site.gate.lat, site.gate.lng], { icon: gateIcon })
+                .bindPopup('<b style="color:#ef4444">' + site.gate.label + '</b>')
+                .addTo(map);
             
             // Fetch REAL boundary from OpenStreetMap Nominatim
             if (site.osmQuery) {
@@ -4732,25 +4567,22 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                     .then(data => {
                         if (cancelled || !data || !data[0] || !data[0].geojson) return;
                         const geojson = data[0].geojson;
+                        // Remove fallback boundary
+                        // Draw real OSM boundary
                         const osmLayer = L.geoJSON(geojson, {
                             style: { color: '#00d4ff', weight: 3, fillColor: '#00d4ff', fillOpacity: 0.08, dashArray: '10,6', lineCap: 'round' }
                         }).addTo(map);
+                        // Fit map to real boundary
                         map.fitBounds(osmLayer.getBounds(), { padding: [30, 30] });
                     })
                     .catch(err => { console.log('OSM boundary fetch failed, using fallback:', err); });
             }
+            
 
         }, 100);
         
         return () => { cancelled = true; clearTimeout(timer); if (siteMapInstance.current) { try { siteMapInstance.current.remove(); } catch(e){} siteMapInstance.current = null; } };
     }, [selectedSite]);
-    
-    // Re-render custom markers when markers change or edit mode toggles
-    useEffect(() => {
-        if (!selectedSite || !siteMapInstance.current) return;
-        const map = siteMapInstance.current;
-        renderCustomMarkers(map, selectedSite);
-    }, [mapMarkers, mapEditMode]);
     
     const getSitePOCs = (siteKey) => sitePOCs[siteKey] || siteData[siteKey]?.pocs_default || [];
     const savePOC = (siteKey) => {
@@ -4769,11 +4601,11 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
     };
     
     const add = () => { 
-        if (!form.ship) { toast('Enter a ship name', 'error'); return; } 
+        if (!form.ship) { toast('Select a ship', 'error'); return; } 
         if (!form.start) { toast('Select a start date', 'error'); return; }
         setInstalls(p => [...p, { id: genId('T'), ...form }]); 
-        logActivity(`Scheduled trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}${form.techs.length > 0 ? ' — Techs: ' + form.techs.join(', ') : ''}`, { ship: form.ship, location: form.location, start: form.start, end: form.end, techs: form.techs });
-        setForm({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: [] }); 
+        logActivity(`Scheduled trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`, { ship: form.ship, location: form.location, start: form.start, end: form.end });
+        setForm({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled' }); 
         toast('Trip added!', 'success'); 
     };
     const del = (id) => { 
@@ -4821,52 +4653,23 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                     <button className={`btn ${viewMode==='list'?'btn-primary':'btn-secondary'}`} onClick={() => setViewMode('list')}>📋 List</button>
                     <button className={`btn ${viewMode==='calendar'?'btn-primary':'btn-secondary'}`} onClick={() => setViewMode('calendar')}>📅 Calendar</button>
                     <button className="btn btn-secondary" onClick={() => { setShowShipping(true); setShipType('unclass'); setShipForm({...emptyShipForm}); setActiveShipDest(null); }}>📦 Shipping</button>
-                    <button className="btn btn-secondary" onClick={() => { setShowShipManager(true); setEditingShipId(null); setNewShipForm({...emptyNewShip}); }}>🚢 Manage Ships</button>
                 </div>}
             </div>
             
-            {/* Base Information - Prominent Cards */}
+            {/* Installation Sites - clickable location bar */}
             {!selectedSite && (
-                <div style={{marginBottom:'20px'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'14px'}}>
-                        <span style={{fontSize:'20px'}}>🏛️</span>
-                        <div>
-                            <div style={{fontSize:'16px',fontWeight:800,color:'var(--text)',letterSpacing:'-0.3px'}}>Base Information</div>
-                            <div style={{fontSize:'11px',color:'var(--text-secondary)'}}>Select your destination — maps, contacts, shipping & logistics</div>
-                        </div>
-                    </div>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))',gap:'10px'}}>
-                        {Object.entries(siteData).map(([key, site]) => {
-                            const flag = key==='yokosuka'?'🇯🇵':key==='rota'?'🇪🇸':'🇺🇸';
-                            const shipCount = sorted.filter(s => s.location && site.city && s.location.includes(site.city.split(',')[0])).length;
-                            const pocCount = (sitePOCs[key] || site.pocs_default || []).filter(p => p.name).length;
-                            return (
-                                <button key={key} onClick={() => setSelectedSite(key)} style={{
-                                    padding:'16px',borderRadius:'12px',border:'1px solid var(--border-focus)',
-                                    background:'var(--bg-card-hover)',color:'var(--text)',
-                                    cursor:'pointer',transition:'all 0.2s',textAlign:'left',position:'relative',overflow:'hidden',
-                                    display:'flex',flexDirection:'column',gap:'8px'
-                                }}
-                                onMouseEnter={e => {e.currentTarget.style.borderColor='var(--primary)';e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 4px 20px rgba(25,169,116,0.2)';e.currentTarget.style.background='var(--primary-glow)';}}
-                                onMouseLeave={e => {e.currentTarget.style.borderColor='var(--border-focus)';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';e.currentTarget.style.background='var(--bg-card-hover)';}}>
-                                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                                        <span style={{fontSize:'22px'}}>{flag}</span>
-                                        {shipCount > 0 && <span style={{background:'var(--primary)',color:'#fff',borderRadius:'10px',padding:'2px 8px',fontSize:'10px',fontWeight:700}}>{shipCount} ship{shipCount>1?'s':''}</span>}
-                                    </div>
-                                    <div>
-                                        <div style={{fontSize:'15px',fontWeight:800,color:'var(--text)',lineHeight:'1.2'}}>{site.abbr}</div>
-                                        <div style={{fontSize:'11px',color:'var(--text-secondary)',marginTop:'2px'}}>{site.city}</div>
-                                    </div>
-                                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'2px'}}>
-                                        <span style={{fontSize:'10px',color:'var(--text-dim)',display:'flex',alignItems:'center',gap:'3px'}}>🗺️ Map</span>
-                                        <span style={{fontSize:'10px',color:'var(--text-dim)',display:'flex',alignItems:'center',gap:'3px'}}>📦 Shipping</span>
-                                        {pocCount > 0 && <span style={{fontSize:'10px',color:'var(--text-dim)',display:'flex',alignItems:'center',gap:'3px'}}>👤 {pocCount} POC{pocCount>1?'s':''}</span>}
-                                    </div>
-                                    <div style={{fontSize:'10px',color:'var(--primary)',fontWeight:600,marginTop:'2px'}}>View Details →</div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'16px'}}>
+                    {Object.entries(siteData).map(([key, site]) => {
+                        const shipCount = sorted.filter(s => s.location && site.city && s.location.includes(site.city.split(',')[0])).length;
+                        return (
+                            <button key={key} className="btn btn-secondary" style={{padding:'8px 14px',fontSize:'12px',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setSelectedSite(key)}>
+                                <span>{key==='yokosuka'?'🇯🇵':key==='rota'?'🇪🇸':'🇺🇸'}</span>
+                                <span style={{fontWeight:600}}>{site.abbr}</span>
+                                <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:400}}>({site.city})</span>
+                                {shipCount > 0 && <span style={{background:'var(--primary)',color:'#fff',borderRadius:'10px',padding:'1px 7px',fontSize:'10px',fontWeight:700}}>{shipCount}</span>}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
             
@@ -4898,19 +4701,12 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                             {shipDestinations.map((dest) => (
                                 <button key={dest.key} style={{padding:'8px 14px',borderRadius:'8px',border: activeShipDest===dest.key ? '2px solid var(--primary)' : '1px solid var(--border)',background: activeShipDest===dest.key ? 'var(--primary-glow)' : 'var(--bg-input)',color: activeShipDest===dest.key ? 'var(--primary)' : 'var(--text)',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s'}} onClick={() => {
                                     setActiveShipDest(dest.key);
-                                    setShipForm(prev => ({...prev, location: dest.location, attn: dest.attn || prev.attn}));
+                                    setShipForm(prev => ({...prev, location: dest.location, ...(dest.attn ? {attn: dest.attn} : {})}));
                                 }}>
                                     {dest.key==='yokosuka'?'🇯🇵':dest.key==='rota'?'🇪🇸':'🇺🇸'} {dest.label}
                                 </button>
                             ))}
                         </div>
-                        
-                        {/* Full Address Display */}
-                        {activeShipDest && siteData[activeShipDest] && (
-                            <div style={{padding:'12px 16px',background: shipType==='class' ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',borderRadius:'10px',border: shipType==='class' ? '1px solid rgba(239,68,68,0.15)' : '1px solid rgba(34,197,94,0.15)',marginBottom:'14px',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.7',color:'var(--text)',whiteSpace:'pre-wrap'}}>
-                                {siteData[activeShipDest].addresses[shipType === 'class' ? 'class' : 'unclass'].lines.join('\n')}
-                            </div>
-                        )}
                         
                         {/* Package Info */}
                         <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',marginTop:'8px'}}>📐 PACKAGE</div>
@@ -4951,22 +4747,34 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                                 <div style={{fontSize:'11px',fontWeight:700,color:'#ef4444',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'6px'}}>
                                     🔴 SERIAL NUMBERS
                                 </div>
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'14px'}}>
+                                <div style={{marginBottom:'10px'}}>
+                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>What is shipping?</label>
+                                    <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'13px'}} placeholder="e.g. REAP Kit, Server, etc." value={shipForm.shipWhat} onChange={e => setShipForm({...shipForm, shipWhat: e.target.value})} />
+                                </div>
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
                                     <div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>SSD1</label>
-                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} value={shipForm.serialSSD1} onChange={e => setShipForm({...shipForm, serialSSD1: e.target.value})} />
+                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>VOIP — S/N</label>
+                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.voipSN} onChange={e => setShipForm({...shipForm, voipSN: e.target.value})} />
                                     </div>
                                     <div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>SSD2</label>
-                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} value={shipForm.serialSSD2} onChange={e => setShipForm({...shipForm, serialSSD2: e.target.value})} />
+                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>RTR — S/N</label>
+                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.rtrSN} onChange={e => setShipForm({...shipForm, rtrSN: e.target.value})} />
                                     </div>
-                                    <div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>RTR</label>
-                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} value={shipForm.serialRTR} onChange={e => setShipForm({...shipForm, serialRTR: e.target.value})} />
+                                </div>
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
+                                    <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
+                                        <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 1</div>
+                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>CRNA</label>
+                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace',marginBottom:'6px'}} placeholder="CRNA" value={shipForm.ssd1CRNA} onChange={e => setShipForm({...shipForm, ssd1CRNA: e.target.value})} />
+                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
+                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.ssd1SN} onChange={e => setShipForm({...shipForm, ssd1SN: e.target.value})} />
                                     </div>
-                                    <div>
-                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>PHONE</label>
-                                        <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} value={shipForm.serialPhone} onChange={e => setShipForm({...shipForm, serialPhone: e.target.value})} />
+                                    <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
+                                        <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 2</div>
+                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>CRNA</label>
+                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace',marginBottom:'6px'}} placeholder="CRNA" value={shipForm.ssd2CRNA} onChange={e => setShipForm({...shipForm, ssd2CRNA: e.target.value})} />
+                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
+                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="Serial number" value={shipForm.ssd2SN} onChange={e => setShipForm({...shipForm, ssd2SN: e.target.value})} />
                                     </div>
                                 </div>
                             </div>
@@ -4996,76 +4804,6 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                 </div>
             )}
 
-            {/* Ship Manager Modal */}
-            {showShipManager && (
-                <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={(e) => { if(e.target === e.currentTarget) setShowShipManager(false); }}>
-                    <div style={{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width:'680px',maxWidth:'95vw',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
-                            <div>
-                                <div style={{fontSize:'18px',fontWeight:700}}>🚢 Manage Ships</div>
-                                <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>Add, edit, or remove ships • {ships.length} total</div>
-                            </div>
-                            <button className="btn btn-sm btn-secondary" onClick={() => setShowShipManager(false)} style={{width:'32px',height:'32px',padding:0,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%'}}>✕</button>
-                        </div>
-                        
-                        {/* Add/Edit Form */}
-                        <div style={{padding:'16px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)',marginBottom:'16px'}}>
-                            <div style={{fontSize:'12px',fontWeight:700,color:'var(--primary)',marginBottom:'10px'}}>{editingShipId ? '✏️ Edit Ship' : '➕ Add New Ship'}</div>
-                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'8px'}}>
-                                <div>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Ship Name *</label>
-                                    <input className="form-input" style={{padding:'8px',fontSize:'13px'}} placeholder="e.g., DDG54" value={newShipForm.name} onChange={e => setNewShipForm({...newShipForm, name: e.target.value})}/>
-                                </div>
-                                <div>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Type</label>
-                                    <select className="form-select" style={{padding:'8px',fontSize:'13px'}} value={newShipForm.type} onChange={e => setNewShipForm({...newShipForm, type: e.target.value})}><option>Full REAP</option><option>Mini REAP</option></select>
-                                </div>
-                                <div>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Homeport</label>
-                                    <select className="form-select" style={{padding:'8px',fontSize:'13px'}} value={newShipForm.location} onChange={e => setNewShipForm({...newShipForm, location: e.target.value})}>{shipLocations.map(l => <option key={l}>{l}</option>)}</select>
-                                </div>
-                            </div>
-                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
-                                <div>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>POC / Contact</label>
-                                    <input className="form-input" style={{padding:'8px',fontSize:'13px'}} placeholder="Ship STO name" value={newShipForm.poc} onChange={e => setNewShipForm({...newShipForm, poc: e.target.value})}/>
-                                </div>
-                                <div>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Email</label>
-                                    <input className="form-input" style={{padding:'8px',fontSize:'13px'}} placeholder="STO@ship.navy.mil" value={newShipForm.email} onChange={e => setNewShipForm({...newShipForm, email: e.target.value})}/>
-                                </div>
-                            </div>
-                            <div style={{marginBottom:'8px'}}>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>Notes</label>
-                                <input className="form-input" style={{padding:'8px',fontSize:'13px'}} placeholder="Optional notes..." value={newShipForm.notes} onChange={e => setNewShipForm({...newShipForm, notes: e.target.value})}/>
-                            </div>
-                            <div style={{display:'flex',gap:'8px'}}>
-                                <button className="btn btn-primary" style={{padding:'8px 20px',fontSize:'12px'}} onClick={submitShip}>{editingShipId ? '💾 Update Ship' : '➕ Add Ship'}</button>
-                                {editingShipId && <button className="btn btn-secondary" style={{padding:'8px 16px',fontSize:'12px'}} onClick={() => { setEditingShipId(null); setNewShipForm({...emptyNewShip}); }}>Cancel</button>}
-                            </div>
-                        </div>
-                        
-                        {/* Ship List */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px'}}>🚢 CURRENT SHIPS</div>
-                        <div style={{maxHeight:'320px',overflow:'auto',display:'flex',flexDirection:'column',gap:'4px'}}>
-                            {sorted.map(s => (
-                                <div key={s.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',background: editingShipId === s.id ? 'var(--primary-glow)' : 'var(--bg-main)',borderRadius:'8px',border: editingShipId === s.id ? '1px solid var(--primary)' : '1px solid var(--border)'}}>
-                                    <div style={{display:'flex',alignItems:'center',gap:'10px',flex:1,minWidth:0}}>
-                                        <span style={{fontWeight:800,fontSize:'13px',color:'var(--text)',minWidth:'70px'}}>{s.name}</span>
-                                        <span style={{fontSize:'11px',color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{s.location || '—'}</span>
-                                        <span style={{fontSize:'10px',padding:'2px 6px',borderRadius:'4px',background:'var(--bg-input)',color:'var(--text-dim)'}}>{s.type || 'Full REAP'}</span>
-                                    </div>
-                                    <div style={{display:'flex',gap:'4px',flexShrink:0}}>
-                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'10px',background:'transparent',color:'var(--primary)',border:'1px solid var(--primary)'}} onClick={() => startEditShip(s)}>✏️ Edit</button>
-                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'10px',background:'transparent',color:'var(--red)',border:'1px solid var(--red)'}} onClick={() => deleteShip(s)}>🗑️</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {selectedSite && siteData[selectedSite] && (() => {
                 const site = siteData[selectedSite];
                 const pocs = getSitePOCs(selectedSite);
@@ -5081,106 +4819,28 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                                     <span className="card-title">🗺️ Base Layout — {site.abbr}</span>
                                     <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>{selectedSite==='yokosuka'?'🇯🇵':selectedSite==='rota'?'🇪🇸':'🇺🇸'} {site.name}</div>
                                 </div>
-                                <button className="btn btn-sm btn-secondary" onClick={async () => {
-                                    let mapDataUrl = null;
-                                    const mapEl = document.getElementById('site-leaflet-map');
-                                    if (mapEl && typeof html2canvas !== 'undefined') {
-                                        try {
-                                            const canvas = await html2canvas(mapEl, { useCORS: true, allowTaint: true, scale: 2, logging: false, backgroundColor: '#1a1a2e' });
-                                            mapDataUrl = canvas.toDataURL('image/png');
-                                        } catch(e) { console.warn('Map capture failed:', e); }
-                                    }
+                                <button className="btn btn-sm btn-secondary" onClick={() => {
                                     const win = window.open('','','width=900,height=700');
-                                    win.document.write('<html><head><title>' + site.abbr + ' - Base Map</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#222;text-align:center}h2{margin:0 0 8px}.map-img{width:100%;max-height:90vh;object-fit:contain;border-radius:8px;margin:8px 0}@media print{body{margin:10px}.map-img{max-height:95vh}}</style></head><body>');
+                                    win.document.write('<html><head><title>' + site.abbr + ' - Base Reference</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#222}h2{margin:0 0 4px}h4{margin:12px 0 6px;color:#555}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}.card{padding:10px;border:1px solid #ccc;border-radius:6px;font-size:12px}.card b{display:block;margin-bottom:4px}.route{padding:12px;background:#f0f0f0;border-radius:6px;margin:12px 0;font-size:13px}@media print{body{margin:10px}}</style></head><body>');
                                     win.document.write('<h2>🗺️ ' + site.abbr + ' — ' + site.name + '</h2>');
-                                    if (mapDataUrl) {
-                                        win.document.write('<img class="map-img" src="' + mapDataUrl + '" alt="Base Map"/>');
-                                    } else {
-                                        win.document.write('<p style="color:#999;margin:40px 0">Map capture failed — screenshot the map from the app.</p>');
+                                    win.document.write('<p style="font-size:12px;color:#666;margin:4px 0 12px">Base reference — print & bring onsite. Screenshot the satellite map from the app for visual reference.</p>');
+                                    win.document.write('<p style="font-size:12px;margin:8px 0">Screenshot the satellite map from the app for visual reference.</p>');
+                                    if (pocs.filter(p=>p.name).length > 0) {
+                                        win.document.write('<h4>👤 Contacts</h4>');
+                                        pocs.filter(p=>p.name).forEach(p => {
+                                            win.document.write('<div style="font-size:12px;margin:4px 0"><b>' + p.name + '</b> — ' + p.role + (p.phone ? ' | 📞 ' + p.phone : '') + (p.email ? ' | ✉️ ' + p.email : '') + '</div>');
+                                        });
                                     }
-                                    win.document.write('</body></html>');
+                                    win.document.write('<h4>📦 Shipping</h4>');
+                                    win.document.write('<div class="grid" style="grid-template-columns:1fr 1fr">');
+                                    win.document.write('<div class="card" style="border-left:3px solid green;font-family:monospace;font-size:11px">' + site.addresses.unclass.lines.join('<br/>') + '</div>');
+                                    win.document.write('<div class="card" style="border-left:3px solid red;font-family:monospace;font-size:11px">' + site.addresses.class.lines.join('<br/>') + '</div>');
+                                    win.document.write('</div></body></html>');
                                     win.document.close();
                                     setTimeout(() => win.print(), 300);
                                 }}>🖨️ Print Reference</button>
                             </div>
-                            
-                            {/* Map Edit Controls */}
-                            <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px',flexWrap:'wrap'}}>
-                                <button className={'btn btn-sm ' + (mapEditMode ? 'btn-primary' : 'btn-secondary')} onClick={() => setMapEditMode(!mapEditMode)} style={mapEditMode ? {animation:'pulse 2s infinite',boxShadow:'0 0 12px var(--primary)'} : {}}>
-                                    {mapEditMode ? '✏️ Editing — Click Map to Place' : '✏️ Edit Map'}
-                                </button>
-                                {mapEditMode && (
-                                    <>
-                                        <div style={{display:'flex',gap:'4px',background:'var(--bg-input)',borderRadius:'8px',padding:'3px'}}>
-                                            {[
-                                                {type:'gate', label:'🚪 Gate', color:'#ef4444'},
-                                                {type:'pier', label:'⚓ Pier', color:'#3b82f6'},
-                                                {type:'parking', label:'🅿️ Parking', color:'#8b5cf6'},
-                                                {type:'route', label:'🛣️ Route', color:'#f59e0b'},
-                                                {type:'meetup', label:'📍 Meet Up', color:'#10b981'}
-                                            ].map(t => (
-                                                <button key={t.type} onClick={() => setMarkerPlaceType(t.type)} style={{
-                                                    padding:'4px 10px',fontSize:'11px',fontWeight:700,borderRadius:'6px',border:'none',cursor:'pointer',
-                                                    background: markerPlaceType === t.type ? t.color : 'transparent',
-                                                    color: markerPlaceType === t.type ? '#fff' : 'var(--text-muted)',
-                                                    transition:'all 0.15s'
-                                                }}>{t.label}</button>
-                                            ))}
-                                        </div>
-                                        <button className="btn btn-sm btn-secondary" onClick={() => { setMapEditMode(false); toast('Edit mode off', 'info'); }}>✓ Done</button>
-                                    </>
-                                )}
-                            </div>
-                            {mapEditMode && (
-                                <div style={{fontSize:'11px',color:'var(--text-muted)',marginBottom:'8px',padding:'6px 10px',background:'var(--primary-glow)',borderRadius:'6px',border:'1px solid var(--primary)'}}>
-                                    💡 Click on the map to place a <b>{markerPlaceType}</b> marker. Drag markers to reposition. All markers sync to all users in real-time.
-                                </div>
-                            )}
-                            
-                            <div id="site-leaflet-map" style={{borderRadius:'10px',overflow:'hidden',border: mapEditMode ? '2px solid var(--primary)' : '2px solid var(--border)',height:'500px',background:'#1a1a2e',transition:'border 0.2s'}}></div>
-                            
-                            {/* Marker List */}
-                            {(() => {
-                                const siteMarkers = getSiteMarkers(selectedSite);
-                                if (siteMarkers.length === 0) return null;
-                                return (
-                                    <div style={{marginTop:'12px'}}>
-                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
-                                            <span style={{fontSize:'12px',fontWeight:700,color:'var(--text-secondary)'}}>📍 Custom Markers ({siteMarkers.length})</span>
-                                            <div style={{display:'flex',gap:'4px'}}>
-                                                {['gate','pier','parking','route','meetup'].map(type => {
-                                                    const count = siteMarkers.filter(m => m.type === type).length;
-                                                    if (count === 0) return null;
-                                                    return <button key={type} className="btn btn-sm" style={{padding:'2px 6px',fontSize:'9px',background:'transparent',color:'var(--text-muted)'}} onClick={() => clearSiteMarkers(selectedSite, type)}>Clear {type}s ({count})</button>;
-                                                })}
-                                            </div>
-                                        </div>
-                                        <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
-                                            {siteMarkers.sort((a,b) => {
-                                                const order = {gate:0,pier:1,parking:2,route:3,meetup:4};
-                                                return (order[a.type]||0) - (order[b.type]||0) || a.order - b.order;
-                                            }).map(m => {
-                                                const colors = {gate:'#ef4444',pier:'#3b82f6',parking:'#8b5cf6',route:'#f59e0b',meetup:'#10b981'};
-                                                const icons = {gate:'🚪',pier:'⚓',parking:'🅿️',route:'🛣️',meetup:'📍'};
-                                                return (
-                                                    <div key={m.id} style={{display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px',background:'var(--bg-input)',borderRadius:'8px',borderLeft:'3px solid '+colors[m.type],fontSize:'11px'}}>
-                                                        <span>{icons[m.type]}</span>
-                                                        {editingMarkerLabel === m.id ? (
-                                                            <span style={{display:'flex',gap:'4px',alignItems:'center'}}>
-                                                                <input style={{fontSize:'11px',padding:'2px 4px',width:'100px',borderRadius:'4px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-primary)'}} value={markerLabelText} onChange={e => setMarkerLabelText(e.target.value)} onKeyDown={e => { if(e.key==='Enter') updateMarkerLabel(m.id, markerLabelText); if(e.key==='Escape') setEditingMarkerLabel(null); }} autoFocus/>
-                                                                <button style={{background:'none',border:'none',cursor:'pointer',fontSize:'11px',color:'var(--primary)'}} onClick={() => updateMarkerLabel(m.id, markerLabelText)}>✓</button>
-                                                            </span>
-                                                        ) : (
-                                                            <span style={{fontWeight:600,cursor:'pointer',color:'var(--text-primary)'}} onClick={() => { setEditingMarkerLabel(m.id); setMarkerLabelText(m.label); }} title="Click to rename">{m.label}</span>
-                                                        )}
-                                                        <button style={{background:'none',border:'none',cursor:'pointer',fontSize:'10px',color:'var(--text-muted)',marginLeft:'2px',padding:'0'}} onClick={() => { if(confirm('Remove this marker?')) removeMapMarker(m.id); }} title="Remove marker">✕</button>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })()}
+                            <div id="site-leaflet-map" style={{borderRadius:'10px',overflow:'hidden',border:'2px solid var(--border)',height:'500px',background:'#1a1a2e'}}></div>
 
                         </div>
                         
@@ -5293,7 +4953,7 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                                     <div style={{marginTop:'12px',padding:'12px',background:'var(--green-glow)',borderRadius:'8px',border:'1px solid var(--green)'}}>
                                         <div style={{fontSize:'11px',fontWeight:600,color:'var(--green)',marginBottom:'6px'}}>✈️ UPCOMING TRIPS ({siteTrips.length})</div>
                                         {siteTrips.slice(0,3).map(t => (
-                                            <div key={t.id} style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px'}}>• {t.ship} — {fmtShort(t.start)} {t.purpose ? `(${t.purpose})` : ''}{t.techs && t.techs.length > 0 ? ` — 👷 ${t.techs.join(', ')}` : ''}</div>
+                                            <div key={t.id} style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px'}}>• {t.ship} — {fmtDate(t.start)} {t.purpose ? `(${t.purpose})` : ''}</div>
                                         ))}
                                     </div>
                                 )}
@@ -5373,18 +5033,14 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                                             <div style={{fontWeight:600,fontSize:'13px'}}>{trip.ship}</div>
                                             <span className="badge badge-info" style={{fontSize:'9px'}}>{trip.status}</span>
                                         </div>
-                                        <div style={{fontSize:'12px',color:'var(--primary)',fontWeight:600,marginBottom:'4px'}}>
+                                        <div style={{fontSize:'11px',color:'var(--text-dim)',marginBottom:'4px'}}>
                                             📍 {trip.location}
                                         </div>
                                         <div style={{fontSize:'10px',color:'var(--text-muted)'}}>
-                                            {fmtShort(trip.start)}{trip.end ? ` → ${fmtShort(trip.end)}` : ''}
+                                            {fmtDate(trip.start)}{trip.end ? ` - ${fmtDate(trip.end)}` : ''}
                                         </div>
                                         {trip.purpose && <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px'}}>🎯 {trip.purpose}</div>}
-                                        {trip.techs && trip.techs.length > 0 && <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'2px'}}>👷 {trip.techs.join(', ')}</div>}
-                                        <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
-                                            <button className="btn btn-sm btn-secondary" style={{padding:'2px 8px',fontSize:'9px'}} onClick={() => startEditTrip(trip)}>✏️ Edit</button>
-                                            <button className="btn btn-sm btn-danger" style={{padding:'2px 8px',fontSize:'9px'}} onClick={() => del(trip.id)}>Delete</button>
-                                        </div>
+                                        <button className="btn btn-sm btn-danger" style={{marginTop:'8px',padding:'2px 8px',fontSize:'9px'}} onClick={() => del(trip.id)}>Delete</button>
                                     </div>
                                 ))}
                             </div>
@@ -5392,116 +5048,48 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                     </div>
                 </div>
             ) : !selectedSite ? (
-                <div>
-                    <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'14px'}}>
-                        <span style={{fontSize:'20px'}}>📋</span>
-                        <div>
-                            <div style={{fontSize:'16px',fontWeight:800,color:'var(--text)',letterSpacing:'-0.3px'}}>Scheduled Trips</div>
-                            <div style={{fontSize:'11px',color:'var(--text-secondary)'}}>{installs.length} trip{installs.length!==1?'s':''} scheduled</div>
-                        </div>
-                    </div>
+                <div className="card">
+                    <span className="card-title">All Trips</span>
                     {installs.length === 0 ? (
-                        <div className="card"><div className="empty">No trips scheduled yet</div></div>
+                        <div className="empty">No trips scheduled</div>
                     ) : (
-                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))',gap:'12px'}}>
-                            {installs.sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start)).map(i => {
-                                const isPast = parseLocalDate(i.end || i.start) < new Date();
-                                const statusColors = { 'Scheduled': '#3b82f6', 'In Progress': '#19a974', 'Completed': '#22c55e', 'Delayed': '#f59e0b', 'Cancelled': '#ef4444' };
-                                const borderColor = statusColors[i.status] || '#555';
-                                const techInitials = { Daniel: 'DB', Uriel: 'UG', Jay: 'JR', Moe: 'MH' };
-                                const techColors = { Daniel: '#3b82f6', Uriel: '#8b5cf6', Jay: '#f59e0b', Moe: '#10b981' };
-                                const isEditing = editingTripId === i.id;
-                                return (
-                                    <div key={i.id} style={{
-                                        borderRadius:'12px',overflow:'hidden',
-                                        background:'var(--bg-card)',
-                                        border: isEditing ? '2px solid var(--primary)' : '1px solid var(--border)',
-                                        opacity: isPast && i.status !== 'Completed' ? 0.5 : 1,
-                                        transition:'all 0.2s'
-                                    }}
-                                    onMouseEnter={e => {if(!isEditing){e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';}}}
-                                    onMouseLeave={e => {e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
-                                        
-                                        {/* Location banner */}
-                                        <div style={{padding:'10px 16px',background: borderColor + '18',borderBottom:'1px solid ' + borderColor + '30',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                            <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                                                <span style={{fontSize:'13px'}}>📍</span>
-                                                <span style={{fontSize:'14px',fontWeight:700,color: borderColor}}>{i.location}</span>
-                                            </div>
-                                            <span style={{
-                                                padding:'2px 8px',borderRadius:'10px',fontSize:'9px',fontWeight:700,letterSpacing:'0.3px',
-                                                background: borderColor + '25',color: borderColor
-                                            }}>{i.status}</span>
-                                        </div>
-                                        
-                                        {/* Body */}
-                                        <div style={{padding:'12px 16px',display:'flex',flexDirection:'column',gap:'8px'}}>
-                                            {/* Ship + dates row */}
-                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                                <span style={{fontSize:'16px',fontWeight:800,color:'var(--text)'}}>{i.ship}</span>
-                                                <span style={{fontSize:'12px',color:'var(--text-secondary)',fontWeight:500}}>
-                                                    {fmtShort(i.start)}{i.end ? ` → ${fmtShort(i.end)}` : ''}
-                                                </span>
-                                            </div>
-                                            
-                                            {/* Purpose + Notes */}
-                                            {(i.purpose || i.notes) && (
-                                                <div style={{display:'flex',gap:'12px',flexWrap:'wrap'}}>
-                                                    {i.purpose && <span style={{fontSize:'11px',color:'var(--text-dim)',display:'flex',alignItems:'center',gap:'4px'}}>🎯 {i.purpose}</span>}
-                                                    {i.notes && <span style={{fontSize:'11px',color:'var(--text-dim)',display:'flex',alignItems:'center',gap:'4px'}}>📝 {i.notes}</span>}
-                                                </div>
-                                            )}
-                                            
-                                            {/* Team + Actions */}
-                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:'8px',borderTop:'1px solid var(--border)'}}>
-                                                {/* Techs */}
-                                                {i.techs && i.techs.length > 0 ? (
-                                                    <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                                                        <div style={{display:'flex'}}>
-                                                            {i.techs.map((t, idx) => (
-                                                                <div key={t} title={t} style={{
-                                                                    width:'24px',height:'24px',borderRadius:'50%',
-                                                                    background: techColors[t] || '#666',color:'#fff',
-                                                                    display:'flex',alignItems:'center',justifyContent:'center',
-                                                                    fontSize:'8px',fontWeight:800,
-                                                                    border:'2px solid var(--bg-card)',
-                                                                    marginLeft: idx > 0 ? '-5px' : '0',
-                                                                    zIndex: i.techs.length - idx,position:'relative'
-                                                                }}>{techInitials[t] || t.charAt(0)}</div>
-                                                            ))}
-                                                        </div>
-                                                        <span style={{fontSize:'11px',color:'var(--text-secondary)',fontWeight:500}}>{i.techs.join(' & ')}</span>
-                                                    </div>
-                                                ) : <span style={{fontSize:'10px',color:'var(--text-muted)'}}>No team assigned</span>}
-                                                
-                                                {/* Action buttons */}
-                                                <div style={{display:'flex',gap:'4px'}}>
-                                                    <button onClick={() => startEditTrip(i)} style={{background:'transparent',border:'1px solid var(--border)',color:'var(--text-muted)',cursor:'pointer',fontSize:'10px',padding:'3px 8px',borderRadius:'6px',fontWeight:600,transition:'all 0.15s'}}
-                                                        onMouseEnter={e => {e.currentTarget.style.borderColor='var(--primary)';e.currentTarget.style.color='var(--primary)';}}
-                                                        onMouseLeave={e => {e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--text-muted)';}}>✏️ Edit</button>
-                                                    <button onClick={() => del(i.id)} style={{background:'transparent',border:'1px solid var(--border)',color:'var(--text-muted)',cursor:'pointer',fontSize:'10px',padding:'3px 8px',borderRadius:'6px',fontWeight:600,transition:'all 0.15s'}}
-                                                        onMouseEnter={e => {e.currentTarget.style.borderColor='var(--red)';e.currentTarget.style.color='var(--red)';}}
-                                                        onMouseLeave={e => {e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--text-muted)';}}>🗑️</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <table className="table mt-md">
+                            <thead>
+                                <tr>
+                                    <th>Ship</th>
+                                    <th>Dates</th>
+                                    <th>Location</th>
+                                    <th>Purpose</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {installs.sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start)).map(i => (
+                                    <tr key={i.id}>
+                                        <td style={{fontWeight:600}}>{i.ship}</td>
+                                        <td style={{fontSize:'12px'}}>{fmtDate(i.start)}{i.end ? ` - ${fmtDate(i.end)}` : ''}</td>
+                                        <td>{i.location}</td>
+                                        <td style={{fontSize:'12px',color:'var(--text-dim)'}}>{i.purpose || '—'}</td>
+                                        <td><span className={`badge ${i.status==='Completed'?'badge-success':i.status==='Cancelled'?'badge-mild':'badge-info'}`}>{i.status}</span></td>
+                                        <td><button className="btn btn-sm btn-danger" onClick={() => del(i.id)}>Del</button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     )}
                 </div>
             ) : null}
             
-            {!selectedSite && <div className="card" style={editingTripId ? {borderColor:'var(--primary)',background:'var(--primary-glow)'} : {}}>
-                <span className="card-title">{editingTripId ? '✏️ Edit Trip' : 'Schedule New Trip'}</span>
+            {!selectedSite && <div className="card">
+                <span className="card-title">Schedule New Trip</span>
                 <div className="form-row mt-md">
                     <div className="form-group">
                         <label className="form-label">Ship *</label>
-                        <input className="form-input" list="ship-list" placeholder="Type or select ship..." value={form.ship} onChange={e => setForm({...form, ship: e.target.value})}/>
-                        <datalist id="ship-list">
-                            {sorted.map(s => <option key={s.id} value={s.name}/>)}
-                        </datalist>
+                        <select className="form-select" value={form.ship} onChange={e => setForm({...form, ship: e.target.value})}>
+                            <option value="">Select...</option>
+                            {sorted.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                        </select>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Destination</label>
@@ -5530,37 +5118,11 @@ function Installs({ ships, setShips, installs, setInstalls, toast, logActivity }
                         <input className="form-input" placeholder="e.g., Install, Maintenance, Training..." value={form.purpose} onChange={e => setForm({...form, purpose: e.target.value})}/>
                     </div>
                 </div>
-                <div className="form-row">
-                    <div className="form-group" style={{flex:2}}>
-                        <label className="form-label">Assigned Techs</label>
-                        <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
-                            {techNames.map(name => (
-                                <button key={name} type="button" onClick={() => toggleTech(name)} style={{
-                                    padding:'7px 14px',borderRadius:'8px',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s',
-                                    border: form.techs.includes(name) ? '2px solid var(--primary)' : '1px solid var(--border)',
-                                    background: form.techs.includes(name) ? 'var(--primary-glow)' : 'var(--bg-input)',
-                                    color: form.techs.includes(name) ? 'var(--primary)' : 'var(--text-muted)'
-                                }}>
-                                    {form.techs.includes(name) ? '✓ ' : ''}{name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="form-group" style={{flex:1}}>
-                        <label className="form-label">Notes</label>
-                        <input className="form-input" placeholder="Additional details..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}/>
-                    </div>
+                <div className="form-group">
+                    <label className="form-label">Notes</label>
+                    <input className="form-input" placeholder="Additional details..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}/>
                 </div>
-                <div style={{display:'flex',gap:'8px',marginTop:'12px'}}>
-                    {editingTripId ? (
-                        <>
-                            <button className="btn btn-primary" onClick={saveEditTrip}>💾 Save Changes</button>
-                            <button className="btn btn-secondary" onClick={cancelEditTrip}>Cancel</button>
-                        </>
-                    ) : (
-                        <button className="btn btn-primary" onClick={add}>+ Add Trip</button>
-                    )}
-                </div>
+                <button className="btn btn-primary mt-md" onClick={add}>+ Add Trip</button>
             </div>}
         </div>
     );
