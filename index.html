@@ -4275,11 +4275,7 @@ function Inventory({ ships, setShips, toast, logActivity }) {
     const buildEmail = (s) => {
         const missing = getMissing(s);
         if (missing.length === 0) return null;
-        const has = [];
-        if (s.ciscoRouter) has.push(`Cisco Router: ${s.ciscoRouter}`);
-        if (s.hddStar || s.hdd) has.push(`HDD Star: ${s.hddStar || s.hdd}`);
-        if (s.hddData) has.push(`HDD Data: ${s.hddData}`);
-        return `Good morning/afternoon,\n\nWe are currently updating our asset records for ${s.name} and are missing the following serial numbers:\n\n${missing.map(m => `  - ${m}`).join('\n')}\n\n${has.length > 0 ? `We currently have on file:\n\n${has.map(h => `  - ${h}`).join('\n')}\n\n` : ''}Could you please provide the missing serial number${missing.length > 1 ? 's' : ''} at your earliest convenience?\n\nThank you,\nREAP Team`;
+        return `Good morning/afternoon,\n\nWe are currently updating our REAP records for ${s.name} and are missing the following serial numbers:\n\n${missing.map(m => `  - ${m}`).join('\n')}\n\nCould you please provide the missing serial numbers at your earliest convenience?\n\nThank you,`;
     };
     
     const exportCSV = () => { 
