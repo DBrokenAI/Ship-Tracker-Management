@@ -4177,7 +4177,12 @@ function DailyChecks({ ships, checks, setChecks, toast, logActivity }) {
                         return (
                             <div key={s.id} className="check-row" style={{background: rowBg, borderLeft: status === 'pending' ? '3px solid var(--amber)' : status === 'deinstall' ? '3px solid var(--red)' : status === 'offline' ? '3px solid var(--red)' : status === 'partial' ? '3px solid var(--amber)' : status === 'inport' ? '3px solid var(--blue)' : '3px solid transparent'}}>
                                 <span style={{fontWeight:600,fontFamily:'JetBrains Mono',fontSize:'12px'}}>{s.name}</span>
-                                <span style={{fontSize:'11px',color: status === 'inport' ? 'var(--blue)' : status === 'pending' ? 'var(--amber)' : status === 'deinstall' ? 'var(--red)' : 'var(--text-dim)'}}>{status === 'inport' ? '⚓' : status === 'pending' ? '🔧' : status === 'deinstall' ? '🔻' : ''} {status === 'pending' ? `Pending Install${s.installDate ? ' • ' + fmtDate(s.installDate) : ''}` : status === 'deinstall' ? `Pending Deinstall${s.deinstallDate ? ' • ' + fmtDate(s.deinstallDate) : ''}` : s.location || '—'}</span>
+                                {(status === 'pending' || status === 'deinstall') ? (
+                                    <span style={{gridColumn:'2 / -1',textAlign:'center',fontSize:'13px',fontWeight:600,color: status === 'pending' ? 'var(--amber)' : 'var(--red)',padding:'8px 0'}}>
+                                        {status === 'pending' ? `🔧 Pending Install${s.installDate ? ' • Est. ' + fmtDate(s.installDate) : ''}` : `🔻 Pending Deinstall${s.deinstallDate ? ' • Est. ' + fmtDate(s.deinstallDate) : ''}`}
+                                    </span>
+                                ) : (<>
+                                <span style={{fontSize:'11px',color: status === 'inport' ? 'var(--blue)' : 'var(--text-dim)'}}>{status === 'inport' ? '⚓' : ''} {s.location || '—'}</span>
                                 <div style={{display:'flex',alignItems:'center'}}>
                                     <input
                                         ref={el => inputRefs.current[`${s.id}-pingAM`] = el}
@@ -4213,6 +4218,7 @@ function DailyChecks({ ships, checks, setChecks, toast, logActivity }) {
                                 </div>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusAM} onChange={e => update(s.id, 'statusAM', e.target.checked)}/>Online</label>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusPM} onChange={e => update(s.id, 'statusPM', e.target.checked)}/>Online</label>
+                                </>)}
                             </div>
                         );
                     })}</div>
