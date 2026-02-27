@@ -1187,7 +1187,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         💡 Suggest Improvement
                     </button>
                 </div>
-                {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog}/>}
+                {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers}/>}
                 {page === 1 && <DailyChecks ships={ships} checks={dailyChecks} setChecks={setDailyChecks} toast={toast} logActivity={logActivity}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
                 {page === 4 && <Inventory ships={ships} setShips={setShips} toast={toast} logActivity={logActivity}/>}
@@ -1224,7 +1224,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     );
 }
 
-function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog }) {
+function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog, currentUser, allUsers }) {
     const [sel, setSel] = useState(null);
     const [detailTab, setDetailTab] = useState('info');
     const [modal, setModal] = useState(false);
