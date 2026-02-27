@@ -2778,7 +2778,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     <div className="form-group">
                         <label className="form-label">Logged By *</label>
                         <select className="form-select" value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})}>
-                            {(allUsers || []).filter(u => u.status === 'approved').map(u => (
+                            {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                 <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                             ))}
                         </select>
@@ -3136,7 +3136,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 <div className="form-group" style={{margin:0}}>
                                     <label className="form-label" style={{fontSize:'11px'}}>Logged By</label>
                                     <select className="form-select" value={f.name} onChange={e => setF({ name: e.target.value })}>
-                                        {(allUsers || []).filter(u => u.status === 'approved').map(u => (
+                                        {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                             <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                                         ))}
                                     </select>
@@ -3150,7 +3150,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 <div className="form-group" style={{margin:0}}>
                                     <label className="form-label" style={{fontSize:'11px'}}>Logged By *</label>
                                     <select className="form-select" value={f.name} onChange={e => setF({ name: e.target.value })}>
-                                        {(allUsers || []).filter(u => u.status === 'approved').map(u => (
+                                        {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                             <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                                         ))}
                                     </select>
@@ -6111,7 +6111,7 @@ function EmailStatus({ ships, setShips, issues, toast, logActivity, currentUser,
                     <div className="form-group">
                         <label className="form-label">Logged By *</label>
                         <select className="form-select" value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})}>
-                            {(allUsers || []).filter(u => u.status === 'approved').map(u => (
+                            {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                 <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                             ))}
                         </select>
