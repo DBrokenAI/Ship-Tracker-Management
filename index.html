@@ -42,7 +42,7 @@
         .notif-close { margin-left: auto; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; }
         
         /* Sidebar */
-        .sidebar { width: 200px; background: var(--sidebar); border-right: 1px solid var(--border); position: fixed; height: 100vh; overflow-y: auto; z-index: 101; }
+        .sidebar { width: 200px; background: var(--sidebar); border-right: 1px solid var(--border); position: fixed; height: 100vh; overflow-y: auto; z-index: 101; display: flex; flex-direction: column; transition: width 0.2s ease; }
         .sidebar-header { padding: 20px 16px; border-bottom: 1px solid var(--border); }
         .logo { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); letter-spacing: 1.5px; }
         .logo-sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
@@ -53,7 +53,7 @@
         .nav-btn.active { background: var(--primary); color: #000; font-weight: 600; }
         .nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
         .nav-btn .badge-count { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 10px; }
-        .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); position: absolute; bottom: 0; width: 100%; background: var(--sidebar); }
+        .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); margin-top: auto; background: var(--sidebar); }
         .version { font-size: 10px; color: var(--text-muted); text-align: center; font-family: 'JetBrains Mono', monospace; }
         .theme-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
         .theme-toggle button { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-dim); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; }
@@ -61,7 +61,7 @@
         .theme-toggle button.active { background: var(--primary); color: #000; }
         
         /* Main */
-        .main { flex: 1; margin-left: 200px; background: var(--bg-main); min-height: 100vh; padding: 24px; padding-top: 24px; overflow-x: hidden; }
+        .main { flex: 1; margin-left: 200px; background: var(--bg-main); min-height: 100vh; padding: 24px; padding-top: 24px; overflow-x: hidden; transition: margin-left 0.2s ease; }
         .main.has-banner { padding-top: 60px; }
         .page { display: none; animation: fadeIn 0.2s ease; }
         .page.active { display: block; }
@@ -286,6 +286,107 @@
         
         input[type="date"] { color-scheme: dark; }
         .light-mode input[type="date"] { color-scheme: light; }
+        
+        /* === UX IMPROVEMENTS === */
+        
+        /* #1 Tooltips */
+        .tip { position: relative; cursor: help; }
+        .tip::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.95); color: #e2e8f0; font-size: 11px; font-weight: 400; padding: 5px 10px; border-radius: 6px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 999; max-width: 220px; white-space: normal; text-align: center; line-height: 1.4; }
+        .tip:hover::after { opacity: 1; }
+        .light-mode .tip::after { background: rgba(30,41,59,0.95); }
+        
+        /* #3 Skeleton loading */
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .skeleton { background: linear-gradient(90deg, var(--bg-card) 25%, var(--border) 50%, var(--bg-card) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        .skeleton-line { height: 14px; margin-bottom: 10px; border-radius: 4px; }
+        .skeleton-card { height: 80px; border-radius: 10px; }
+        .skeleton-circle { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto; }
+        
+        /* #4 Confirmation animations */
+        @keyframes confirmPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        @keyframes checkDraw { 0% { stroke-dashoffset: 24; } 100% { stroke-dashoffset: 0; } }
+        .confirm-anim { animation: confirmPulse 0.4s ease; }
+        
+        /* #6 Hover effects on ship list */
+        .ship-item { transition: background 0.15s, transform 0.15s, box-shadow 0.15s; }
+        .ship-item:hover { transform: translateX(3px); box-shadow: inset 3px 0 0 var(--primary); }
+        
+        /* #7 Smooth tab transitions */
+        .tab-content { animation: tabFade 0.2s ease; }
+        @keyframes tabFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* #10 Sticky daily checks header */
+        .check-header-sticky { position: sticky; top: 0; z-index: 10; }
+        
+        /* #11 Consistent card shadows */
+        .card, .chart-card, .stat { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.03); transition: box-shadow 0.15s; }
+        .card:hover, .chart-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.05); }
+        
+        /* #13 Animated counters */
+        @keyframes countUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .count-anim { animation: countUp 0.4s ease-out; }
+        
+        /* #15 Breadcrumb */
+        .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+        .breadcrumb a { color: var(--primary); cursor: pointer; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb .sep { opacity: 0.4; }
+        
+        /* #18 Auto-save indicator */
+        @keyframes savePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .save-indicator { font-size: 11px; padding: 4px 10px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px; transition: all 0.3s; }
+        .save-indicator.saving { color: var(--amber); animation: savePulse 1s infinite; }
+        .save-indicator.saved { color: var(--green); }
+        
+        /* #19 Notification dots on nav */
+        .nav-btn { position: relative; }
+        .nav-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--bg-sidebar); }
+        .nav-dot-red { background: var(--red); }
+        .nav-dot-amber { background: var(--amber); }
+        
+        /* #20 Collapsible sidebar */
+        .sidebar.collapsed { width: 60px; }
+        .sidebar.collapsed .logo, .sidebar.collapsed .logo-sub, .sidebar.collapsed .nav-title, .sidebar.collapsed .nav-btn span, .sidebar.collapsed .version, .sidebar.collapsed .theme-toggle, .sidebar.collapsed .sidebar-footer > div { display: none; }
+        .sidebar.collapsed .nav-btn { justify-content: center; padding: 12px; }
+        .sidebar.collapsed .badge-count { display: none; }
+        .sidebar.collapsed + .main { margin-left: 60px; }
+        .sidebar.collapsed + .main .notif-banner { left: 60px; }
+        .sidebar-toggle { width: 100%; padding: 8px; background: none; border: none; border-top: 1px solid var(--border); color: var(--text-muted); cursor: pointer; font-size: 14px; transition: color 0.15s; margin-top: auto; }
+        .sidebar-toggle:hover { color: var(--text); }
+        
+        /* #12 Relative time tooltip */
+        .rel-time { border-bottom: 1px dotted var(--text-muted); cursor: default; }
+        
+        /* #3 Shimmer/skeleton loading */
+        @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+        .skeleton { background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%); background-size: 800px 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+        .skeleton-row { display: flex; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); align-items: center; }
+        .skeleton-circle { width: 36px; height: 36px; border-radius: 50%; }
+        .skeleton-line { height: 12px; border-radius: 4px; }
+        .skeleton-stat { height: 80px; border-radius: 10px; }
+        
+        /* #4 Confirmation animations */
+        @keyframes confirmPulse { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes confirmFade { 0% { opacity: 1; } 100% { opacity: 0; } }
+        .confirm-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; z-index: 9999; pointer-events: none; animation: confirmFade 0.6s ease 0.6s forwards; }
+        .confirm-check { width: 64px; height: 64px; border-radius: 50%; background: var(--green); display: flex; align-items: center; justify-content: center; animation: confirmPulse 0.4s ease; box-shadow: 0 0 40px rgba(16, 185, 129, 0.4); }
+        .confirm-check svg { width: 32px; height: 32px; color: #fff; }
+        
+        /* #5 Empty state */
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: var(--text-muted); text-align: center; }
+        .empty-state-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.6; }
+        .empty-state-title { font-size: 14px; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; }
+        .empty-state-desc { font-size: 12px; max-width: 280px; line-height: 1.5; }
+        
+        /* #11 Consistent card shadows */
+        .card { box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.12); transition: box-shadow 0.2s; }
+        .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.15); }
+        .stat { box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: box-shadow 0.2s, transform 0.15s; }
+        .stat:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.25); transform: translateY(-1px); }
+        
+        /* #16 Last updated by footer */
+        .updated-by { font-size: 10px; color: var(--text-muted); padding: 8px 0 0; margin-top: 8px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+        .updated-by .user-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
     </style>
 </head>
 <body>
@@ -323,7 +424,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T002";
+    var APP_BUILD = "2026-02-27T004";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -367,6 +468,87 @@ const hashPassword = (password) => {
 
 <script type="text/babel">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+// === UX UTILITIES ===
+
+// #12 Relative timestamps
+const relTime = (dateStr) => {
+    if (!dateStr) return 'Never';
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    const days = Math.floor(diff/86400);
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days/7)}w ago`;
+    if (days < 365) return `${Math.floor(days/30)}mo ago`;
+    return `${Math.floor(days/365)}y ago`;
+};
+
+// #13 Animated counter component  
+const AnimCount = ({ value, suffix = '' }) => {
+    const [display, setDisplay] = useState(0);
+    const ref = useRef(null);
+    useEffect(() => {
+        const target = typeof value === 'number' ? value : parseInt(value) || 0;
+        if (target === 0) { setDisplay(0); return; }
+        let start = 0;
+        const duration = 400;
+        const startTime = Date.now();
+        const tick = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setDisplay(Math.round(eased * target));
+            if (progress < 1) ref.current = requestAnimationFrame(tick);
+        };
+        ref.current = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(ref.current);
+    }, [value]);
+    return React.createElement('span', { className: 'count-anim' }, display + suffix);
+};
+
+// #5 Empty state component
+const EmptyState = ({ icon, message }) => (
+    React.createElement('div', { style: { textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' } },
+        React.createElement('div', { style: { fontSize: '36px', marginBottom: '8px', opacity: 0.6 } }, icon),
+        React.createElement('div', { style: { fontSize: '13px' } }, message)
+    )
+);
+
+// #3 Skeleton loader component
+const SkeletonLoader = ({ rows = 4, type = 'card' }) => (
+    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px' } },
+        type === 'stats' ? 
+            React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' } },
+                ...[1,2,3,4].map(i => React.createElement('div', { key: i, className: 'skeleton skeleton-card', style: { height: '90px' } }))
+            ) :
+        type === 'chart' ?
+            React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' } },
+                ...[1,2,3].map(i => React.createElement('div', { key: i, style: { textAlign: 'center' } },
+                    React.createElement('div', { className: 'skeleton skeleton-circle', style: { marginBottom: '8px' } }),
+                    React.createElement('div', { className: 'skeleton skeleton-line', style: { width: '60%', margin: '0 auto' } })
+                ))
+            ) :
+            [...Array(rows)].map((_, i) => React.createElement('div', { key: i, className: 'skeleton skeleton-line', style: { width: `${85 + Math.random() * 15}%` } }))
+    )
+);
+
+// #4 Confirmation animation component
+const ConfirmCheck = ({ show, onDone }) => {
+    useEffect(() => { if (show) { const t = setTimeout(onDone, 1200); return () => clearTimeout(t); } }, [show]);
+    if (!show) return null;
+    return React.createElement('div', { className: 'confirm-overlay' },
+        React.createElement('div', { className: 'confirm-check' },
+            React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' },
+                React.createElement('polyline', { points: '20 6 9 17 4 12' })
+            )
+        )
+    );
+};
 
 // Firebase real-time hook - loads instantly from localStorage, syncs with Firestore
 const useFirestore = (collectionName, initialData = []) => {
@@ -920,8 +1102,10 @@ const Icon = ({ name, style }) => {
 const Toast = ({ toasts, remove }) => (
     <div className="toast-container">
         {toasts.map(t => (
-            <div key={t.id} className={`toast toast-${t.type}`} onClick={() => remove(t.id)}>
-                {t.message}
+            <div key={t.id} className={`toast toast-${t.type}`} onClick={() => remove(t.id)} style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                {t.type === 'success' && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" style={{strokeDasharray:24,strokeDashoffset:0,animation:'checkDraw 0.3s ease-out'}}/></svg>}
+                {t.type === 'error' && <span>✕</span>}
+                <span>{t.message}</span>
             </div>
         ))}
     </div>
@@ -1020,11 +1204,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         const saved = localStorage.getItem('currentPage');
         return saved ? parseInt(saved) : 0;
     });
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
     
     // Persist page to localStorage
     useEffect(() => {
         localStorage.setItem('currentPage', page.toString());
     }, [page]);
+    const toggleSidebar = () => { const v = !sidebarCollapsed; setSidebarCollapsed(v); localStorage.setItem('sidebarCollapsed', v); };
     // Shared data - syncs across all users via Firebase
     const [ships, setShips, shipsLoading] = useFirestore('ships', defaultShips);
     const [issues, setIssues] = useFirestore('issues', defaultIssues);
@@ -1145,12 +1331,14 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
     const urgentIssues = useMemo(() => issues.filter(i => i.threat === 'Urgent' && !i.resolved).length, [issues]);
     const overdueShips = useMemo(() => ships.filter(s => getEmailStatus(s, issues).status === 'OVERDUE').length, [ships, issues]);
+    const dailyChecksToday = useMemo(() => dailyChecks.filter(c => c.date === toDateString(new Date())), [dailyChecks]);
+    const checksUnfilled = useMemo(() => ships.filter(s => !s.pendingInstall && !dailyChecksToday.find(c => c.shipId === s.id && (c.statusAM || c.statusPM))).length, [ships, dailyChecksToday]);
 
     const navItems = [
-        { id: 0, label: 'Dashboard', icon: 'dashboard' }, { id: 1, label: 'Daily Checks', icon: 'checks' },
+        { id: 0, label: 'Dashboard', icon: 'dashboard', dot: urgentIssues > 0 ? 'red' : null }, { id: 1, label: 'Daily Checks', icon: 'checks', dot: checksUnfilled > 0 ? 'amber' : null },
         { id: 2, label: 'Add Ship', icon: 'add' },
         { id: 4, label: 'Inventory', icon: 'inventory' }, { id: 5, label: 'Trips', icon: 'installs' },
-        { id: 6, label: 'Parts', icon: 'parts' }, { id: 7, label: 'Email Status', icon: 'email', badge: overdueShips },
+        { id: 6, label: 'Parts', icon: 'parts' }, { id: 7, label: 'Email Status', icon: 'email', badge: overdueShips, dot: overdueShips > 0 ? 'red' : null },
         { id: 8, label: 'Data / Import', icon: 'settings' },
         ...(isAdmin ? [{ id: 10, label: 'Suggestions', icon: 'issues', badge: suggestions.filter(s => s.status === 'new').length }] : []),
     ];
@@ -1158,14 +1346,14 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
     return (
         <div className="app">
-            <nav className="sidebar">
+            <nav className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
                 <div className="sidebar-header"><div className="logo" style={{display:'flex',alignItems:'center',gap:'8px'}}><svg width="28" height="16" viewBox="0 0 120 60" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 42 L15 38 L105 38 L115 42 L108 45 L12 45 Z" fill="currentColor" fillOpacity="0.15"/><path d="M5 42 L15 38 L105 38 L115 42"/><path d="M15 38 L8 35 L5 42"/><path d="M105 38 L112 35 L115 42"/><path d="M18 38 L18 35 L102 35 L102 38"/><circle cx="28" cy="33" r="4"/><path d="M28 33 L28 26"/><path d="M52 35 L52 22 L72 22 L72 35"/><path d="M62 22 L62 10"/><path d="M76 35 L76 26 L88 26 L88 35"/><path d="M82 26 L82 18"/></svg>SHIP TRACKER</div><div className="logo-sub">Pro Edition</div></div>
                 <div style={{padding:'16px 12px',borderBottom:'1px solid var(--border)'}}>
                     <a href="https://app.mil.powerbigov.us/groups/723e47dd-9fb2-45ba-9c59-fb38242cbc66/reports/ef93b590-8da1-4e3c-a3ef-80a577f44e1c?ctid=e3333e00-c877-4b87-b6ad-45e942de1750&pbi_source=linkShare" target="_blank" rel="noopener noreferrer" style={{display:'block',width:'100%',padding:'12px',background:'var(--green)',border:'none',borderRadius:'8px',color:'#fff',fontSize:'13px',fontWeight:700,cursor:'pointer',textAlign:'center',textDecoration:'none'}}>
-                        📊 BI Dashboard
+                        📊 {sidebarCollapsed ? '' : 'BI Dashboard'}
                     </a>
                 </div>
-                {sections.map(s => (<div key={s.title} className="nav-section"><div className="nav-title">{s.title}</div>{s.items.map(id => { const item = navItems.find(n => n.id === id); return (<button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}><Icon name={item.icon}/><span>{item.label}</span>{item.badge > 0 && <span className="badge-count">{item.badge}</span>}</button>); })}</div>))}
+                {sections.map(s => (<div key={s.title} className="nav-section"><div className="nav-title">{s.title}</div>{s.items.map(id => { const item = navItems.find(n => n.id === id); return (<button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}><Icon name={item.icon}/><span>{item.label}</span>{item.badge > 0 && <span className="badge-count">{item.badge}</span>}{item.dot && <span className={`nav-dot nav-dot-${item.dot}`}></span>}</button>); })}</div>))}
                 <div className="sidebar-footer">
                     <div style={{marginBottom:'8px',padding:'8px',background:'var(--bg-input)',borderRadius:'6px'}}>
                         <div style={{fontSize:'10px',color:'var(--text-muted)'}}>LOGGED IN AS</div>
@@ -1205,19 +1393,20 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
-                    <div className="version">v3.3.0 Firebase</div>
+                    <div className="version">v3.4.0 Firebase</div>
                 </div>
+                <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarCollapsed ? '▶' : '◀'}</button>
             </nav>
             
             {(urgentIssues > 0 || overdueShips > 0) && showBanner && (
-                <div className={`notif-banner ${urgentIssues > 0 ? '' : 'warning'}`}>
+                <div className={`notif-banner ${urgentIssues > 0 ? '' : 'warning'}`} style={sidebarCollapsed ? {left:'60px'} : {}}>
                     
                     {overdueShips > 0 && <span className="notif-item warning" onClick={() => setPage(7)}>📧 {overdueShips} ship{overdueShips > 1 ? 's' : ''} overdue for contact</span>}
                     <button className="notif-close" onClick={() => setShowBanner(false)}>×</button>
                 </div>
             )}
             
-            <main className={`main ${(urgentIssues > 0 || overdueShips > 0) && showBanner ? 'has-banner' : ''}`}>
+            <main className={`main ${(urgentIssues > 0 || overdueShips > 0) && showBanner ? 'has-banner' : ''}`} style={sidebarCollapsed ? {marginLeft:'60px'} : {}}>
                 {isAdmin && new Date().getDay() === 5 && (
                     <div style={{background:'linear-gradient(135deg, var(--primary-glow) 0%, var(--bg-card) 100%)',border:'2px solid var(--primary)',borderRadius:'12px',padding:'16px 20px',marginBottom:'16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                         <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
@@ -1275,6 +1464,8 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog, currentUser, allUsers }) {
     const [sel, setSel] = useState(null);
     const [detailTab, setDetailTab] = useState('email');
+    const [showConfirm, setShowConfirm] = useState(false);
+    const triggerConfirm = () => { setShowConfirm(true); };
     const [modal, setModal] = useState(false);
     const [quickIssueModal, setQuickIssueModal] = useState(false);
     const [quickIssue, setQuickIssue] = useState({ threat: 'Mild', details: '', responsibility: 'Ship' });
@@ -1687,12 +1878,21 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     };
     
     // Stats calculations
-    const stats = useMemo(() => ({ 
-        urgent: issues.filter(i => i.threat === 'Urgent' && !i.resolved).length, 
-        due: ships.filter(s => s.nextCheck && new Date(s.nextCheck) <= new Date(Date.now() + 7*86400000)).length, 
-        total: ships.length, 
-        missing: ships.filter(s => !s.ciscoRouter || (!s.hddStar && !s.hdd) || !s.hddData || !s.crna1 || !s.crna2).length 
-    }), [ships, issues]);
+    const stats = useMemo(() => {
+        const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+        const ydStr = toDateString(yesterday);
+        const ydChecks = dailyChecks.filter(c => c.date === ydStr);
+        const ydOnline = ydChecks.filter(c => c.statusAM && c.statusPM).length;
+        const tdChecks = dailyChecks.filter(c => c.date === today);
+        const tdOnline = tdChecks.filter(c => c.statusAM && c.statusPM).length;
+        const urgent = issues.filter(i => i.threat === 'Urgent' && !i.resolved).length;
+        const due = ships.filter(s => s.nextCheck && new Date(s.nextCheck) <= new Date(Date.now() + 7*86400000)).length;
+        const missing = ships.filter(s => !s.ciscoRouter || (!s.hddStar && !s.hdd) || !s.hddData || !s.crna1 || !s.crna2).length;
+        // Trend: count resolved yesterday vs new yesterday for urgents
+        const ydResolved = issues.filter(i => i.resolved && i.resolvedAt && fmtDateInput(i.resolvedAt) === ydStr).length;
+        const tdResolved = issues.filter(i => i.resolved && i.resolvedAt && fmtDateInput(i.resolvedAt) === today).length;
+        return { urgent, due, total: ships.length, missing, onlineTrend: tdOnline - ydOnline, tdOnline, ydOnline, tdResolved, ydResolved, tdChecked: tdChecks.length, ydChecked: ydChecks.length };
+    }, [ships, issues, dailyChecks, today]);
     
     // Chart data calculations
     const chartData = useMemo(() => {
@@ -1777,7 +1977,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         return last7;
     };
     
-    const save = () => { if (!sel) return; setShips(p => p.map(s => s.id === sel.id ? sel : s)); logActivity(`Updated ship ${sel.name}`, { ship: sel.name, location: sel.location, notes: sel.notes }); toast('Ship saved!', 'success'); };
+    const save = () => { if (!sel) return; setShips(p => p.map(s => s.id === sel.id ? sel : s)); logActivity(`Updated ship ${sel.name}`, { ship: sel.name, location: sel.location, notes: sel.notes }); toast('Ship saved!', 'success'); triggerConfirm(); };
     const del = () => { if (!sel || !confirm(`Delete ${sel.name}?`)) return; setShips(p => p.filter(s => s.id !== sel.id)); setIssues(p => p.filter(i => i.shipId !== sel.id)); logActivity(`Deleted ship ${sel.name}`); setSel(null); toast('Ship deleted', 'info'); };
     const edit = () => { if (!sel) return; setEditingShip(sel); setPage(2); };
     
@@ -1818,7 +2018,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         localStorage.setItem('emailParseHistory', JSON.stringify(newHistory));
         
         logActivity(`${contactForm.name} marked ${sel.name} as ${contactForm.waitingReply ? 'waiting on reply' : 'contacted'} on ${fmtDate(contactDate)}`, { ship: sel.name, contactedBy: contactForm.name, notes: contactForm.notes, waitingReply: contactForm.waitingReply });
-        toast(`${sel.name} marked as ${contactForm.waitingReply ? 'waiting on reply' : 'contacted'}`, 'success');
+        toast(`${sel.name} marked as ${contactForm.waitingReply ? 'waiting on reply' : 'contacted'}`, 'success'); triggerConfirm();
         setContactModal(false);
     };
     
@@ -2317,36 +2517,36 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             {/* Visual Charts Row */}
             <div className="charts-row">
                 <div className="chart-card">
-                    <div className="card-title">Fleet Status (Today)</div>
+                    <div className="card-title tip" data-tip="Based on today's AM/PM connectivity checks">Fleet Status (Today)</div>
                     <PieChart data={[chartData.online, chartData.offline, chartData.noData, chartData.pendingInstall, chartData.pendingDeinstall]} colors={['var(--green)', 'var(--red)', 'var(--text-muted)', 'var(--amber)', '#f87171']}/>
                     <div className="chart-legend">
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--green)'}}></span> Online: {chartData.online}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--red)'}}></span> Offline: {chartData.offline}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--text-muted)'}}></span> No Data: {chartData.noData}</span>
-                        {chartData.pendingInstall > 0 && <span className="legend-item"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Pending Install: {chartData.pendingInstall}</span>}
-                        {chartData.pendingDeinstall > 0 && <span className="legend-item"><span className="legend-dot" style={{background:'#f87171'}}></span> Pending Deinstall: {chartData.pendingDeinstall}</span>}
+                        <span className="legend-item tip" data-tip="Both AM and PM checks passed"><span className="legend-dot" style={{background:'var(--green)'}}></span> Online: {chartData.online}</span>
+                        <span className="legend-item tip" data-tip="AM or PM check failed"><span className="legend-dot" style={{background:'var(--red)'}}></span> Offline: {chartData.offline}</span>
+                        <span className="legend-item tip" data-tip="No daily check entered today"><span className="legend-dot" style={{background:'var(--text-muted)'}}></span> No Data: {chartData.noData}</span>
+                        {chartData.pendingInstall > 0 && <span className="legend-item tip" data-tip="Awaiting equipment installation"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Pending Install: {chartData.pendingInstall}</span>}
+                        {chartData.pendingDeinstall > 0 && <span className="legend-item tip" data-tip="Scheduled for equipment removal"><span className="legend-dot" style={{background:'#f87171'}}></span> Pending Deinstall: {chartData.pendingDeinstall}</span>}
                     </div>
                 </div>
                 
                 <div className="chart-card">
-                    <div className="card-title">Issue Severity</div>
+                    <div className="card-title tip" data-tip="Count of unresolved issues by severity level">Issue Severity</div>
                     <PieChart data={[chartData.urgentCount, chartData.mildCount, chartData.noIssueCount]} colors={['var(--red)', 'var(--amber)', 'var(--green)']}/>
                     <div className="chart-legend">
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--red)'}}></span> Urgent: {chartData.urgentCount}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Mild: {chartData.mildCount}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--green)'}}></span> None: {chartData.noIssueCount}</span>
+                        <span className="legend-item tip" data-tip="Requires immediate action"><span className="legend-dot" style={{background:'var(--red)'}}></span> Urgent: {chartData.urgentCount}</span>
+                        <span className="legend-item tip" data-tip="Needs attention soon"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Mild: {chartData.mildCount}</span>
+                        <span className="legend-item tip" data-tip="No open issues"><span className="legend-dot" style={{background:'var(--green)'}}></span> None: {chartData.noIssueCount}</span>
                     </div>
                 </div>
                 
                 <div className="chart-card">
-                    <div className="card-title">Email Status</div>
+                    <div className="card-title tip" data-tip="Ships grouped by email contact status">Email Status</div>
                     <PieChart data={[chartData.emailOverdue, chartData.emailDue, chartData.emailWaiting, chartData.emailInPort, chartData.emailOk]} colors={['var(--red)', 'var(--amber)', 'var(--blue)', '#06b6d4', 'var(--green)']}/>
                     <div className="chart-legend">
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--red)'}}></span> Overdue: {chartData.emailOverdue}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Due: {chartData.emailDue}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--blue)'}}></span> Waiting: {chartData.emailWaiting}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'#06b6d4'}}></span> In Port: {chartData.emailInPort}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--green)'}}></span> OK: {chartData.emailOk}</span>
+                        <span className="legend-item tip" data-tip="No email contact in 14+ days"><span className="legend-dot" style={{background:'var(--red)'}}></span> Overdue: {chartData.emailOverdue}</span>
+                        <span className="legend-item tip" data-tip="Email contact due within 7 days"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Due: {chartData.emailDue}</span>
+                        <span className="legend-item tip" data-tip="Sent email, awaiting response"><span className="legend-dot" style={{background:'var(--blue)'}}></span> Waiting: {chartData.emailWaiting}</span>
+                        <span className="legend-item tip" data-tip="Ship currently in port"><span className="legend-dot" style={{background:'#06b6d4'}}></span> In Port: {chartData.emailInPort}</span>
+                        <span className="legend-item tip" data-tip="Recently contacted, no action needed"><span className="legend-dot" style={{background:'var(--green)'}}></span> OK: {chartData.emailOk}</span>
                     </div>
                 </div>
                 
@@ -2354,18 +2554,18 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     <div className="card-title">Documentation</div>
                     <DonutChart value={chartData.complete} total={ships.length} color="var(--primary)" label="Complete" sublabel={`of ${ships.length}`}/>
                     <div className="chart-legend">
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--primary)'}}></span> Complete: {chartData.complete}</span>
-                        <span className="legend-item"><span className="legend-dot" style={{background:'var(--red)'}}></span> Missing: {chartData.incomplete}</span>
+                        <span className="legend-item tip" data-tip="All serial numbers and docs filled in"><span className="legend-dot" style={{background:'var(--primary)'}}></span> Complete: {chartData.complete}</span>
+                        <span className="legend-item tip" data-tip="Missing serial numbers or documentation"><span className="legend-dot" style={{background:'var(--red)'}}></span> Missing: {chartData.incomplete}</span>
                     </div>
                 </div>
             </div>
             
             {/* Stats Row */}
             <div className="stats">
-                <div className="stat urgent"><div className="stat-label">Urgent Issues</div><div className="stat-value">{stats.urgent}</div></div>
-                <div className="stat due"><div className="stat-label">Check-ins Due</div><div className="stat-value">{stats.due}</div></div>
-                <div className="stat total"><div className="stat-label">Total Ships</div><div className="stat-value">{stats.total}</div></div>
-                <div className="stat missing" onClick={() => setPage(4)}><div className="stat-label">Incomplete Docs</div><div className="stat-value">{stats.missing}</div></div>
+                <div className="stat urgent tip" data-tip="Open urgent issues requiring immediate attention"><div className="stat-label">Urgent Issues</div><div className="stat-value"><AnimCount value={stats.urgent}/></div>{stats.tdResolved > 0 && <div style={{fontSize:'10px',marginTop:'2px',color:'var(--green)'}}>✓ {stats.tdResolved} resolved today</div>}</div>
+                <div className="stat due tip" data-tip="Ships with check-ins due within 7 days"><div className="stat-label">Check-ins Due</div><div className="stat-value"><AnimCount value={stats.due}/></div>{stats.tdChecked > 0 && <div style={{fontSize:'10px',marginTop:'2px',color:'var(--green)'}}>{stats.tdChecked}/{ships.length} checked today</div>}</div>
+                <div className="stat total tip" data-tip={`${stats.tdOnline} online today${stats.ydOnline > 0 ? ' vs ' + stats.ydOnline + ' yesterday' : ''}`}><div className="stat-label">Total Ships</div><div className="stat-value"><AnimCount value={stats.total}/></div>{stats.onlineTrend !== 0 && <div style={{fontSize:'10px',marginTop:'2px',color:stats.onlineTrend > 0 ? 'var(--green)' : 'var(--red)'}}>{stats.onlineTrend > 0 ? '↑' : '↓'} {Math.abs(stats.onlineTrend)} vs yesterday</div>}</div>
+                <div className="stat missing tip" data-tip="Ships missing serial numbers or documentation" onClick={() => setPage(4)} style={{cursor:'pointer'}}><div className="stat-label">Incomplete Docs</div><div className="stat-value"><AnimCount value={stats.missing}/></div>{stats.missing === 0 && <div style={{fontSize:'10px',marginTop:'2px',color:'var(--green)'}}>✓ All docs complete</div>}</div>
             </div>
             
             <div className="filters">
@@ -2391,7 +2591,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             const isDeinstall = ship.pendingDeinstall;
                             const topIssue = si.length > 0 ? si.sort((a,b) => a.threat === 'Urgent' ? -1 : 1)[0] : null;
                             const updatedToday = ship.lastContact && fmtDateInput(ship.lastContact) === today;
-                            return (<div key={ship.id} onClick={() => setSel(ship)} style={{cursor:'pointer'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}><span>{hasU ? <span className="badge badge-urgent">!</span> : hasM ? <span className="badge badge-mild">!</span> : isInPort ? <span className="badge" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing">DOWN</span> : <span className="badge badge-ok">{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>Waiting on reply</span> : isPending ? <span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? `Back ${fmtDate(ship.inPortUntil)}` : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {topIssue.details.substring(0, 50)}{topIssue.details.length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
+                            return (<div key={ship.id} onClick={() => setSel(ship)} style={{cursor:'pointer'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}><span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(ship.lastContact)} style={{color:'var(--text-muted)',fontSize:'10px'}}>{relTime(ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? `Back ${fmtDate(ship.inPortUntil)}` : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {topIssue.details.substring(0, 50)}{topIssue.details.length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
                         })}
                     </div>
                 </div>
@@ -2427,6 +2627,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 {sel.waitingReply && <span className="badge" style={{background:'var(--blue)',color:'#fff',padding:'4px 10px'}}>⏳ Waiting Reply</span>}
                             </div>
 
+                            {/* #16 Last updated by */}
+                            {sel.contactedBy && <div className="updated-by"><span className="user-dot"></span>Last updated by <strong style={{color:'var(--text-dim)'}}>{sel.contactedBy}</strong>{sel.lastContact && <span>• {relTime(sel.lastContact)}</span>}</div>}
+
                             {/* Tabs */}
                             <div style={{display:'flex',borderBottom:'1px solid var(--border)',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
                                 {[
@@ -2447,6 +2650,14 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
 
                         {/* Tab Content */}
                         <div className="detail-section" style={{paddingTop:'16px'}}>
+                            <div className="breadcrumb">
+                                <a onClick={() => setSel(null)}>Dashboard</a>
+                                <span className="sep">›</span>
+                                <span>{sel.name}</span>
+                                <span className="sep">›</span>
+                                <span style={{color:'var(--primary)',fontWeight:500}}>{detailTab === 'info' ? 'Ship Info' : detailTab === 'email' ? 'Email Log' : 'Issues'}</span>
+                            </div>
+                            <div className="tab-content" key={detailTab}>
                             {/* INFO TAB */}
                             {detailTab === 'info' && (
                                 <div>
@@ -2484,7 +2695,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     </div>
                                                 </div>
                                                 <div style={{display:'flex',gap:'6px'}}>
-                                                    <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as installed`); toast(`${sel.name} marked as installed!`, 'success'); }}>✓ Mark Installed</button>
+                                                    <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as installed`); toast(`${sel.name} marked as installed!`, 'success'); triggerConfirm(); }}>✓ Mark Installed</button>
                                                     <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, pendingInstall: false, installDate: ''}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared pending install for ${sel.name}`); toast('Pending install cleared', 'info'); }}>Clear</button>
                                                 </div>
                                             </div>
@@ -2503,7 +2714,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     </div>
                                                 </div>
                                                 <div style={{display:'flex',gap:'6px'}}>
-                                                    <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingDeinstall: false, deinstallDate: '', pendingInstall: false}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as deinstalled`); toast(`${sel.name} marked as deinstalled`, 'success'); }}>✓ Mark Deinstalled</button>
+                                                    <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingDeinstall: false, deinstallDate: '', pendingInstall: false}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as deinstalled`); toast(`${sel.name} marked as deinstalled`, 'success'); triggerConfirm(); }}>✓ Mark Deinstalled</button>
                                                     <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, pendingDeinstall: false, deinstallDate: ''}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared pending deinstall for ${sel.name}`); toast('Pending deinstall cleared', 'info'); }}>Clear</button>
                                                 </div>
                                             </div>
@@ -2525,7 +2736,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap',padding:'10px 12px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)',alignItems:'center'}}>
                                         <button className="btn btn-success btn-sm" style={{borderRadius:'8px',fontWeight:700,padding:'7px 14px',fontSize:'12px'}} onClick={openContactModal}>✉️ Log New Email</button>
                                         <div style={{display:'flex',gap:'6px',alignItems:'center',fontSize:'11px',flexWrap:'wrap',marginLeft:'auto'}}>
-                                            <span style={{color:'var(--text-muted)'}}>Last: <strong style={{color:'var(--text)'}}>{sel.lastContact ? fmtDate(sel.lastContact) : 'Never'}</strong></span>
+                                            <span style={{color:'var(--text-muted)'}}>Last: <strong className="rel-time tip" data-tip={sel.lastContact ? fmtDate(sel.lastContact) : 'No contact recorded'} style={{color:'var(--text)'}}>{sel.lastContact ? relTime(sel.lastContact) : 'Never'}</strong></span>
                                             {sel.poc && <span style={{color:'var(--text-muted)'}}>| 👤 <strong style={{color:'var(--text)'}}>{sel.poc}</strong></span>}
                                             <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'3px 8px',fontSize:'9px'}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
                                             {sel.waitingReply && <span className="badge badge-info" style={{padding:'3px 8px',fontSize:'9px'}}>⏳ Waiting</span>}
@@ -2695,7 +2906,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     {selIssues.length === 0 ? (
                                         <div style={{padding:'40px',textAlign:'center',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'8px'}}>
                                             <div style={{fontSize:'32px',marginBottom:'8px'}}>✓</div>
-                                            <div>No open issues for this ship</div>
+                                            <div style={{textAlign:'center',padding:'24px',color:'var(--text-muted)'}}><div style={{fontSize:'28px',marginBottom:'6px',opacity:0.5}}>🎉</div><div style={{fontSize:'12px'}}>No open issues — ship is running clean</div></div>
                                         </div>
                                     ) : (
                                         <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
@@ -2781,10 +2992,16 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                 )}
                                             </div>
                                         ))}
-                                        {activityLog.filter(a => a.text.includes(sel.name)).length === 0 && <div className="empty">No recent activity for this ship</div>}
+                                        {activityLog.filter(a => a.text.includes(sel.name)).length === 0 && <div style={{textAlign:'center',padding:'20px',color:'var(--text-muted)'}}><div style={{fontSize:'24px',marginBottom:'4px',opacity:0.5}}>📋</div><div style={{fontSize:'11px'}}>No recent activity for this ship</div></div>}
                                     </div>
                                 </div>
                             )}
+                            {/* Last updated footer */}
+                            <div style={{marginTop:'16px',paddingTop:'12px',borderTop:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'10px',color:'var(--text-muted)'}}>
+                                <span>{sel.contactedBy ? `Last updated by ${sel.contactedBy}` : 'No updates recorded'}</span>
+                                <span>{sel.lastContact ? relTime(sel.lastContact) : ''}</span>
+                            </div>
+                            </div>{/* end tab-content */}
                         </div>
                     </>) : <div className="detail-section"><div className="empty" style={{padding:'60px 20px'}}><svg width="140" height="70" viewBox="0 0 120 60" fill="none" stroke="var(--text-muted)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.5}}>
                             <path d="M5 42 L15 38 L105 38 L115 42 L108 45 L12 45 Z" fill="var(--text-muted)" fillOpacity="0.05"/>
@@ -2860,7 +3077,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     <button className="btn btn-sm btn-secondary" onClick={() => setShowAllActivity(true)}>View All</button>
                 </div>
                 {activityLog.length === 0 ? (
-                    <div className="empty">No recent activity</div>
+                    <div style={{textAlign:'center',padding:'30px 20px',color:'var(--text-muted)'}}><div style={{fontSize:'28px',marginBottom:'6px',opacity:0.5}}>📋</div><div style={{fontSize:'12px'}}>No activity yet — actions will appear here as your team works</div></div>
                 ) : (
                     <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
                         {activityLog.slice(0, 8).map(a => {
@@ -3370,7 +3587,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             if (!resolveNotes.trim()) { toast('Please describe how the issue was resolved', 'error'); return; }
                             setIssues(p => p.map(x => x.id === resolveIssueModal.id ? {...x, resolved: true, resolvedDate: new Date().toISOString(), resolveNotes: resolveNotes} : x));
                             logActivity(`Resolved issue on ${sel.name}: ${resolveNotes.substring(0, 50)}`, { ship: sel.name, issue: resolveIssueModal.details, resolution: resolveNotes });
-                            toast('Issue resolved!', 'success');
+                            toast('Issue resolved!', 'success'); triggerConfirm();
                             setResolveIssueModal(null);
                         }}>Mark Resolved</button>
                         <button className="btn btn-secondary" onClick={() => setResolveIssueModal(null)}>Cancel</button>
@@ -3902,6 +4119,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     </div>
                 )}
             </Modal>
+            <ConfirmCheck show={showConfirm} onDone={() => setShowConfirm(false)}/>
         </div>
     );
 }
@@ -3911,7 +4129,9 @@ function DailyChecks({ ships, checks, setChecks, toast, logActivity }) {
     const [bulkPasteModal, setBulkPasteModal] = useState(false);
     const [bulkPasteText, setBulkPasteText] = useState('');
     const [bulkPasteType, setBulkPasteType] = useState('am');
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
+    const [viewMode, setViewMode] = useState('table');
+    const [saveStatus, setSaveStatus] = useState('');
+    const saveTimer = useRef(null);
     const inputRefs = useRef({});
 
     const customOrder = [67, 70, 54, 56, 62, 63, 55, 57, 72, 77, 96, 98, 101, 103, 109, 111];
@@ -3946,6 +4166,9 @@ function DailyChecks({ ships, checks, setChecks, toast, logActivity }) {
             if (ex) return p.map(c => (c.shipId === id && c.date === date) ? {...c, [field]: val} : c);
             return [...p, { id: genId('DC'), shipId: id, date, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, notes: '', [field]: val }];
         });
+        setSaveStatus('saving');
+        clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(() => setSaveStatus('saved'), 800);
     };
 
     // Bulk mark all online/offline
@@ -4135,7 +4358,7 @@ function DailyChecks({ ships, checks, setChecks, toast, logActivity }) {
         <div className="page active">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1 className="page-title">Daily Checks</h1>
+                    <h1 className="page-title" style={{display:'flex',alignItems:'center',gap:'10px'}}>Daily Checks {saveStatus && <span className={`save-indicator ${saveStatus}`}>{saveStatus === 'saving' ? '● Saving...' : '✓ Saved'}</span>}</h1>
                     <p className="page-sub">Fleet status monitoring • {parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'})}</p>
                 </div>
                 <div className="btn-group">
@@ -4221,14 +4444,14 @@ function DailyChecks({ ships, checks, setChecks, toast, logActivity }) {
             {/* Table View */}
             {viewMode === 'table' && (
                 <div className="card mt-md">
-                    <div className="check-row" style={{background:'var(--bg-input)',fontWeight:600}}>
+                    <div className="check-row check-header-sticky" style={{background:'var(--bg-input)',fontWeight:600}}>
                         <span className="check-header">Hull #</span>
                         <span className="check-header">Port</span>
-                        <span className="check-header">AM Ping</span>
-                        <span className="check-header">PM Ping</span>
-                        <span className="check-header">HD Space</span>
-                        <span className="check-header">Primary</span>
-                        <span className="check-header">Alternate</span>
+                        <span className="check-header tip" data-tip="Morning ping response time">AM Ping</span>
+                        <span className="check-header tip" data-tip="Afternoon ping response time">PM Ping</span>
+                        <span className="check-header tip" data-tip="Hard drive free space">HD Space</span>
+                        <span className="check-header tip" data-tip="Primary connectivity status">Primary</span>
+                        <span className="check-header tip" data-tip="Alternate connectivity status">Alternate</span>
                     </div>
                     <div>{sorted.map((s, idx) => {
                         const c = getCheck(s.id);
