@@ -323,7 +323,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T001";
+    var APP_BUILD = "2026-02-27T002";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1274,7 +1274,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
 function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog, currentUser, allUsers }) {
     const [sel, setSel] = useState(null);
-    const [detailTab, setDetailTab] = useState('info');
+    const [detailTab, setDetailTab] = useState('email');
     const [modal, setModal] = useState(false);
     const [quickIssueModal, setQuickIssueModal] = useState(false);
     const [quickIssue, setQuickIssue] = useState({ threat: 'Mild', details: '', responsibility: 'Ship' });
