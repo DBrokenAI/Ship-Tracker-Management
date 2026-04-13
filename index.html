@@ -387,6 +387,14 @@
         /* #16 Last updated by footer */
         .updated-by { font-size: 10px; color: var(--text-muted); padding: 8px 0 0; margin-top: 8px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
         .updated-by .user-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+        
+        /* Drag and drop for reordering */
+        .check-row[draggable="true"] { cursor: grab; }
+        .check-row[draggable="true"]:active { cursor: grabbing; }
+        .check-row.dragging { opacity: 0.4; }
+        .check-row.drag-over { border-top: 3px solid var(--primary) !important; background: var(--primary-glow) !important; }
+        .drag-handle { color: var(--text-muted); font-size: 14px; cursor: grab; user-select: none; padding: 0 4px; }
+        .drag-handle:active { cursor: grabbing; }
     </style>
 </head>
 <body>
@@ -424,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T008";
+    var APP_BUILD = "2026-02-27T011";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -4154,6 +4162,44 @@ function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity })
     };
 
     const resetOrder = () => { saveOrder(defaultOrder); toast('Ship order reset to default', 'info'); };
+    
+    // Drag and drop state
+    const [draggedShip, setDraggedShip] = useState(null);
+    const [dragOverShip, setDragOverShip] = useState(null);
+    
+    const handleDragStart = (e, shipName) => {
+        setDraggedShip(shipName);
+        e.dataTransfer.effectAllowed = 'move';
+        // Firefox requires data to be set
+        try { e.dataTransfer.setData('text/plain', shipName); } catch {}
+    };
+    
+    const handleDragOver = (e, shipName) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (shipName !== dragOverShip) setDragOverShip(shipName);
+    };
+    
+    const handleDragEnd = () => {
+        setDraggedShip(null);
+        setDragOverShip(null);
+    };
+    
+    const handleDrop = (e, targetShipName) => {
+        e.preventDefault();
+        if (!draggedShip || draggedShip === targetShipName) { handleDragEnd(); return; }
+        const currentNums = sorted.map(s => hullNum(s.name));
+        const draggedNum = hullNum(draggedShip);
+        const targetNum = hullNum(targetShipName);
+        const fromIdx = currentNums.indexOf(draggedNum);
+        const toIdx = currentNums.indexOf(targetNum);
+        if (fromIdx === -1 || toIdx === -1) { handleDragEnd(); return; }
+        const newOrder = [...currentNums];
+        newOrder.splice(fromIdx, 1);
+        newOrder.splice(toIdx, 0, draggedNum);
+        saveOrder(newOrder);
+        handleDragEnd();
+    };
 
     const getCheck = (id, d = date) => checks.find(c => c.shipId === id && c.date === d) || { id: genId('DC'), shipId: id, date: d, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, notes: '' };
 
@@ -4476,12 +4522,9 @@ function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity })
                         const trendHD = yc ? getTrend(c.hdSpace, yc.hdSpace, 'hd') : null;
 
                         return (
-                            <div key={s.id} className="check-row" style={{background: rowBg, borderLeft: status === 'pending' ? '3px solid var(--amber)' : status === 'deinstall' ? '3px solid var(--red)' : status === 'offline' ? '3px solid var(--red)' : status === 'partial' ? '3px solid var(--amber)' : status === 'inport' ? '3px solid var(--blue)' : '3px solid transparent'}}>
+                            <div key={s.id} className={`check-row ${draggedShip === s.name ? 'dragging' : ''} ${dragOverShip === s.name && draggedShip !== s.name ? 'drag-over' : ''}`} draggable={reorderMode} onDragStart={reorderMode ? (e) => handleDragStart(e, s.name) : undefined} onDragOver={reorderMode ? (e) => handleDragOver(e, s.name) : undefined} onDrop={reorderMode ? (e) => handleDrop(e, s.name) : undefined} onDragEnd={reorderMode ? handleDragEnd : undefined} onDragLeave={reorderMode ? () => setDragOverShip(null) : undefined} style={{background: rowBg, borderLeft: status === 'pending' ? '3px solid var(--amber)' : status === 'deinstall' ? '3px solid var(--red)' : status === 'offline' ? '3px solid var(--red)' : status === 'partial' ? '3px solid var(--amber)' : status === 'inport' ? '3px solid var(--blue)' : '3px solid transparent'}}>
                                 <span style={{fontWeight:600,fontFamily:'JetBrains Mono',fontSize:'12px',display:'flex',alignItems:'center',gap:'4px'}}>
-                                    {reorderMode && <span style={{display:'flex',flexDirection:'column',gap:'1px'}}>
-                                        <button style={{background:'none',border:'none',cursor:'pointer',padding:'0 2px',fontSize:'10px',color: idx === 0 ? 'var(--border)' : 'var(--text-muted)',lineHeight:1}} disabled={idx === 0} onClick={() => moveShip(s.name, -1)}>▲</button>
-                                        <button style={{background:'none',border:'none',cursor:'pointer',padding:'0 2px',fontSize:'10px',color: idx === sorted.length - 1 ? 'var(--border)' : 'var(--text-muted)',lineHeight:1}} disabled={idx === sorted.length - 1} onClick={() => moveShip(s.name, 1)}>▼</button>
-                                    </span>}
+                                    {reorderMode && <span className="drag-handle" title="Drag to reorder">⋮⋮</span>}
                                     {s.name}
                                 </span>
                                 {(status === 'pending' || status === 'deinstall') ? (
@@ -4543,13 +4586,10 @@ function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity })
                         const status = getRowStatus(s, c);
 
                         return (
-                            <div key={s.id} style={{padding:'16px',background:'var(--bg-card)',borderRadius:'8px',border:'1px solid var(--border)',borderLeft: `4px solid ${status === 'online' ? 'var(--green)' : status === 'offline' ? 'var(--red)' : status === 'partial' ? 'var(--amber)' : status === 'pending' ? 'var(--amber)' : status === 'deinstall' ? 'var(--red)' : 'var(--blue)'}`}}>
+                            <div key={s.id} className={`${draggedShip === s.name ? 'dragging' : ''} ${dragOverShip === s.name && draggedShip !== s.name ? 'drag-over' : ''}`} draggable={reorderMode} onDragStart={reorderMode ? (e) => handleDragStart(e, s.name) : undefined} onDragOver={reorderMode ? (e) => handleDragOver(e, s.name) : undefined} onDrop={reorderMode ? (e) => handleDrop(e, s.name) : undefined} onDragEnd={reorderMode ? handleDragEnd : undefined} onDragLeave={reorderMode ? () => setDragOverShip(null) : undefined} style={{padding:'16px',background:'var(--bg-card)',borderRadius:'8px',border:'1px solid var(--border)',borderLeft: `4px solid ${status === 'online' ? 'var(--green)' : status === 'offline' ? 'var(--red)' : status === 'partial' ? 'var(--amber)' : status === 'pending' ? 'var(--amber)' : status === 'deinstall' ? 'var(--red)' : 'var(--blue)'}`, cursor: reorderMode ? 'grab' : 'default', opacity: draggedShip === s.name ? 0.4 : 1}}>
                                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
                                     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                                        {reorderMode && <span style={{display:'flex',flexDirection:'column',gap:'1px'}}>
-                                            <button style={{background:'none',border:'none',cursor:'pointer',padding:'0 3px',fontSize:'12px',color: cIdx === 0 ? 'var(--border)' : 'var(--text-muted)',lineHeight:1}} disabled={cIdx === 0} onClick={() => moveShip(s.name, -1)}>▲</button>
-                                            <button style={{background:'none',border:'none',cursor:'pointer',padding:'0 3px',fontSize:'12px',color: cIdx === sorted.length - 1 ? 'var(--border)' : 'var(--text-muted)',lineHeight:1}} disabled={cIdx === sorted.length - 1} onClick={() => moveShip(s.name, 1)}>▼</button>
-                                        </span>}
+                                        {reorderMode && <span className="drag-handle" title="Drag to reorder">⋮⋮</span>}
                                         <div style={{fontWeight:700,fontSize:'16px',fontFamily:'JetBrains Mono'}}>{s.name}</div>
                                     </div>
                                     <span className={`badge badge-${status === 'online' ? 'ok' : status === 'offline' ? 'urgent' : status === 'partial' ? 'mild' : 'info'}`} style={status === 'pending' ? {background:'var(--amber)',color:'#fff'} : status === 'deinstall' ? {background:'var(--red)',color:'#fff'} : {}}>
@@ -4756,19 +4796,23 @@ function Inventory({ ships, setShips, dailyChecks, toast, logActivity }) {
             
             // Header row 1 - section labels
             if (isFullReap) {
+                // 18 columns
                 rows.push([
                     'Full\nREAP', 'VOIP\nConnection\n(Yes/No)', 'StarPC Connection (Yes/No)', '', '', 'DataPC Connection (Yes/No)', '', '', 'Average Ping Times\n(ms)', '', 'Hard Drive\nAvailable\nSpace (GB)', 'Total Data\nRecorded\non Ship', 'SPY Data\nRecorded\n(MB)', 'CND Data\nRecorded\n(MB)', 'WCS Data\nRecorded\n(MB)', 'Other Data\nElements\n(MB)', 'Number of\nFiles to\nProcess', 'Number of\nFiles Still in\nREAPZipQ'
                 ]);
             } else {
+                // 17 columns (no HD Space)
                 rows.push([
-                    'Mini\nREAP', 'VOIP\nConnection\n(Yes/No)', 'Primary PC  Connection (Yes/No)', '', '', 'Alternate PC Connection (Yes/No)', '', '', 'Average Ping Times\n(ms)', '', 'Total Data\nRecorded\non Ship\n(MB)', 'Data From\nMedia (MB)', 'Data From\nData Diode\n(MB)', '', '', 'Number of\nFiles to\nProcess', 'Number of\nFiles Still in\nOutbox'
+                    'Mini\nREAP', 'VOIP\nConnection\n(Yes/No)', 'Primary PC  Connection (Yes/No)', '', '', 'Alternate PC Connection (Yes/No)', '', '', '', '', 'Total Data\nRecorded\non Ship\n(MB)', 'Data From\nMedia (MB)', 'Data From\nData Diode\n(MB)', '', '', 'Number of\nFiles to\nProcess', 'Number of\nFiles Still in\nOutbox'
                 ]);
             }
             
             // Header row 2 - sub columns
             if (isFullReap) {
+                // 18 columns
                 rows.push(['Hull#', 'Y/N', 'AM', 'PM', 'Y/N', 'AM', 'PM', 'Y/N', 'AM', 'PM', '', 'Daily', 'Daily', 'Daily', 'Daily', 'Daily', 'Daily', 'Daily']);
             } else {
+                // 17 columns
                 rows.push(['Hull#', 'Y/N', 'AM', 'PM', 'Y/N', 'AM', 'PM', 'Y/N', 'AM', 'PM', 'Daily', 'Daily', 'Daily', 'Daily', 'Daily', 'Daily', 'Daily']);
             }
             
@@ -4783,9 +4827,11 @@ function Inventory({ ships, setShips, dailyChecks, toast, logActivity }) {
                 const hdSpace = c.hdSpace ? Number(c.hdSpace) || 0 : 0;
                 
                 if (isFullReap) {
+                    // 18 cols: Hull, VOIP, Star AM/PM/YN, Data AM/PM/YN, PingAM, PingPM, HD, TotalData, SPY, CND, WCS, Other, FilesProc, FilesZipQ
                     rows.push([s.name, voip, priOn, priOn, priOn, altOn, altOn, altOn, pingAM, pingPM, hdSpace, 0, 0.00, 0.00, 0.00, 0.00, 0, 0]);
                 } else {
-                    rows.push([s.name, voip, priOn, priOn, priOn, altOn, altOn, altOn, pingAM, pingPM, hdSpace, 0, 0.00, 0.00, 0.00, 0, 0]);
+                    // 17 cols: Hull, VOIP, Pri AM/PM/YN, Alt AM/PM/YN, PingAM, PingPM, TotalData, Media, Diode, (blank), (blank), FilesProc, FilesOutbox
+                    rows.push([s.name, voip, priOn, priOn, priOn, altOn, altOn, altOn, pingAM, pingPM, 0, 0.00, 0.00, 0.00, 0.00, 0, 0]);
                 }
             });
             
@@ -4812,7 +4858,6 @@ function Inventory({ ships, setShips, dailyChecks, toast, logActivity }) {
             // Mini REAP header merges (offset by fullRows + gap)
             { s: { r: fullRows.length + 1, c: 2 }, e: { r: fullRows.length + 1, c: 4 } },   // Primary PC
             { s: { r: fullRows.length + 1, c: 5 }, e: { r: fullRows.length + 1, c: 7 } },   // Alternate PC
-            { s: { r: fullRows.length + 1, c: 8 }, e: { r: fullRows.length + 1, c: 9 } },   // Ping Times
         ];
         
         // Column widths
