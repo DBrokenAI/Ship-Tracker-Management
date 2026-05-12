@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T011";
+    var APP_BUILD = "2026-02-27T013";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -4130,11 +4130,22 @@ function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity })
     const [reorderMode, setReorderMode] = useState(false);
 
     const defaultOrder = [67, 70, 54, 56, 62, 63, 55, 57, 72, 77, 96, 98, 101, 103, 109, 111];
-    const [shipOrder, setShipOrder] = useState(() => {
-        try { const s = localStorage.getItem('dailyChecksOrder'); if (s) return JSON.parse(s); } catch {}
-        return defaultOrder;
-    });
-    const saveOrder = (order) => { setShipOrder(order); localStorage.setItem('dailyChecksOrder', JSON.stringify(order)); };
+    const [shipOrder, setShipOrder] = useState(defaultOrder);
+    
+    // Load order from Firebase on mount
+    useEffect(() => {
+        const unsub = db.collection('settings').doc('dailyChecksOrder').onSnapshot(doc => {
+            if (doc.exists && doc.data().order) {
+                setShipOrder(doc.data().order);
+            }
+        });
+        return () => unsub();
+    }, []);
+    
+    const saveOrder = (order) => { 
+        setShipOrder(order); 
+        db.collection('settings').doc('dailyChecksOrder').set({ order, updatedAt: new Date().toISOString() }).catch(err => console.error('Save order error:', err));
+    };
 
     const sorted = useMemo(() => {
         const order = shipOrder;
@@ -5980,14 +5991,12 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
 }
 
 function Parts({ parts, setParts, toast, logActivity }) {
-    const [filter, setFilter] = useState('All');
-    const [statusFilter, setStatusFilter] = useState('all');
     const [search, setSearch] = useState('');
-    const [builtComputers, setBuiltComputers] = useStorage('builtComputers', 4);
-    const [targetSystems, setTargetSystems] = useStorage('targetSystems', 10);
     const [showAddForm, setShowAddForm] = useState(false);
     const [showShoppingList, setShowShoppingList] = useState(false);
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
+    const [expandedCats, setExpandedCats] = useState({});
+    const [builtComputers, setBuiltComputers] = useStorage('builtComputers', 4);
+    const [targetSystems, setTargetSystems] = useStorage('targetSystems', 10);
 
     // Default REAP Cabinet PC Parts
     const defaultParts = [
@@ -6026,61 +6035,37 @@ function Parts({ parts, setParts, toast, logActivity }) {
 
     useEffect(() => { if (parts.length === 0) setParts(defaultParts); }, []);
 
-    const categories = ['All', 'CPU', 'RAM', 'Motherboard', 'Power Supply', 'SSD', 'Storage', 'Case', 'Cooling', 'Network Card', 'Cable', 'Tape Drive', 'Optical', 'Peripheral', 'Other'];
+    const categories = ['CPU', 'RAM', 'Motherboard', 'Power Supply', 'SSD', 'Storage', 'Case', 'Cooling', 'Network Card', 'Cable', 'Tape Drive', 'Optical', 'Peripheral', 'Other'];
 
     const buildCalc = useMemo(() => {
         const criticalParts = parts.filter(p => p.perBuild > 0);
-        if (criticalParts.length === 0) return { canBuild: 0, limiting: [], allLimiting: [] };
+        if (criticalParts.length === 0) return { canBuild: 0, limiting: [] };
         let minBuilds = Infinity;
         let limitingParts = [];
         criticalParts.forEach(p => {
             const builds = Math.floor((p.inStock || 0) / (p.perBuild || 1));
-            if (builds < minBuilds) { minBuilds = builds; limitingParts = [{ name: p.name, have: p.inStock, need: p.perBuild, builds }]; }
-            else if (builds === minBuilds) limitingParts.push({ name: p.name, have: p.inStock, need: p.perBuild, builds });
+            if (builds < minBuilds) { minBuilds = builds; limitingParts = [p]; }
+            else if (builds === minBuilds) limitingParts.push(p);
         });
-        return { canBuild: minBuilds === Infinity ? 0 : minBuilds, limiting: limitingParts.slice(0, 3), allLimiting: limitingParts };
+        return { canBuild: minBuilds === Infinity ? 0 : minBuilds, limiting: limitingParts };
     }, [parts]);
 
-    const totals = useMemo(() => {
-        const outOfStock = parts.filter(p => (p.inStock || 0) === 0 && (p.need || 0) > 0).length;
-        const lowStock = parts.filter(p => (p.inStock || 0) > 0 && (p.inStock || 0) <= (p.need || 0) && (p.need || 0) > 0).length;
-        const totalItems = parts.reduce((sum, p) => sum + (p.inStock || 0), 0);
-        const totalNeeded = parts.reduce((sum, p) => sum + Math.max(0, (p.need || 0) - (p.inStock || 0)), 0);
-        return { outOfStock, lowStock, totalItems, totalNeeded };
-    }, [parts]);
+    const getStockStatus = (p) => {
+        const inStock = p.inStock || 0, need = p.need || 0;
+        if (inStock === 0 && need > 0) return { status: 'out', color: 'var(--red)', bg: 'var(--red-glow)', label: 'OUT OF STOCK' };
+        if (inStock > 0 && inStock <= need && need > 0) return { status: 'low', color: 'var(--amber)', bg: 'var(--amber-glow)', label: 'LOW STOCK' };
+        if (inStock > need && need > 0) return { status: 'good', color: 'var(--green)', bg: 'transparent', label: 'IN STOCK' };
+        return { status: 'na', color: 'var(--text-muted)', bg: 'transparent', label: 'SPARE' };
+    };
 
-    const categoryStats = useMemo(() => {
-        const stats = {};
-        categories.filter(c => c !== 'All').forEach(cat => {
-            const catParts = parts.filter(p => p.category === cat);
-            const outOfStock = catParts.filter(p => (p.inStock || 0) === 0 && (p.need || 0) > 0).length;
-            const lowStock = catParts.filter(p => (p.inStock || 0) > 0 && (p.inStock || 0) <= (p.need || 0) && (p.need || 0) > 0).length;
-            stats[cat] = { total: catParts.length, outOfStock, lowStock };
-        });
-        return stats;
-    }, [parts]);
+    const shoppingList = useMemo(() => 
+        parts.filter(p => (p.need || 0) > (p.inStock || 0)).map(p => ({
+            ...p, toOrder: (p.need || 0) - (p.inStock || 0)
+        })).sort((a, b) => b.toOrder - a.toOrder)
+    , [parts]);
 
-    const filtered = useMemo(() => {
-        let result = filter === 'All' ? parts : parts.filter(p => p.category === filter);
-        if (statusFilter === 'outOfStock') result = result.filter(p => (p.inStock || 0) === 0 && (p.need || 0) > 0);
-        else if (statusFilter === 'lowStock') result = result.filter(p => (p.inStock || 0) > 0 && (p.inStock || 0) <= (p.need || 0) && (p.need || 0) > 0);
-        if (search.trim()) {
-            const s = search.toLowerCase();
-            result = result.filter(p => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s));
-        }
-        return result;
-    }, [parts, filter, statusFilter, search]);
-
-    const shoppingList = useMemo(() => {
-        return parts.filter(p => {
-            const inStock = p.inStock || 0;
-            const need = p.need || 0;
-            return need > inStock;
-        }).map(p => ({
-            ...p,
-            toOrder: (p.need || 0) - (p.inStock || 0)
-        })).sort((a, b) => b.toOrder - a.toOrder);
-    }, [parts]);
+    const outOfStock = parts.filter(p => (p.inStock || 0) === 0 && (p.need || 0) > 0).length;
+    const lowStock = parts.filter(p => (p.inStock || 0) > 0 && (p.inStock || 0) <= (p.need || 0) && (p.need || 0) > 0).length;
 
     const quickAdjust = (id, delta) => {
         const part = parts.find(p => p.id === id);
@@ -6110,12 +6095,6 @@ function Parts({ parts, setParts, toast, logActivity }) {
         }
     };
 
-    const copyShoppingList = () => {
-        const text = shoppingList.map(p => `${p.toOrder}x ${p.name}`).join('\n');
-        navigator.clipboard.writeText(text);
-        toast('Shopping list copied!', 'success');
-    };
-
     const [addForm, setAddForm] = useState({ category: 'CPU', name: '', inStock: 0, need: 0, perBuild: 1 });
     const addPart = () => {
         if (!addForm.name.trim()) { toast('Part name required', 'error'); return; }
@@ -6126,131 +6105,112 @@ function Parts({ parts, setParts, toast, logActivity }) {
         toast('Part added!', 'success');
     };
 
-    const getStockStatus = (p) => {
-        const inStock = p.inStock || 0;
-        const need = p.need || 0;
-        if (inStock === 0 && need > 0) return { status: 'out', color: 'var(--red)', label: 'OUT' };
-        if (inStock > 0 && inStock <= need && need > 0) return { status: 'low', color: 'var(--amber)', label: 'LOW' };
-        if (inStock > need && need > 0) return { status: 'good', color: 'var(--green)', label: 'OK' };
-        return { status: 'na', color: 'var(--text-muted)', label: '—' };
+    const copyShoppingList = () => {
+        const text = shoppingList.map(p => `${p.toOrder}x ${p.name}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast('Shopping list copied!', 'success');
     };
+
+    // Group parts by category
+    const grouped = useMemo(() => {
+        const s = search.toLowerCase();
+        const result = {};
+        categories.forEach(cat => {
+            let catParts = parts.filter(p => p.category === cat);
+            if (s) catParts = catParts.filter(p => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s));
+            if (catParts.length > 0) result[cat] = catParts;
+        });
+        return result;
+    }, [parts, search]);
+
+    const toggleCat = (cat) => setExpandedCats(prev => ({...prev, [cat]: !prev[cat]}));
+    const allExpanded = Object.keys(grouped).every(cat => expandedCats[cat] !== false);
+    const toggleAll = () => {
+        const newState = {};
+        Object.keys(grouped).forEach(cat => { newState[cat] = !allExpanded; });
+        setExpandedCats(newState);
+    };
+
+    const buildPct = Math.min(100, Math.round((builtComputers / targetSystems) * 100));
 
     return (
         <div className="page active">
             <div className="page-header">
                 <div className="page-header-left">
                     <h1 className="page-title">Parts Inventory</h1>
-                    <p className="page-sub">REAP Cabinet PC Build Tracking • {parts.length} parts</p>
+                    <p className="page-sub">{parts.length} parts tracked • {outOfStock > 0 ? <span style={{color:'var(--red)'}}>{outOfStock} out of stock</span> : <span style={{color:'var(--green)'}}>All stocked</span>}{lowStock > 0 && <span style={{color:'var(--amber)'}}> • {lowStock} low</span>}</p>
                 </div>
                 <div className="btn-group">
                     <button className="btn btn-primary" onClick={() => setShowAddForm(!showAddForm)}>{showAddForm ? '✕ Cancel' : '+ Add Part'}</button>
                     <button className="btn btn-secondary" onClick={() => setShowShoppingList(!showShoppingList)} style={{color: shoppingList.length > 0 ? 'var(--amber)' : ''}}>
-                        Shopping List {shoppingList.length > 0 && `(${shoppingList.length})`}
+                        🛒 Need to Order {shoppingList.length > 0 && `(${shoppingList.length})`}
                     </button>
                     <button className="btn btn-secondary" onClick={() => { if (confirm('Reset to defaults?')) { setParts(defaultParts); logActivity('Reset parts inventory to defaults'); toast('Reset!', 'success'); }}}>Reset</button>
                 </div>
             </div>
 
-            {/* Stats Overview */}
-            <div className="stats" style={{marginBottom:'16px'}}>
-                <div className="stat total" onClick={() => { setFilter('All'); setStatusFilter('all'); }}>
-                    <div className="stat-label">Total In Stock</div>
-                    <div className="stat-value">{totals.totalItems}</div>
+            {/* Build Tracker - Compact */}
+            <div style={{display:'flex',gap:'12px',marginBottom:'16px',flexWrap:'wrap'}}>
+                <div className="card" style={{flex:'1 1 300px',padding:'16px',display:'flex',alignItems:'center',gap:'16px'}}>
+                    <div style={{textAlign:'center',minWidth:'80px'}}>
+                        <div style={{fontSize:'9px',color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'2px'}}>BUILT</div>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
+                            <button onClick={() => setBuiltComputers(Math.max(0, builtComputers - 1))} className="btn btn-sm" style={{width:'26px',height:'26px',padding:0,fontSize:'16px'}}>−</button>
+                            <span style={{fontSize:'28px',fontWeight:700,color:'var(--primary)',fontFamily:'JetBrains Mono'}}>{builtComputers}</span>
+                            <button onClick={() => setBuiltComputers(builtComputers + 1)} className="btn btn-sm" style={{width:'26px',height:'26px',padding:0,fontSize:'16px'}}>+</button>
+                        </div>
+                    </div>
+                    <div style={{flex:1}}>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'var(--text-muted)',marginBottom:'4px'}}>
+                            <span>Target: <input type="number" value={targetSystems} onChange={e => setTargetSystems(Math.max(1, parseInt(e.target.value) || 1))} style={{width:'40px',background:'transparent',border:'none',borderBottom:'1px solid var(--border)',color:'var(--text)',textAlign:'center',fontFamily:'JetBrains Mono',fontSize:'10px'}}/></span>
+                            <span>{buildPct}%</span>
+                        </div>
+                        <div style={{height:'8px',background:'var(--bg-input)',borderRadius:'4px',overflow:'hidden'}}>
+                            <div style={{height:'100%',width:`${buildPct}%`,background:'linear-gradient(90deg, var(--primary), var(--green))',borderRadius:'4px',transition:'width 0.3s'}}></div>
+                        </div>
+                    </div>
                 </div>
-                <div className="stat urgent" style={{cursor:'pointer'}} onClick={() => setStatusFilter('outOfStock')}>
-                    <div className="stat-label">Out of Stock</div>
-                    <div className="stat-value" style={{color:'var(--red)'}}>{totals.outOfStock}</div>
-                </div>
-                <div className="stat due" style={{cursor:'pointer'}} onClick={() => setStatusFilter('lowStock')}>
-                    <div className="stat-label">Low Stock</div>
-                    <div className="stat-value" style={{color:'var(--amber)'}}>{totals.lowStock}</div>
-                </div>
-                <div className="stat missing">
-                    <div className="stat-label">Items to Order</div>
-                    <div className="stat-value" style={{color:'var(--blue)'}}>{totals.totalNeeded}</div>
+                <div className="card" style={{padding:'16px',display:'flex',alignItems:'center',gap:'16px',minWidth:'200px'}}>
+                    <div style={{textAlign:'center'}}>
+                        <div style={{fontSize:'9px',color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'2px'}}>CAN BUILD</div>
+                        <div style={{fontSize:'28px',fontWeight:700,color: buildCalc.canBuild > 0 ? 'var(--green)' : 'var(--red)',fontFamily:'JetBrains Mono'}}>{buildCalc.canBuild}</div>
+                    </div>
+                    {buildCalc.limiting.length > 0 && <div style={{borderLeft:'1px solid var(--border)',paddingLeft:'12px'}}>
+                        <div style={{fontSize:'9px',color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>BOTTLENECK</div>
+                        {buildCalc.limiting.slice(0, 2).map((p, i) => (
+                            <div key={i} style={{fontSize:'11px',color:'var(--amber)',display:'flex',alignItems:'center',gap:'4px'}}>
+                                <span style={{color:'var(--red)'}}>•</span> {p.name.substring(0, 28)}{p.name.length > 28 ? '…' : ''}
+                            </div>
+                        ))}
+                    </div>}
                 </div>
             </div>
 
-            {/* Build Progress */}
-            <div className="card" style={{marginBottom:'16px',padding:'20px'}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'20px'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'24px'}}>
-                        <div style={{textAlign:'center'}}>
-                            <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'4px',letterSpacing:'1px'}}>SYSTEMS BUILT</div>
-                            <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                                <button onClick={() => setBuiltComputers(Math.max(0, builtComputers - 1))} className="btn btn-sm" style={{width:'32px',height:'32px',padding:0,fontSize:'18px'}}>−</button>
-                                <span style={{fontSize:'32px',fontWeight:700,color:'var(--primary)',fontFamily:'JetBrains Mono',minWidth:'50px',textAlign:'center'}}>{builtComputers}</span>
-                                <button onClick={() => setBuiltComputers(builtComputers + 1)} className="btn btn-sm" style={{width:'32px',height:'32px',padding:0,fontSize:'18px'}}>+</button>
-                            </div>
-                        </div>
-                        <div style={{fontSize:'24px',color:'var(--text-muted)'}}>/</div>
-                        <div style={{textAlign:'center'}}>
-                            <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'4px',letterSpacing:'1px'}}>TARGET</div>
-                            <input type="number" value={targetSystems} onChange={e => setTargetSystems(Math.max(1, parseInt(e.target.value) || 1))} style={{width:'70px',padding:'6px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)',textAlign:'center',fontFamily:'JetBrains Mono',fontSize:'28px',fontWeight:700}}/>
-                        </div>
-                    </div>
-                    <div style={{flex:1,minWidth:'200px',maxWidth:'400px'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'6px',fontSize:'11px',color:'var(--text-muted)'}}>
-                            <span>Progress</span>
-                            <span>{Math.round((builtComputers / targetSystems) * 100)}%</span>
-                        </div>
-                        <div style={{height:'12px',background:'var(--bg-input)',borderRadius:'6px',overflow:'hidden'}}>
-                            <div style={{height:'100%',width:`${Math.min(100, (builtComputers / targetSystems) * 100)}%`,background:'linear-gradient(90deg, var(--primary), var(--green))',borderRadius:'6px',transition:'width 0.3s'}}></div>
-                        </div>
-                    </div>
-                    <div style={{display:'flex',alignItems:'center',gap:'20px'}}>
-                        <div style={{textAlign:'center',padding:'12px 20px',background:'var(--green-glow)',border:'1px solid var(--green)',borderRadius:'8px'}}>
-                            <div style={{fontSize:'10px',color:'var(--green)',marginBottom:'2px',letterSpacing:'1px'}}>CAN BUILD</div>
-                            <div style={{fontSize:'28px',fontWeight:700,color:'var(--green)',fontFamily:'JetBrains Mono'}}>{buildCalc.canBuild}</div>
-                        </div>
-                        {buildCalc.limiting.length > 0 && (
-                            <div style={{maxWidth:'200px'}}>
-                                <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'4px'}}>BOTTLENECK</div>
-                                {buildCalc.limiting.slice(0, 2).map((p, i) => (
-                                    <div key={i} style={{fontSize:'11px',color:'var(--amber)',marginBottom:'2px',display:'flex',alignItems:'center',gap:'4px'}}>
-                                        <span style={{color:'var(--red)'}}>•</span> {p.name.substring(0, 25)}{p.name.length > 25 ? '...' : ''}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Shopping List Modal */}
+            {/* Shopping List */}
             {showShoppingList && (
-                <div className="card" style={{marginBottom:'16px',border:'1px solid var(--amber)'}}>
-                    <div className="card-title" style={{color:'var(--amber)'}}>
-                        Shopping List - {shoppingList.length} items to order
-                        <button className="btn btn-sm" onClick={copyShoppingList}>Copy List</button>
+                <div className="card" style={{marginBottom:'16px',border:'1px solid var(--amber)',padding:'16px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
+                        <div style={{fontWeight:600,color:'var(--amber)'}}>🛒 Shopping List — {shoppingList.length} items needed</div>
+                        <div className="btn-group">
+                            <button className="btn btn-sm" onClick={copyShoppingList}>📋 Copy</button>
+                            <button className="btn btn-sm" onClick={() => setShowShoppingList(false)}>✕</button>
+                        </div>
                     </div>
                     {shoppingList.length === 0 ? (
-                        <p style={{color:'var(--text-muted)',textAlign:'center',padding:'20px'}}>All parts are fully stocked!</p>
+                        <p style={{color:'var(--green)',textAlign:'center',padding:'16px'}}>✓ All parts fully stocked!</p>
                     ) : (
-                        <div style={{maxHeight:'300px',overflowY:'auto'}}>
-                            <table className="table">
-                                <thead>
-                                    <tr>
-                                        <th>Part</th>
-                                        <th style={{textAlign:'center',width:'80px'}}>Have</th>
-                                        <th style={{textAlign:'center',width:'80px'}}>Need</th>
-                                        <th style={{textAlign:'center',width:'80px'}}>Order</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {shoppingList.map(p => (
-                                        <tr key={p.id}>
-                                            <td>
-                                                <div style={{fontSize:'12px',fontWeight:500}}>{p.name}</div>
-                                                <div style={{fontSize:'10px',color:'var(--text-muted)'}}>{p.category}</div>
-                                            </td>
-                                            <td style={{textAlign:'center',color:'var(--red)',fontFamily:'JetBrains Mono'}}>{p.inStock || 0}</td>
-                                            <td style={{textAlign:'center',fontFamily:'JetBrains Mono'}}>{p.need}</td>
-                                            <td style={{textAlign:'center',fontWeight:700,color:'var(--amber)',fontFamily:'JetBrains Mono'}}>{p.toOrder}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(250px, 1fr))',gap:'8px'}}>
+                            {shoppingList.map(p => (
+                                <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'var(--bg-input)',borderRadius:'6px',borderLeft: (p.inStock||0) === 0 ? '3px solid var(--red)' : '3px solid var(--amber)'}}>
+                                    <div style={{flex:1,minWidth:0}}>
+                                        <div style={{fontSize:'12px',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                                        <div style={{fontSize:'10px',color:'var(--text-muted)'}}>{p.category}</div>
+                                    </div>
+                                    <div style={{fontFamily:'JetBrains Mono',fontWeight:700,fontSize:'14px',color:'var(--amber)',marginLeft:'12px',whiteSpace:'nowrap'}}>
+                                        Order {p.toOrder}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -6258,13 +6218,13 @@ function Parts({ parts, setParts, toast, logActivity }) {
 
             {/* Add Part Form */}
             {showAddForm && (
-                <div className="card" style={{marginBottom:'16px',border:'1px solid var(--primary)'}}>
-                    <div className="card-title">Add New Part</div>
+                <div className="card" style={{marginBottom:'16px',border:'1px solid var(--primary)',padding:'16px'}}>
+                    <div style={{fontWeight:600,marginBottom:'12px'}}>Add New Part</div>
                     <div className="form-row">
                         <div className="form-group">
                             <label className="form-label">Category</label>
                             <select className="form-select" value={addForm.category} onChange={e => setAddForm({...addForm, category: e.target.value})}>
-                                {categories.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+                                {categories.map(c => <option key={c}>{c}</option>)}
                             </select>
                         </div>
                         <div className="form-group" style={{flex:2}}>
@@ -6276,7 +6236,7 @@ function Parts({ parts, setParts, toast, logActivity }) {
                             <input type="number" className="form-input" value={addForm.inStock} onChange={e => setAddForm({...addForm, inStock: parseInt(e.target.value) || 0})}/>
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Need Total</label>
+                            <label className="form-label">Need</label>
                             <input type="number" className="form-input" value={addForm.need} onChange={e => setAddForm({...addForm, need: parseInt(e.target.value) || 0})}/>
                         </div>
                         <div className="form-group">
@@ -6284,137 +6244,99 @@ function Parts({ parts, setParts, toast, logActivity }) {
                             <input type="number" className="form-input" value={addForm.perBuild} onChange={e => setAddForm({...addForm, perBuild: parseInt(e.target.value) || 0})}/>
                         </div>
                         <div className="form-group" style={{alignSelf:'flex-end'}}>
-                            <button className="btn btn-primary" onClick={addPart}>Add Part</button>
+                            <button className="btn btn-primary" onClick={addPart}>Add</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Search and Filters */}
-            <div className="card">
-                <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'16px',flexWrap:'wrap'}}>
-                    <div className="search-box">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                        <input type="text" placeholder="Search parts..." value={search} onChange={e => setSearch(e.target.value)} style={{width:'200px'}}/>
-                        {search && <button onClick={() => setSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'14px'}}>✕</button>}
-                    </div>
-                    <select className="form-select" style={{width:'auto'}} value={filter} onChange={e => setFilter(e.target.value)}>
-                        {categories.map(c => {
-                            const stat = categoryStats[c];
-                            const badge = stat ? (stat.outOfStock > 0 ? ` (${stat.outOfStock} out)` : stat.lowStock > 0 ? ` (${stat.lowStock} low)` : ` (${stat.total})`) : ` (${parts.length})`;
-                            return <option key={c} value={c}>{c}{badge}</option>;
-                        })}
-                    </select>
-                    <div className="btn-group">
-                        <button className={`btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : ''}`} onClick={() => setStatusFilter('all')}>All</button>
-                        <button className={`btn btn-sm ${statusFilter === 'outOfStock' ? 'btn-primary' : ''}`} style={{color: statusFilter !== 'outOfStock' ? 'var(--red)' : ''}} onClick={() => setStatusFilter('outOfStock')}>Out ({totals.outOfStock})</button>
-                        <button className={`btn btn-sm ${statusFilter === 'lowStock' ? 'btn-primary' : ''}`} style={{color: statusFilter !== 'lowStock' ? 'var(--amber)' : ''}} onClick={() => setStatusFilter('lowStock')}>Low ({totals.lowStock})</button>
-                    </div>
-                    <div className="btn-group" style={{marginLeft:'auto'}}>
-                        <button className={`btn btn-sm ${viewMode === 'table' ? 'btn-primary' : ''}`} onClick={() => setViewMode('table')}>Table</button>
-                        <button className={`btn btn-sm ${viewMode === 'cards' ? 'btn-primary' : ''}`} onClick={() => setViewMode('cards')}>Cards</button>
-                    </div>
-                    <span style={{fontSize:'12px',color:'var(--text-muted)'}}>{filtered.length} parts</span>
+            {/* Search + Controls */}
+            <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'16px',flexWrap:'wrap'}}>
+                <div className="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" placeholder="Search parts..." value={search} onChange={e => setSearch(e.target.value)} style={{width:'200px'}}/>
+                    {search && <button onClick={() => setSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'14px'}}>✕</button>}
                 </div>
+                <button className="btn btn-sm btn-secondary" onClick={toggleAll}>{allExpanded ? 'Collapse All' : 'Expand All'}</button>
+                <span style={{fontSize:'12px',color:'var(--text-muted)',marginLeft:'auto'}}>{Object.values(grouped).reduce((sum, arr) => sum + arr.length, 0)} parts shown</span>
+            </div>
 
-                {viewMode === 'table' ? (
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th style={{width:'50px'}}>Status</th>
-                                <th style={{width:'100px'}}>Category</th>
-                                <th>Part Name</th>
-                                <th style={{textAlign:'center',width:'140px'}}>Stock</th>
-                                <th style={{textAlign:'center',width:'80px'}}>Need</th>
-                                <th style={{textAlign:'center',width:'60px'}}>Per Build</th>
-                                <th style={{width:'50px'}}></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.length === 0 ? (
-                                <tr><td colSpan="7" style={{textAlign:'center',padding:'40px',color:'var(--text-muted)'}}>No parts found</td></tr>
-                            ) : filtered.map(p => {
-                                const inStock = parseInt(p.inStock) || 0;
-                                const need = parseInt(p.need) || 0;
-                                const stockStatus = getStockStatus(p);
-                                const stockPercent = need > 0 ? Math.min(100, (inStock / need) * 100) : 100;
-                                return (
-                                    <tr key={p.id} style={{background: stockStatus.status === 'out' ? 'var(--red-glow)' : stockStatus.status === 'low' ? 'var(--amber-glow)' : 'transparent'}}>
-                                        <td>
-                                            <span style={{display:'inline-block',padding:'2px 8px',borderRadius:'4px',fontSize:'10px',fontWeight:600,background: stockStatus.status === 'out' ? 'var(--red)' : stockStatus.status === 'low' ? 'var(--amber)' : stockStatus.status === 'good' ? 'var(--green)' : 'var(--bg-input)',color: stockStatus.status === 'na' ? 'var(--text-muted)' : '#000'}}>{stockStatus.label}</span>
-                                        </td>
-                                        <td style={{fontSize:'11px',color:'var(--text-muted)'}}>{p.category}</td>
-                                        <td>
-                                            <div style={{fontWeight:500,fontSize:'12px'}}>{p.name}</div>
-                                            {need > 0 && (
-                                                <div style={{marginTop:'4px',height:'4px',background:'var(--bg-input)',borderRadius:'2px',overflow:'hidden',maxWidth:'200px'}}>
-                                                    <div style={{height:'100%',width:`${stockPercent}%`,background: stockStatus.color,borderRadius:'2px'}}></div>
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td style={{textAlign:'center'}}>
-                                            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'4px'}}>
-                                                <button onClick={() => quickAdjust(p.id, -1)} className="btn btn-sm" style={{width:'24px',height:'24px',padding:0,fontSize:'14px'}}>−</button>
-                                                <input type="number" min="0" value={p.inStock || 0} onChange={e => updateQty(p.id, 'inStock', e.target.value)} style={{width:'50px',padding:'4px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'4px',color: stockStatus.color,textAlign:'center',fontFamily:'JetBrains Mono',fontWeight:600}}/>
-                                                <button onClick={() => quickAdjust(p.id, 1)} className="btn btn-sm" style={{width:'24px',height:'24px',padding:0,fontSize:'14px'}}>+</button>
-                                            </div>
-                                        </td>
-                                        <td style={{textAlign:'center'}}>
-                                            <input type="number" min="0" value={p.need || 0} onChange={e => updateQty(p.id, 'need', e.target.value)} style={{width:'50px',padding:'4px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'4px',color:'var(--text)',textAlign:'center',fontFamily:'JetBrains Mono'}}/>
-                                        </td>
-                                        <td style={{textAlign:'center',color:'var(--text-muted)',fontSize:'12px',fontFamily:'JetBrains Mono'}}>{p.perBuild || 0}</td>
-                                        <td><button className="btn btn-sm" style={{color:'var(--red)',padding:'2px 6px'}} onClick={() => del(p.id)}>✕</button></td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                ) : (
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))',gap:'12px'}}>
-                        {filtered.length === 0 ? (
-                            <div style={{gridColumn:'1/-1',textAlign:'center',padding:'40px',color:'var(--text-muted)'}}>No parts found</div>
-                        ) : filtered.map(p => {
-                            const inStock = parseInt(p.inStock) || 0;
-                            const need = parseInt(p.need) || 0;
-                            const stockStatus = getStockStatus(p);
-                            const stockPercent = need > 0 ? Math.min(100, (inStock / need) * 100) : 100;
-                            return (
-                                <div key={p.id} style={{background:'var(--bg-card)',border:`1px solid ${stockStatus.status === 'out' ? 'var(--red)' : stockStatus.status === 'low' ? 'var(--amber)' : 'var(--border)'}`,borderRadius:'8px',padding:'12px'}}>
-                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
-                                        <span style={{fontSize:'10px',color:'var(--text-muted)',background:'var(--bg-input)',padding:'2px 6px',borderRadius:'4px'}}>{p.category}</span>
-                                        <span style={{padding:'2px 8px',borderRadius:'4px',fontSize:'10px',fontWeight:600,background: stockStatus.status === 'out' ? 'var(--red)' : stockStatus.status === 'low' ? 'var(--amber)' : stockStatus.status === 'good' ? 'var(--green)' : 'var(--bg-input)',color: stockStatus.status === 'na' ? 'var(--text-muted)' : '#000'}}>{stockStatus.label}</span>
-                                    </div>
-                                    <div style={{fontWeight:500,fontSize:'13px',marginBottom:'12px',minHeight:'36px'}}>{p.name}</div>
-                                    {need > 0 && (
-                                        <div style={{marginBottom:'12px'}}>
-                                            <div style={{height:'6px',background:'var(--bg-input)',borderRadius:'3px',overflow:'hidden'}}>
-                                                <div style={{height:'100%',width:`${stockPercent}%`,background: stockStatus.color,borderRadius:'3px'}}></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                        <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                                            <button onClick={() => quickAdjust(p.id, -1)} className="btn btn-sm" style={{width:'28px',height:'28px',padding:0}}>−</button>
-                                            <div style={{textAlign:'center'}}>
-                                                <div style={{fontSize:'20px',fontWeight:700,fontFamily:'JetBrains Mono',color:stockStatus.color}}>{inStock}</div>
-                                                <div style={{fontSize:'9px',color:'var(--text-muted)'}}>IN STOCK</div>
-                                            </div>
-                                            <button onClick={() => quickAdjust(p.id, 1)} className="btn btn-sm" style={{width:'28px',height:'28px',padding:0}}>+</button>
-                                        </div>
-                                        <div style={{textAlign:'center'}}>
-                                            <div style={{fontSize:'16px',fontWeight:600,fontFamily:'JetBrains Mono'}}>{need}</div>
-                                            <div style={{fontSize:'9px',color:'var(--text-muted)'}}>NEED</div>
-                                        </div>
-                                        <div style={{textAlign:'center'}}>
-                                            <div style={{fontSize:'14px',fontFamily:'JetBrains Mono',color:'var(--text-muted)'}}>{p.perBuild || 0}</div>
-                                            <div style={{fontSize:'9px',color:'var(--text-muted)'}}>PER BUILD</div>
-                                        </div>
-                                        <button className="btn btn-sm" style={{color:'var(--red)'}} onClick={() => del(p.id)}>✕</button>
-                                    </div>
+            {/* Parts grouped by category */}
+            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                {Object.entries(grouped).map(([cat, catParts]) => {
+                    const isOpen = expandedCats[cat] !== false; // default open
+                    const catOut = catParts.filter(p => (p.inStock||0) === 0 && (p.need||0) > 0).length;
+                    const catLow = catParts.filter(p => (p.inStock||0) > 0 && (p.inStock||0) <= (p.need||0) && (p.need||0) > 0).length;
+                    
+                    return (
+                        <div key={cat} className="card" style={{padding:0,overflow:'hidden'}}>
+                            {/* Category header - clickable */}
+                            <div onClick={() => toggleCat(cat)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',cursor:'pointer',background:'var(--bg-card)',borderBottom: isOpen ? '1px solid var(--border)' : 'none',userSelect:'none'}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                                    <span style={{color:'var(--text-muted)',fontSize:'12px',transition:'transform 0.15s',transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)'}}>▶</span>
+                                    <span style={{fontWeight:600,fontSize:'13px'}}>{cat}</span>
+                                    <span style={{fontSize:'11px',color:'var(--text-muted)'}}>({catParts.length})</span>
                                 </div>
-                            );
-                        })}
-                    </div>
+                                <div style={{display:'flex',gap:'8px'}}>
+                                    {catOut > 0 && <span style={{fontSize:'10px',fontWeight:600,padding:'2px 8px',borderRadius:'4px',background:'var(--red)',color:'#000'}}>{catOut} OUT</span>}
+                                    {catLow > 0 && <span style={{fontSize:'10px',fontWeight:600,padding:'2px 8px',borderRadius:'4px',background:'var(--amber)',color:'#000'}}>{catLow} LOW</span>}
+                                    {catOut === 0 && catLow === 0 && <span style={{fontSize:'10px',fontWeight:600,padding:'2px 8px',borderRadius:'4px',background:'var(--green)',color:'#000'}}>✓ OK</span>}
+                                </div>
+                            </div>
+                            
+                            {/* Parts list */}
+                            {isOpen && (
+                                <div>
+                                    {catParts.map((p, idx) => {
+                                        const ss = getStockStatus(p);
+                                        const inStock = p.inStock || 0;
+                                        const need = p.need || 0;
+                                        const pct = need > 0 ? Math.min(100, (inStock / need) * 100) : 100;
+                                        
+                                        return (
+                                            <div key={p.id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'10px 16px',borderBottom: idx < catParts.length - 1 ? '1px solid var(--border)' : 'none',background: ss.bg}}>
+                                                {/* Status dot */}
+                                                <span className="tip" data-tip={ss.label} style={{width:'8px',height:'8px',borderRadius:'50%',background:ss.color,flexShrink:0}}></span>
+                                                
+                                                {/* Part name + bar */}
+                                                <div style={{flex:1,minWidth:0}}>
+                                                    <div style={{fontSize:'12px',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                                                    {need > 0 && <div style={{marginTop:'4px',height:'3px',background:'var(--bg-input)',borderRadius:'2px',maxWidth:'180px'}}>
+                                                        <div style={{height:'100%',width:`${pct}%`,background:ss.color,borderRadius:'2px'}}></div>
+                                                    </div>}
+                                                </div>
+                                                
+                                                {/* Stock controls */}
+                                                <div style={{display:'flex',alignItems:'center',gap:'4px',flexShrink:0}}>
+                                                    <button onClick={() => quickAdjust(p.id, -1)} className="btn btn-sm" style={{width:'24px',height:'24px',padding:0,fontSize:'14px'}}>−</button>
+                                                    <input type="number" min="0" value={inStock} onChange={e => updateQty(p.id, 'inStock', e.target.value)} style={{width:'44px',padding:'3px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'4px',color:ss.color,textAlign:'center',fontFamily:'JetBrains Mono',fontWeight:700,fontSize:'13px'}}/>
+                                                    <button onClick={() => quickAdjust(p.id, 1)} className="btn btn-sm" style={{width:'24px',height:'24px',padding:0,fontSize:'14px'}}>+</button>
+                                                </div>
+                                                
+                                                {/* Need */}
+                                                <div style={{textAlign:'center',flexShrink:0,width:'55px'}}>
+                                                    <input type="number" min="0" value={need} onChange={e => updateQty(p.id, 'need', e.target.value)} style={{width:'44px',padding:'3px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'4px',color:'var(--text)',textAlign:'center',fontFamily:'JetBrains Mono',fontSize:'12px'}}/>
+                                                    <div style={{fontSize:'8px',color:'var(--text-muted)',marginTop:'1px'}}>NEED</div>
+                                                </div>
+                                                
+                                                {/* Per Build */}
+                                                <div style={{textAlign:'center',flexShrink:0,width:'30px'}}>
+                                                    <div style={{fontSize:'12px',fontFamily:'JetBrains Mono',color:'var(--text-muted)'}}>{p.perBuild || 0}</div>
+                                                    <div style={{fontSize:'8px',color:'var(--text-muted)'}}>×</div>
+                                                </div>
+                                                
+                                                {/* Delete */}
+                                                <button className="btn btn-sm" style={{color:'var(--red)',padding:'2px 6px',fontSize:'11px',opacity:0.5}} onClick={() => del(p.id)}>✕</button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                {Object.keys(grouped).length === 0 && (
+                    <div style={{textAlign:'center',padding:'40px',color:'var(--text-muted)'}}>No parts match your search</div>
                 )}
             </div>
         </div>
