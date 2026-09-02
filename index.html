@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T013";
+    var APP_BUILD = "2026-02-27T015";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -4950,10 +4950,10 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     const sorted = useMemo(() => [...ships].sort(sortHull), [ships]);
     const [form, setForm] = useState({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: '' });
     const [editingTrip, setEditingTrip] = useState(null);
-    const [viewMode, setViewMode] = useState('list');
-    const [calMonth, setCalMonth] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState(null);
+    const [showTripForm, setShowTripForm] = useState(false);
+    const [tripFilter, setTripFilter] = useState('upcoming');
     const [selectedSite, setSelectedSite] = useState(null);
+    const [siteTab, setSiteTab] = useState('map');
     const siteMapRef = React.useRef(null);
     const siteMapInstance = React.useRef(null);
     const [editingPOC, setEditingPOC] = useState(null);
@@ -5257,7 +5257,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     
     // Leaflet map for site detail view
     useEffect(() => {
-        if (!selectedSite || !siteData[selectedSite]) return;
+        if (!selectedSite || !siteData[selectedSite] || siteTab !== 'map') return;
         let cancelled = false;
         const timer = setTimeout(() => {
             const el = document.getElementById('site-leaflet-map');
@@ -5268,7 +5268,6 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
             const map = L.map(el, { zoomControl: true, scrollWheelZoom: true }).setView([site.lat, site.lng], site.mapZoom || 16);
             siteMapInstance.current = map;
             
-            // Satellite tiles (ESRI)
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 attribution: '&copy; Esri', maxZoom: 19
             }).addTo(map);
@@ -5276,7 +5275,6 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                 maxZoom: 19, opacity: 0.6
             }).addTo(map);
             
-            // Gate marker
             const gateIcon = L.divIcon({
                 className: '', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34],
                 html: '<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#ef4444;border:2px solid #fff;border-radius:50%;font-size:13px;font-weight:900;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.6);font-family:Arial,sans-serif">G</div>'
@@ -5285,7 +5283,6 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                 .bindPopup('<b style="color:#ef4444">' + site.gate.label + '</b>')
                 .addTo(map);
             
-            // Fetch REAL boundary from OpenStreetMap Nominatim
             if (site.osmQuery) {
                 const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(site.osmQuery) + '&format=json&polygon_geojson=1&limit=1';
                 fetch(url, { headers: { 'Accept': 'application/json' } })
@@ -5293,22 +5290,17 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                     .then(data => {
                         if (cancelled || !data || !data[0] || !data[0].geojson) return;
                         const geojson = data[0].geojson;
-                        // Remove fallback boundary
-                        // Draw real OSM boundary
                         const osmLayer = L.geoJSON(geojson, {
                             style: { color: '#00d4ff', weight: 3, fillColor: '#00d4ff', fillOpacity: 0.08, dashArray: '10,6', lineCap: 'round' }
                         }).addTo(map);
-                        // Fit map to real boundary
                         map.fitBounds(osmLayer.getBounds(), { padding: [30, 30] });
                     })
-                    .catch(err => { console.log('OSM boundary fetch failed, using fallback:', err); });
+                    .catch(err => { console.log('OSM boundary fetch failed:', err); });
             }
-            
-
         }, 100);
         
         return () => { cancelled = true; clearTimeout(timer); if (siteMapInstance.current) { try { siteMapInstance.current.remove(); } catch(e){} siteMapInstance.current = null; } };
-    }, [selectedSite]);
+    }, [selectedSite, siteTab]);
     
     const getSitePOCs = (siteKey) => sitePOCs[siteKey] || siteData[siteKey]?.pocs_default || [];
     const savePOC = (siteKey) => {
@@ -5331,82 +5323,391 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
         if (!form.start) { toast('Select a start date', 'error'); return; }
         if (editingTrip) {
             setInstalls(p => p.map(i => i.id === editingTrip ? { ...i, ...form } : i));
-            logActivity(`Updated trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`, { ship: form.ship, location: form.location, start: form.start, end: form.end });
+            logActivity(`Updated trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`);
             setEditingTrip(null);
             toast('Trip updated!', 'success');
         } else {
             setInstalls(p => [...p, { id: genId('T'), ...form }]); 
-            logActivity(`Scheduled trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`, { ship: form.ship, location: form.location, start: form.start, end: form.end });
+            logActivity(`Scheduled trip: ${form.ship} to ${form.location} on ${fmtDate(form.start)}`);
             toast('Trip added!', 'success'); 
         }
         setForm({ ship: '', start: '', end: '', location: 'Mayport, FL', purpose: '', notes: '', status: 'Scheduled', techs: '' }); 
+        setShowTripForm(false);
     };
     const del = (id) => { 
         const trip = installs.find(i => i.id === id);
         if (confirm('Delete trip?')) { 
             setInstalls(p => p.filter(i => i.id !== id)); 
-            logActivity(`Deleted trip: ${trip?.ship || 'Unknown'} to ${trip?.location || 'Unknown'}`, { ship: trip?.ship, location: trip?.location });
+            logActivity(`Deleted trip: ${trip?.ship || 'Unknown'} to ${trip?.location || 'Unknown'}`);
             toast('Deleted', 'info'); 
         } 
     };
     
-    // Calendar helpers
-    const getDaysInMonth = (date) => {
-        const year = date.getFullYear(), month = date.getMonth();
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const days = [];
-        const prevMonthDays = new Date(year, month, 0).getDate();
-        for (let i = firstDay - 1; i >= 0; i--) days.push({ day: prevMonthDays - i, otherMonth: true });
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-            const tripsOnDay = installs.filter(inst => inst.start <= dateStr && (inst.end >= dateStr || !inst.end));
-            days.push({ day: i, date: dateStr, trips: tripsOnDay, otherMonth: false });
-        }
-        const remaining = 42 - days.length;
-        for (let i = 1; i <= remaining; i++) days.push({ day: i, otherMonth: true });
-        return days;
-    };
-    const calDays = useMemo(() => getDaysInMonth(calMonth), [calMonth, installs]);
-    const today = toDateString(new Date());
+    const todayStr = toDateString(new Date());
+    const activeTrips = installs.filter(t => t.status === 'In Progress');
+    const upcomingTrips = installs.filter(t => t.status === 'Scheduled' && t.start >= todayStr).sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start));
+    const pastTrips = installs.filter(t => t.status === 'Completed' || t.status === 'Cancelled').sort((a,b) => parseLocalDate(b.start) - parseLocalDate(a.start));
+    const allTrips = installs.sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start));
     
-    // Trips for selected date or upcoming
-    const selectedTrips = selectedDate 
-        ? installs.filter(t => t.start <= selectedDate && (t.end >= selectedDate || !t.end))
-        : installs.filter(t => t.start >= today).sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start)).slice(0, 5);
+    const filteredTrips = tripFilter === 'active' ? activeTrips : tripFilter === 'upcoming' ? upcomingTrips : tripFilter === 'past' ? pastTrips : allTrips;
+
+    const statusColor = (s) => s === 'Completed' ? 'var(--green)' : s === 'In Progress' ? 'var(--blue)' : s === 'Scheduled' ? 'var(--primary)' : s === 'Delayed' ? 'var(--amber)' : s === 'Cancelled' ? 'var(--red)' : 'var(--text-muted)';
+    const siteFlag = (key) => key === 'yokosuka' ? '🇯🇵' : key === 'rota' ? '🇪🇸' : '🇺🇸';
 
     return (
         <div className="page active">
             <div className="page-header">
                 <div className="page-header-left">
-                    <h1 className="page-title">{selectedSite ? siteData[selectedSite]?.abbr : 'Trips & Sites'}</h1>
-                    <p className="page-sub">{selectedSite ? siteData[selectedSite]?.name : 'Scheduled travel, base info, and logistics'}</p>
+                    <h1 className="page-title">{selectedSite ? siteData[selectedSite]?.abbr : 'Trips & Bases'}</h1>
+                    <p className="page-sub">{selectedSite ? siteData[selectedSite]?.name : `${installs.length} trips • ${Object.keys(siteData).length} bases`}</p>
                 </div>
-                {!selectedSite && <div className="btn-group">
-                    <button className={`btn ${viewMode==='list'?'btn-primary':'btn-secondary'}`} onClick={() => setViewMode('list')}>📋 List</button>
-                    <button className={`btn ${viewMode==='calendar'?'btn-primary':'btn-secondary'}`} onClick={() => setViewMode('calendar')}>📅 Calendar</button>
-                    <button className="btn btn-secondary" onClick={() => { setShowShipping(true); setShipType('unclass'); setShipForm({...emptyShipForm}); setActiveShipDest(null); }}>📦 Shipping</button>
-                </div>}
+                <div className="btn-group">
+                    {selectedSite && <button className="btn btn-secondary" onClick={() => {setSelectedSite(null);setEditingPOC(null);setSiteTab('map');}}>← All Bases</button>}
+                    {!selectedSite && <button className="btn btn-primary" onClick={() => { setShowTripForm(true); setEditingTrip(null); setForm({ ship:'', start:'', end:'', location:'Mayport, FL', purpose:'', notes:'', status:'Scheduled', techs:'' }); }}>+ New Trip</button>}
+                    {!selectedSite && <button className="btn btn-secondary" onClick={() => { setShowShipping(true); setShipType('unclass'); setShipForm({...emptyShipForm}); setActiveShipDest(null); }}>📦 Shipping</button>}
+                </div>
             </div>
             
-            {/* Installation Sites - clickable location bar */}
-            {!selectedSite && (
-                <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'16px'}}>
-                    {Object.entries(siteData).map(([key, site]) => {
-                        const shipCount = sorted.filter(s => s.location && site.city && s.location.includes(site.city.split(',')[0])).length;
-                        return (
-                            <button key={key} className="btn btn-secondary" style={{padding:'8px 14px',fontSize:'12px',display:'flex',alignItems:'center',gap:'6px'}} onClick={() => setSelectedSite(key)}>
-                                <span>{key==='yokosuka'?'🇯🇵':key==='rota'?'🇪🇸':'🇺🇸'}</span>
-                                <span style={{fontWeight:600}}>{site.abbr}</span>
-                                <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:400}}>({site.city})</span>
-                                {shipCount > 0 && <span style={{background:'var(--primary)',color:'#fff',borderRadius:'10px',padding:'1px 7px',fontSize:'10px',fontWeight:700}}>{shipCount}</span>}
-                            </button>
-                        );
-                    })}
+            {/* ═══════════════ MAIN VIEW (no site selected) ═══════════════ */}
+            {!selectedSite && (<>
+            
+            {/* Active trips banner */}
+            {activeTrips.length > 0 && (
+                <div style={{marginBottom:'16px',padding:'14px 18px',background:'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.05))',border:'1px solid rgba(59,130,246,0.3)',borderRadius:'10px',display:'flex',alignItems:'center',gap:'12px',flexWrap:'wrap'}}>
+                    <span style={{fontSize:'11px',fontWeight:700,color:'var(--blue)',letterSpacing:'1px'}}>🟢 ACTIVE NOW</span>
+                    {activeTrips.map(t => (
+                        <span key={t.id} style={{padding:'4px 12px',background:'rgba(59,130,246,0.15)',borderRadius:'6px',fontSize:'12px',fontWeight:600,color:'var(--text)'}}>
+                            {t.ship} — {t.location} {t.techs ? `(${t.techs})` : ''}
+                        </span>
+                    ))}
                 </div>
             )}
             
-            {/* Shipping Template Modal */}
+            {/* Base selector grid */}
+            <div style={{marginBottom:'20px'}}>
+                <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px'}}>📍 INSTALLATION BASES</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'8px'}}>
+                    {Object.entries(siteData).map(([key, site]) => {
+                        const shipCount = sorted.filter(s => s.location && site.city && s.location.includes(site.city.split(',')[0])).length;
+                        const pocCount = getSitePOCs(key).filter(p => p.name).length;
+                        return (
+                            <div key={key} onClick={() => { setSelectedSite(key); setSiteTab('map'); }} style={{padding:'14px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',cursor:'pointer',transition:'all 0.15s',display:'flex',flexDirection:'column',gap:'6px'}} onMouseOver={e => { e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.transform='translateY(-1px)'; }} onMouseOut={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.transform='translateY(0)'; }}>
+                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                    <span style={{fontSize:'20px'}}>{siteFlag(key)}</span>
+                                    {shipCount > 0 && <span style={{background:'var(--primary)',color:'#fff',borderRadius:'10px',padding:'1px 8px',fontSize:'10px',fontWeight:700}}>{shipCount}</span>}
+                                </div>
+                                <div style={{fontWeight:700,fontSize:'14px'}}>{site.abbr}</div>
+                                <div style={{fontSize:'11px',color:'var(--text-muted)'}}>{site.city}</div>
+                                <div style={{display:'flex',gap:'6px',marginTop:'2px'}}>
+                                    {pocCount > 0 && <span style={{fontSize:'9px',color:'var(--green)'}}>👤 {pocCount}</span>}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+            
+            {/* Trip list */}
+            <div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
+                    <div className="btn-group">
+                        {[{k:'upcoming',l:'Upcoming',c:upcomingTrips.length},{k:'active',l:'Active',c:activeTrips.length},{k:'past',l:'Past',c:pastTrips.length},{k:'all',l:'All',c:installs.length}].map(f => (
+                            <button key={f.k} className={`btn btn-sm ${tripFilter===f.k ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTripFilter(f.k)}>{f.l} ({f.c})</button>
+                        ))}
+                    </div>
+                </div>
+                
+                {filteredTrips.length === 0 ? (
+                    <div className="card" style={{padding:'40px',textAlign:'center',color:'var(--text-muted)'}}>
+                        <div style={{fontSize:'28px',marginBottom:'8px'}}>✈️</div>
+                        <div style={{fontSize:'13px'}}>No {tripFilter} trips</div>
+                    </div>
+                ) : (
+                    <div className="card" style={{padding:0,overflow:'hidden'}}>
+                        {filteredTrips.map((trip, idx) => {
+                            const isActive = trip.status === 'In Progress';
+                            return (
+                                <div key={trip.id} style={{display:'flex',alignItems:'center',gap:'14px',padding:'12px 16px',borderBottom: idx < filteredTrips.length - 1 ? '1px solid var(--border)' : 'none',background: isActive ? 'rgba(59,130,246,0.05)' : 'transparent',borderLeft: `3px solid ${statusColor(trip.status)}`}}>
+                                    <div style={{minWidth:'70px'}}>
+                                        <div style={{fontSize:'13px',fontWeight:700,fontFamily:'JetBrains Mono'}}>{trip.ship}</div>
+                                    </div>
+                                    <div style={{flex:1,minWidth:0}}>
+                                        <div style={{fontSize:'12px',color:'var(--text-dim)',display:'flex',alignItems:'center',gap:'6px'}}>
+                                            <span>📍 {trip.location}</span>
+                                            {trip.purpose && <span style={{color:'var(--text-muted)'}}>• {trip.purpose}</span>}
+                                        </div>
+                                        <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>
+                                            {fmtDate(trip.start)}{trip.end ? ` → ${fmtDate(trip.end)}` : ''}
+                                            {trip.techs && <span> • 👤 {trip.techs}</span>}
+                                        </div>
+                                    </div>
+                                    <span style={{padding:'3px 10px',borderRadius:'6px',fontSize:'10px',fontWeight:600,background: `${statusColor(trip.status)}22`,color:statusColor(trip.status),border:`1px solid ${statusColor(trip.status)}44`,whiteSpace:'nowrap'}}>{trip.status}</span>
+                                    <div style={{display:'flex',gap:'4px'}}>
+                                        <button className="btn btn-sm btn-secondary" style={{padding:'4px 8px',fontSize:'10px'}} onClick={() => { setForm({ship:trip.ship,location:trip.location,start:trip.start,end:trip.end||'',purpose:trip.purpose||'',status:trip.status,techs:trip.techs||'',notes:trip.notes||''}); setEditingTrip(trip.id); setShowTripForm(true); }}>✏️</button>
+                                        <button className="btn btn-sm" style={{padding:'4px 8px',fontSize:'10px',color:'var(--red)'}} onClick={() => del(trip.id)}>🗑️</button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+            
+            </>)}
+            
+            {/* ═══════════════ SITE DETAIL VIEW ═══════════════ */}
+            {selectedSite && siteData[selectedSite] && (() => {
+                const site = siteData[selectedSite];
+                const pocs = getSitePOCs(selectedSite);
+                const siteTrips = installs.filter(t => site.city && t.location?.includes(site.city.split(',')[0]));
+                const siteTabs = [
+                    { id: 'map', label: '🗺️ Map', },
+                    { id: 'contacts', label: `👤 Contacts (${pocs.filter(p=>p.name).length})` },
+                    { id: 'directions', label: '🧭 Directions' },
+                    { id: 'shipping', label: '📦 Shipping' },
+                    { id: 'notes', label: '📝 Notes' },
+                ];
+                
+                return (
+                    <div>
+                        {/* Site header with flag and info */}
+                        <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'16px',padding:'16px 20px',background:'var(--bg-card)',borderRadius:'10px',border:'1px solid var(--border)'}}>
+                            <span style={{fontSize:'36px'}}>{siteFlag(selectedSite)}</span>
+                            <div style={{flex:1}}>
+                                <div style={{fontSize:'16px',fontWeight:700}}>{site.name}</div>
+                                <div style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}>{site.base_info}</div>
+                            </div>
+                            {site.ships_homeported?.length > 0 && (
+                                <div style={{textAlign:'right',fontSize:'11px',color:'var(--text-muted)'}}>
+                                    <div style={{fontWeight:600,marginBottom:'2px'}}>🚢 Ships</div>
+                                    {site.ships_homeported.slice(0,2).map((s,i) => <div key={i}>{s}</div>)}
+                                </div>
+                            )}
+                            <button className="btn btn-sm btn-secondary" onClick={() => {
+                                const win = window.open('','','width=900,height=700');
+                                win.document.write('<html><head><title>' + site.abbr + ' - Base Reference</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#222}h2{margin:0 0 4px}h4{margin:12px 0 6px;color:#555}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}.card{padding:10px;border:1px solid #ccc;border-radius:6px;font-size:12px}.card b{display:block;margin-bottom:4px}.route{padding:12px;background:#f0f0f0;border-radius:6px;margin:12px 0;font-size:13px}@media print{body{margin:10px}}</style></head><body>');
+                                win.document.write('<h2>🗺️ ' + site.abbr + ' — ' + site.name + '</h2>');
+                                win.document.write('<p style="font-size:12px;color:#666;margin:4px 0 12px">Base reference — print & bring onsite.</p>');
+                                if (pocs.filter(p=>p.name).length > 0) {
+                                    win.document.write('<h4>👤 Contacts</h4>');
+                                    pocs.filter(p=>p.name).forEach(p => {
+                                        win.document.write('<div style="font-size:12px;margin:4px 0"><b>' + p.name + '</b> — ' + p.role + (p.phone ? ' | 📞 ' + p.phone : '') + (p.email ? ' | ✉️ ' + p.email : '') + '</div>');
+                                    });
+                                }
+                                win.document.write('<h4>🧭 Directions</h4>');
+                                win.document.write('<div class="route">' + site.route_info + '</div>');
+                                win.document.write('<h4>📦 Shipping</h4>');
+                                win.document.write('<div class="grid" style="grid-template-columns:1fr 1fr">');
+                                win.document.write('<div class="card" style="border-left:3px solid green;font-family:monospace;font-size:11px">' + site.addresses.unclass.lines.join('<br/>') + '</div>');
+                                win.document.write('<div class="card" style="border-left:3px solid red;font-family:monospace;font-size:11px">' + site.addresses.class.lines.join('<br/>') + '</div>');
+                                win.document.write('</div></body></html>');
+                                win.document.close();
+                                setTimeout(() => win.print(), 300);
+                            }}>🖨️ Print</button>
+                        </div>
+                        
+                        {/* Tabs */}
+                        <div style={{display:'flex',gap:'0',borderBottom:'1px solid var(--border)',marginBottom:'16px'}}>
+                            {siteTabs.map(tab => (
+                                <button key={tab.id} onClick={() => setSiteTab(tab.id)} style={{padding:'10px 18px',background:'none',border:'none',borderBottom: siteTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',color: siteTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',fontWeight: siteTab === tab.id ? 600 : 400,cursor:'pointer',fontSize:'12px',transition:'all 0.15s'}}>
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                        
+                        {/* TAB: Map */}
+                        {siteTab === 'map' && (
+                            <div className="card" style={{padding:'0',overflow:'hidden'}}>
+                                <div id="site-leaflet-map" style={{height:'500px',background:'#1a1a2e'}}></div>
+                            </div>
+                        )}
+                        
+                        {/* TAB: Contacts */}
+                        {siteTab === 'contacts' && (
+                            <div>
+                                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'12px'}}>
+                                    <button className="btn btn-sm btn-primary" onClick={() => {setEditingPOC('new');setPocForm({name:'',role:'',phone:'',email:'',notes:''});}}>+ Add Contact</button>
+                                </div>
+                                
+                                {editingPOC && (
+                                    <div className="card" style={{padding:'16px',marginBottom:'12px',border:'1px solid var(--primary)'}}>
+                                        <div style={{fontSize:'12px',fontWeight:600,marginBottom:'12px',color:'var(--primary)'}}>{editingPOC === 'new' ? 'Add New Contact' : 'Edit Contact'}</div>
+                                        <div className="form-row">
+                                            <div className="form-group"><label className="form-label">Name</label><input className="form-input" placeholder="John Smith" value={pocForm.name} onChange={e => setPocForm({...pocForm,name:e.target.value})}/></div>
+                                            <div className="form-group"><label className="form-label">Role / Title</label><input className="form-input" placeholder="PMR Onsite Rep" value={pocForm.role} onChange={e => setPocForm({...pocForm,role:e.target.value})}/></div>
+                                        </div>
+                                        <div className="form-row">
+                                            <div className="form-group"><label className="form-label">Phone</label><input className="form-input" placeholder="(555) 123-4567" value={pocForm.phone} onChange={e => setPocForm({...pocForm,phone:e.target.value})}/></div>
+                                            <div className="form-group"><label className="form-label">Email</label><input className="form-input" placeholder="john.smith@navy.mil" value={pocForm.email} onChange={e => setPocForm({...pocForm,email:e.target.value})}/></div>
+                                        </div>
+                                        <div className="form-group"><label className="form-label">Notes</label><input className="form-input" placeholder="Best contact for coordinating arrivals..." value={pocForm.notes} onChange={e => setPocForm({...pocForm,notes:e.target.value})}/></div>
+                                        <div className="btn-group" style={{marginTop:'12px'}}>
+                                            <button className="btn btn-sm btn-primary" onClick={() => savePOC(selectedSite)}>💾 Save</button>
+                                            <button className="btn btn-sm btn-secondary" onClick={() => setEditingPOC(null)}>Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {pocs.length === 0 ? (
+                                    <div className="card" style={{padding:'40px',textAlign:'center',color:'var(--text-muted)'}}>No contacts added yet</div>
+                                ) : (
+                                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))',gap:'10px'}}>
+                                        {pocs.map(poc => (
+                                            <div key={poc.id} className="card" style={{padding:'14px'}}>
+                                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
+                                                    <div>
+                                                        <div style={{fontWeight:600,fontSize:'14px'}}>{poc.name || '(No name)'}</div>
+                                                        <div style={{fontSize:'11px',color:'var(--primary)',fontWeight:500}}>{poc.role}</div>
+                                                    </div>
+                                                    <div style={{display:'flex',gap:'4px'}}>
+                                                        <button className="btn btn-sm btn-secondary" style={{padding:'2px 6px',fontSize:'10px'}} onClick={() => {setEditingPOC(poc.id);setPocForm({name:poc.name,role:poc.role,phone:poc.phone,email:poc.email,notes:poc.notes});}}>✏️</button>
+                                                        <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'10px',color:'var(--red)'}} onClick={() => deletePOC(selectedSite, poc.id)}>×</button>
+                                                    </div>
+                                                </div>
+                                                {poc.phone && <div style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px'}}>📞 <a href={`tel:${poc.phone}`} style={{color:'var(--text-dim)',textDecoration:'none'}}>{poc.phone}</a></div>}
+                                                {poc.email && <div style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px'}}>✉️ <a href={`mailto:${poc.email}`} style={{color:'var(--primary)',textDecoration:'none'}}>{poc.email}</a></div>}
+                                                {poc.notes && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'6px',fontStyle:'italic'}}>{poc.notes}</div>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {/* Trips to this base */}
+                                {siteTrips.length > 0 && (
+                                    <div style={{marginTop:'16px',padding:'14px',background:'var(--green-glow)',borderRadius:'8px',border:'1px solid var(--green)'}}>
+                                        <div style={{fontSize:'11px',fontWeight:600,color:'var(--green)',marginBottom:'8px'}}>✈️ TRIPS TO {site.abbr} ({siteTrips.length})</div>
+                                        {siteTrips.map(t => (
+                                            <div key={t.id} style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px',display:'flex',alignItems:'center',gap:'8px'}}>
+                                                <span style={{fontWeight:600}}>{t.ship}</span>
+                                                <span style={{color:'var(--text-muted)'}}>•</span>
+                                                <span>{fmtDate(t.start)}{t.end ? ` → ${fmtDate(t.end)}` : ''}</span>
+                                                <span style={{padding:'1px 6px',borderRadius:'4px',fontSize:'9px',fontWeight:600,background:`${statusColor(t.status)}22`,color:statusColor(t.status)}}>{t.status}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* TAB: Directions */}
+                        {siteTab === 'directions' && (
+                            <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+                                <div className="card" style={{padding:'16px'}}>
+                                    <div style={{fontSize:'13px',fontWeight:700,marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px'}}>🚗 Gate Access</div>
+                                    <div style={{fontSize:'13px',color:'var(--text-dim)',lineHeight:'1.7'}}>{site.gate_info}</div>
+                                </div>
+                                <div className="card" style={{padding:'16px'}}>
+                                    <div style={{fontSize:'13px',fontWeight:700,marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px'}}>🅿️ Parking</div>
+                                    <div style={{fontSize:'13px',color:'var(--text-dim)',lineHeight:'1.7'}}>{site.parking_info}</div>
+                                </div>
+                                <div className="card" style={{padding:'16px',border:'1px solid var(--primary)'}}>
+                                    <div style={{fontSize:'13px',fontWeight:700,marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px',color:'var(--primary)'}}>🧭 Route to Piers</div>
+                                    <div style={{fontSize:'13px',color:'var(--text)',lineHeight:'1.7',fontWeight:500}}>{site.route_info}</div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* TAB: Shipping */}
+                        {siteTab === 'shipping' && (
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                                <div className="card" style={{padding:'18px',borderLeft:'3px solid var(--green)'}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
+                                        <span style={{background:'var(--green)',color:'#000',padding:'3px 10px',borderRadius:'4px',fontSize:'10px',fontWeight:700}}>UNCLASSIFIED</span>
+                                    </div>
+                                    <div style={{fontFamily:'JetBrains Mono',lineHeight:'1.9',fontSize:'12px'}}>
+                                        {site.addresses.unclass.lines.map((line, i) => (
+                                            <div key={i} style={{color: line.startsWith('⚠️') ? 'var(--amber)' : 'var(--text)',fontWeight: i===0 ? 700 : 400}}>{line}</div>
+                                        ))}
+                                    </div>
+                                    <button className="btn btn-sm btn-primary" style={{marginTop:'14px'}} onClick={() => {
+                                        navigator.clipboard?.writeText(site.addresses.unclass.lines.filter(l=>!l.startsWith('⚠️')).join('\n'));
+                                        toast('Address copied!','success');
+                                    }}>📋 Copy</button>
+                                </div>
+                                <div className="card" style={{padding:'18px',borderLeft:'3px solid var(--red)'}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
+                                        <span style={{background:'var(--red)',color:'#fff',padding:'3px 10px',borderRadius:'4px',fontSize:'10px',fontWeight:700}}>CLASSIFIED</span>
+                                    </div>
+                                    <div style={{fontFamily:'JetBrains Mono',lineHeight:'1.9',fontSize:'12px'}}>
+                                        {site.addresses.class.lines.map((line, i) => (
+                                            <div key={i} style={{color: line.startsWith('⚠️') ? 'var(--amber)' : 'var(--text)',fontWeight: i===0 ? 700 : 400}}>{line}</div>
+                                        ))}
+                                    </div>
+                                    <button className="btn btn-sm btn-primary" style={{marginTop:'14px'}} onClick={() => {
+                                        navigator.clipboard?.writeText(site.addresses.class.lines.filter(l=>!l.startsWith('⚠️')).join('\n'));
+                                        toast('Address copied!','success');
+                                    }}>📋 Copy</button>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* TAB: Notes */}
+                        {siteTab === 'notes' && (
+                            <div className="card" style={{padding:'16px'}}>
+                                <textarea className="form-textarea" style={{minHeight:'250px',fontSize:'13px',lineHeight:'1.6'}} placeholder={"Notes about " + site.abbr + "...\n\n• Best hotel nearby\n• WiFi info / local food spots\n• Key building numbers\n• Badge/access requirements\n• Rental car / Uber notes"} value={siteNotes[selectedSite]||''} onChange={e => setSiteNotes({...siteNotes, [selectedSite]: e.target.value})}/>
+                                <div style={{marginTop:'8px',fontSize:'11px',color:'var(--text-muted)'}}>💾 Auto-saved to browser</div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
+            
+            {/* ═══════════════ TRIP FORM MODAL ═══════════════ */}
+            {showTripForm && (
+                <Modal title={editingTrip ? '✏️ Edit Trip' : '✈️ Schedule New Trip'} onClose={() => { setShowTripForm(false); setEditingTrip(null); }}>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label className="form-label">Ship *</label>
+                            <select className="form-select" value={form.ship} onChange={e => setForm({...form, ship: e.target.value})}>
+                                <option value="">Select...</option>
+                                {sorted.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Destination</label>
+                            <select className="form-select" value={form.location} onChange={e => setForm({...form, location: e.target.value})}>
+                                {locations.map(l => <option key={l}>{l}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Status</label>
+                            <select className="form-select" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+                                {statuses.map(s => <option key={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label className="form-label">Start Date *</label>
+                            <input type="date" className="form-input" value={form.start} onChange={e => setForm({...form, start: e.target.value})}/>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">End Date</label>
+                            <input type="date" className="form-input" value={form.end} onChange={e => setForm({...form, end: e.target.value})}/>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Purpose</label>
+                            <input className="form-input" placeholder="Install, Maintenance, Training..." value={form.purpose} onChange={e => setForm({...form, purpose: e.target.value})}/>
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label className="form-label">Techs / Travelers</label>
+                            <input className="form-input" placeholder="Uriel, Jay, Moe..." value={form.techs || ''} onChange={e => setForm({...form, techs: e.target.value})}/>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Notes</label>
+                            <input className="form-input" placeholder="Additional details..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}/>
+                        </div>
+                    </div>
+                    <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>
+                        <button className="btn btn-primary" onClick={add}>{editingTrip ? '💾 Update Trip' : '+ Add Trip'}</button>
+                        <button className="btn btn-secondary" onClick={() => { setShowTripForm(false); setEditingTrip(null); }}>Cancel</button>
+                    </div>
+                </Modal>
+            )}
+            
+            {/* ═══════════════ SHIPPING TEMPLATE MODAL ═══════════════ */}
             {showShipping && (
                 <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={(e) => { if(e.target === e.currentTarget) { setShowShipping(false); setShowAddrMgmt(false); } }}>
                     <div style={{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width: showAddrMgmt ? '720px' : '580px',maxWidth:'95vw',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)',transition:'width 0.2s'}}>
@@ -5425,67 +5726,53 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         
                         {showAddrMgmt ? (
                             <div>
-                                {/* Header banner */}
                                 <div style={{padding:'16px 20px',borderRadius:'12px',background:'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(59,130,246,0.08))',border:'1px solid rgba(99,102,241,0.2)',marginBottom:'16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                                     <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
                                         <div style={{width:'40px',height:'40px',borderRadius:'10px',background:'rgba(99,102,241,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px'}}>📍</div>
                                         <div>
-                                            <div style={{fontSize:'14px',fontWeight:700,color:'var(--text)'}}>Shipping Address Book</div>
-                                            <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>Synced to Firebase — all team members see updates instantly</div>
+                                            <div style={{fontSize:'14px',fontWeight:700}}>Shipping Address Book</div>
+                                            <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>Synced to Firebase</div>
                                         </div>
-                                    </div>
-                                    <div style={{fontSize:'11px',color:'var(--text-muted)',textAlign:'right'}}>
-                                        <span style={{color:'#22c55e',fontWeight:600}}>{defaultShipDests.filter(d => { const e = addrEdits[d.key]||{}; return e.unclassAttn || e.classAttn || e.address; }).length}</span>/{defaultShipDests.length} configured
                                     </div>
                                 </div>
                                 
-                                {/* Base cards - 2-column grid */}
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',maxHeight:'52vh',overflow:'auto',paddingRight:'4px',paddingBottom:'4px'}}>
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',maxHeight:'52vh',overflow:'auto',paddingRight:'4px'}}>
                                     {defaultShipDests.map(d => {
                                         const e = addrEdits[d.key] || {};
                                         const hasData = e.unclassAttn || e.classAttn || (e.address && e.address.trim());
                                         const isOpen = expandedAddrs[d.key] || false;
                                         return (
                                             <div key={d.key} style={{borderRadius:'10px',border: hasData ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',background:'var(--bg-input)',overflow:'hidden',gridColumn: isOpen ? '1 / -1' : 'auto'}}>
-                                                {/* Card header */}
-                                                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',cursor:'pointer',userSelect:'none',background: hasData ? 'rgba(34,197,94,0.04)' : 'transparent'}} onClick={() => setExpandedAddrs(prev => ({...prev, [d.key]: !prev[d.key]}))}>
+                                                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',cursor:'pointer',userSelect:'none'}} onClick={() => setExpandedAddrs(prev => ({...prev, [d.key]: !prev[d.key]}))}>
                                                     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                                                        <span style={{fontSize:'18px'}}>{d.key==='yokosuka'?'\u{1F1EF}\u{1F1F5}':d.key==='rota'?'\u{1F1EA}\u{1F1F8}':'\u{1F1FA}\u{1F1F8}'}</span>
-                                                        <div>
-                                                            <div style={{fontSize:'13px',fontWeight:700,color:'var(--text)'}}>{d.label}</div>
-                                                            {hasData && !isOpen && <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'1px',maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.unclassAttn || e.classAttn || 'Address set'}</div>}
-                                                        </div>
+                                                        <span style={{fontSize:'18px'}}>{siteFlag(d.key)}</span>
+                                                        <div style={{fontSize:'13px',fontWeight:700}}>{d.label}</div>
                                                     </div>
                                                     <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                                                        {hasData ? (
-                                                            <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#22c55e'}}></span>
-                                                        ) : (
-                                                            <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'#f59e0b',animation:'pulse 2s infinite'}}></span>
-                                                        )}
+                                                        <span style={{width:'8px',height:'8px',borderRadius:'50%',background: hasData ? '#22c55e' : '#f59e0b'}}></span>
                                                         <span style={{fontSize:'11px',color:'var(--text-muted)',transition:'transform 0.2s',transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
                                                     </div>
                                                 </div>
-                                                {/* Expanded form */}
                                                 {isOpen && (
-                                                    <div style={{padding:'0 14px 14px 14px',borderTop:'1px solid var(--border)'}}>
+                                                    <div style={{padding:'0 14px 14px',borderTop:'1px solid var(--border)'}}>
                                                         <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'8px',marginTop:'12px'}}>
                                                             <div>
                                                                 <label style={{fontSize:'9px',color:'var(--text-muted)',display:'block',marginBottom:'3px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px'}}>Location / Command</label>
-                                                                <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'12px'}} value={e.location||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, location: ev.target.value}})} placeholder="e.g. PEO IWS PMR Norfolk" />
+                                                                <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'12px'}} value={e.location||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, location: ev.target.value}})} />
                                                             </div>
                                                             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
                                                                 <div style={{padding:'8px 10px',borderRadius:'8px',background:'rgba(34,197,94,0.05)',border:'1px solid rgba(34,197,94,0.2)'}}>
                                                                     <label style={{fontSize:'9px',color:'#22c55e',display:'block',marginBottom:'3px',fontWeight:700}}>UNCLASS ATTN</label>
-                                                                    <input style={{width:'100%',padding:'7px 8px',borderRadius:'5px',border:'1px solid rgba(34,197,94,0.2)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px'}} value={e.unclassAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, unclassAttn: ev.target.value}})} placeholder="e.g. Randall Black / REAP" />
+                                                                    <input style={{width:'100%',padding:'7px 8px',borderRadius:'5px',border:'1px solid rgba(34,197,94,0.2)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px'}} value={e.unclassAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, unclassAttn: ev.target.value}})} />
                                                                 </div>
                                                                 <div style={{padding:'8px 10px',borderRadius:'8px',background:'rgba(239,68,68,0.05)',border:'1px solid rgba(239,68,68,0.2)'}}>
                                                                     <label style={{fontSize:'9px',color:'#ef4444',display:'block',marginBottom:'3px',fontWeight:700}}>CLASS ATTN</label>
-                                                                    <input style={{width:'100%',padding:'7px 8px',borderRadius:'5px',border:'1px solid rgba(239,68,68,0.2)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px'}} value={e.classAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, classAttn: ev.target.value}})} placeholder="e.g. Document Control" />
+                                                                    <input style={{width:'100%',padding:'7px 8px',borderRadius:'5px',border:'1px solid rgba(239,68,68,0.2)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px'}} value={e.classAttn||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, classAttn: ev.target.value}})} />
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <label style={{fontSize:'9px',color:'var(--text-muted)',display:'block',marginBottom:'3px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.8px'}}>Full Address</label>
-                                                                <textarea style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px',fontFamily:'monospace',resize:'vertical',minHeight:'42px',lineHeight:'1.5'}} value={e.address||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, address: ev.target.value}})} placeholder={"9583 Maryland Ave. BLDG X-70\nNorfolk, VA 23511-2911"} />
+                                                                <textarea style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text)',fontSize:'11px',fontFamily:'monospace',resize:'vertical',minHeight:'42px',lineHeight:'1.5'}} value={e.address||''} onChange={ev => setAddrEdits({...addrEdits, [d.key]: {...e, address: ev.target.value}})} />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -5494,43 +5781,35 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                                         );
                                     })}
                                 </div>
-                                {/* Save footer */}
                                 <div style={{display:'flex',gap:'8px',marginTop:'14px'}}>
-                                    <button style={{flex:1,padding:'12px',borderRadius:'10px',border:'none',background:'linear-gradient(135deg, var(--primary), #6366f1)',color:'#fff',fontSize:'13px',fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow:'0 4px 12px rgba(99,102,241,0.3)'}} onClick={() => {
-                                        saveShipAddresses(addrEdits);
-                                        setShowAddrMgmt(false);
-                                    }}>
-                                        💾 Save All Addresses
-                                    </button>
-                                    <button style={{padding:'12px 20px',borderRadius:'10px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text-muted)',fontSize:'12px',fontWeight:600,cursor:'pointer'}} onClick={() => setShowAddrMgmt(false)}>
-                                        Cancel
-                                    </button>
+                                    <button className="btn btn-primary" style={{flex:1}} onClick={() => { saveShipAddresses(addrEdits); setShowAddrMgmt(false); }}>💾 Save All Addresses</button>
+                                    <button className="btn btn-secondary" onClick={() => setShowAddrMgmt(false)}>Cancel</button>
                                 </div>
                             </div>
                         ) : (<>
                         {/* Classification Toggle */}
                         <div style={{display:'flex',gap:'0',marginBottom:'20px',background:'var(--bg-input)',borderRadius:'12px',padding:'4px',border:'1px solid var(--border)'}}>
                             <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border:'none',background: shipType==='unclass' ? 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1))' : 'transparent',color: shipType==='unclass' ? '#22c55e' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow: shipType==='unclass' ? '0 2px 8px rgba(34,197,94,0.15), inset 0 0 0 1.5px rgba(34,197,94,0.4)' : 'none'}} onClick={() => { setShipType('unclass'); const base = {...emptyShipForm}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.unclassAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
-                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#22c55e',display:'inline-block',boxShadow: shipType==='unclass' ? '0 0 8px rgba(34,197,94,0.5)' : 'none'}}></span> Unclassified
+                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#22c55e'}}></span> Unclassified
                             </button>
                             <button style={{flex:1,padding:'12px 16px',borderRadius:'10px',border:'none',background: shipType==='class' ? 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1))' : 'transparent',color: shipType==='class' ? '#ef4444' : 'var(--text-muted)',fontSize:'13px',fontWeight:700,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow: shipType==='class' ? '0 2px 8px rgba(239,68,68,0.15), inset 0 0 0 1.5px rgba(239,68,68,0.4)' : 'none'}} onClick={() => { setShipType('class'); const base = {...classDefaults}; if(activeShipDest) { const dest = shipDestinations.find(d=>d.key===activeShipDest); if(dest) { base.location=dest.location; base.attn=dest.classAttn||''; base.address=dest.address||''; } } setShipForm(base); }}>
-                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#ef4444',display:'inline-block',boxShadow: shipType==='class' ? '0 0 8px rgba(239,68,68,0.5)' : 'none'}}></span> Classified
+                                <span style={{width:'10px',height:'10px',borderRadius:'50%',background:'#ef4444'}}></span> Classified
                             </button>
                         </div>
                         
-                        {/* Base Location Buttons */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}><span>📍 DESTINATION</span>{shipDestinations.filter(d=>!d.unclassAttn && !d.classAttn && !d.address).length > 0 && <span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>⚠️ {shipDestinations.filter(d=>!d.unclassAttn && !d.classAttn && !d.address).length} bases need addresses</span>}</div>
+                        {/* Destination buttons */}
+                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px'}}>📍 DESTINATION</div>
                         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))',gap:'6px',marginBottom:'16px'}}>
                             {shipDestinations.map((dest) => {
                                 const hasSaved = dest.unclassAttn || dest.classAttn || dest.address;
                                 const isActive = activeShipDest===dest.key;
                                 return (
-                                <button key={dest.key} style={{padding:'10px 8px',borderRadius:'10px',border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',background: isActive ? 'var(--primary-glow)' : hasSaved ? 'var(--bg-input)' : 'transparent',color: isActive ? 'var(--primary)' : hasSaved ? 'var(--text)' : 'var(--text-muted)',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s',opacity: hasSaved ? 1 : 0.45,textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',boxShadow: isActive ? '0 2px 12px rgba(var(--primary-rgb,59,130,246),0.2)' : 'none'}} onClick={() => {
+                                <button key={dest.key} style={{padding:'10px 8px',borderRadius:'10px',border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',background: isActive ? 'var(--primary-glow)' : hasSaved ? 'var(--bg-input)' : 'transparent',color: isActive ? 'var(--primary)' : hasSaved ? 'var(--text)' : 'var(--text-muted)',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.15s',opacity: hasSaved ? 1 : 0.45,textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px'}} onClick={() => {
                                     setActiveShipDest(dest.key);
                                     const attn = shipType === 'class' ? (dest.classAttn || '') : (dest.unclassAttn || '');
                                     setShipForm(prev => ({...prev, location: dest.location, attn: attn, address: dest.address || ''}));
                                 }}>
-                                    <span style={{fontSize:'16px'}}>{dest.key==='yokosuka'?'🇯🇵':dest.key==='rota'?'🇪🇸':'🇺🇸'}</span>
+                                    <span style={{fontSize:'16px'}}>{siteFlag(dest.key)}</span>
                                     <span>{dest.label}</span>
                                     {hasSaved ? <span style={{fontSize:'8px',color:'var(--green)'}}>● Ready</span> : <span style={{fontSize:'8px',color:'var(--amber)'}}>⚠ No addr</span>}
                                 </button>
@@ -5538,465 +5817,87 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                             })}
                         </div>
                         
-                        {/* Origin & Dates */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',marginTop:'8px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>📋</span> SHIPMENT INFO</div>
+                        {/* Shipment info */}
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'14px'}}>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Shipment Origin</label>
-                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.origin} onChange={e => setShipForm({...shipForm, origin: e.target.value})} />
-                            </div>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Ship Date</label>
-                                <input type="date" style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.shipDate} onChange={e => setShipForm({...shipForm, shipDate: e.target.value})} />
-                            </div>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Delivery Date</label>
-                                <input type="date" style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.delivDate} onChange={e => setShipForm({...shipForm, delivDate: e.target.value})} />
-                            </div>
+                            <div><label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Origin</label><input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.origin} onChange={e => setShipForm({...shipForm, origin: e.target.value})} /></div>
+                            <div><label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Ship Date</label><input type="date" style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.shipDate} onChange={e => setShipForm({...shipForm, shipDate: e.target.value})} /></div>
+                            <div><label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Delivery Date</label><input type="date" style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.delivDate} onChange={e => setShipForm({...shipForm, delivDate: e.target.value})} /></div>
                         </div>
-
-                        {/* Package Dimensions */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>📐</span> PACKAGE</div>
+                        
+                        {/* Dimensions */}
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:'8px',marginBottom:'14px'}}>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>L (inches)</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='40' value={shipForm.dimL} onChange={e => setShipForm({...shipForm, dimL: e.target.value})} />
-                            </div>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>W (inches)</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='24' value={shipForm.dimW} onChange={e => setShipForm({...shipForm, dimW: e.target.value})} />
-                            </div>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>H (inches)</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='16' value={shipForm.dimH} onChange={e => setShipForm({...shipForm, dimH: e.target.value})} />
-                            </div>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Weight</label>
-                                <input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} placeholder='lbs' value={shipForm.weight} onChange={e => setShipForm({...shipForm, weight: e.target.value})} />
-                            </div>
+                            {[['L','dimL'],['W','dimW'],['H','dimH'],['Weight','weight']].map(([label, key]) => (
+                                <div key={key}><label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>{label} {key !== 'weight' ? '(in)' : '(lbs)'}</label><input style={{width:'100%',padding:'10px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'14px',fontWeight:600,textAlign:'center'}} value={shipForm[key]} onChange={e => setShipForm({...shipForm, [key]: e.target.value})} /></div>
+                            ))}
                         </div>
                         
                         {/* Destination fields */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>📬</span> DESTINATION</div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}}>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>ATTN</label>
-                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} placeholder="e.g. Randall Black / REAP" value={shipForm.attn} onChange={e => setShipForm({...shipForm, attn: e.target.value})} />
-                            </div>
-                            <div>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Location / Command</label>
-                                <input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} placeholder="e.g. PEO IWS PMR Norfolk" value={shipForm.location} onChange={e => setShipForm({...shipForm, location: e.target.value})} />
-                            </div>
+                            <div><label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>ATTN</label><input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.attn} onChange={e => setShipForm({...shipForm, attn: e.target.value})} /></div>
+                            <div><label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Location</label><input style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px'}} value={shipForm.location} onChange={e => setShipForm({...shipForm, location: e.target.value})} /></div>
                         </div>
                         <div style={{marginBottom:'14px'}}>
                             <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Address</label>
-                            <textarea style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px',fontFamily:'inherit',resize:'vertical',minHeight:'50px'}} placeholder="9583 Maryland Ave. BLDG X-70&#10;Norfolk, VA 23511-2911" value={shipForm.address} onChange={e => setShipForm({...shipForm, address: e.target.value})} />
+                            <textarea style={{width:'100%',padding:'10px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px',fontFamily:'inherit',resize:'vertical',minHeight:'50px'}} value={shipForm.address} onChange={e => setShipForm({...shipForm, address: e.target.value})} />
                         </div>
                         
                         {/* Contents */}
-                        <div style={{fontSize:'11px',fontWeight:700,color: shipType==='class' ? '#ef4444' : 'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',display:'flex',alignItems:'center',gap:'6px'}}>
-                            {shipType==='class' ? '🔴' : '📦'} CONTENTS
-                        </div>
                         {shipType === 'unclass' ? (
                             <div style={{marginBottom:'14px'}}>
-                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Items (one per line, use bullet format)</label>
-                                <textarea style={{width:'100%',padding:'12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px',fontFamily:'monospace',resize:'vertical',minHeight:'80px',lineHeight:'1.6'}} placeholder={"•\tROUTER            (S/N: FJC28431ZZQ)\n•\tVOIP PHONE  ( S/N: FJC27291VJQ)\n•\tCUSTOMIZE PC"} value={shipForm.contents} onChange={e => setShipForm({...shipForm, contents: e.target.value})} />
+                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Contents</label>
+                                <textarea style={{width:'100%',padding:'12px',borderRadius:'8px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text)',fontSize:'13px',fontFamily:'monospace',resize:'vertical',minHeight:'80px',lineHeight:'1.6'}} placeholder={"•\tROUTER            (S/N: FJC28431ZZQ)\n•\tVOIP PHONE  ( S/N: FJC27291VJQ)"} value={shipForm.contents} onChange={e => setShipForm({...shipForm, contents: e.target.value})} />
                             </div>
                         ) : (
                             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'14px'}}>
-                                <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
-                                    <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 1</div>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
-                                    <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="S21CNXA6713535V" value={shipForm.ssd1SN} onChange={e => setShipForm({...shipForm, ssd1SN: e.target.value})} />
-                                </div>
-                                <div style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
-                                    <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD 2</div>
-                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'3px'}}>S/N</label>
-                                    <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} placeholder="S21CNXAG715492D" value={shipForm.ssd2SN} onChange={e => setShipForm({...shipForm, ssd2SN: e.target.value})} />
-                                </div>
+                                {['ssd1SN','ssd2SN'].map((key,i) => (
+                                    <div key={key} style={{padding:'10px',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(239,68,68,0.03)'}}>
+                                        <div style={{fontSize:'10px',fontWeight:700,color:'#ef4444',marginBottom:'6px'}}>SSD {i+1}</div>
+                                        <input style={{width:'100%',padding:'8px 10px',borderRadius:'6px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.05)',color:'var(--text)',fontSize:'12px',fontFamily:'monospace'}} value={shipForm[key]} onChange={e => setShipForm({...shipForm, [key]: e.target.value})} />
+                                    </div>
+                                ))}
                             </div>
                         )}
                         
-                        {/* Live Preview */}
-                        <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'8px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{width:'20px',height:'20px',borderRadius:'6px',background:'var(--bg-card)',border:'1px solid var(--border)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'10px'}}>👁️</span> PREVIEW</div>
-                        <div style={{padding:'16px',background: shipType==='class' ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',borderRadius:'12px',border: shipType==='class' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(34,197,94,0.2)',fontFamily:'JetBrains Mono, monospace',fontSize:'11px',whiteSpace:'pre-wrap',lineHeight:'1.8',color:'var(--text)',boxShadow:'inset 0 2px 4px rgba(0,0,0,0.05)'}}>
+                        {/* Preview */}
+                        <div style={{padding:'16px',background: shipType==='class' ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',borderRadius:'12px',border: shipType==='class' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(34,197,94,0.2)',fontFamily:'JetBrains Mono, monospace',fontSize:'11px',whiteSpace:'pre-wrap',lineHeight:'1.8',color:'var(--text)',marginBottom:'16px'}}>
                             {buildShippingText()}
                         </div>
                         
-                        {/* Action Buttons */}
-                        <div style={{display:'flex',gap:'8px',marginTop:'16px'}}>
-                            <button style={{flex:1,padding:'14px',borderRadius:'12px',border:'none',background:'linear-gradient(135deg, var(--primary), #2563eb)',color:'#fff',fontSize:'14px',fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow:'0 4px 12px rgba(59,130,246,0.3)',transition:'all 0.2s'}} onClick={() => {
+                        {/* Actions */}
+                        <div style={{display:'flex',gap:'8px'}}>
+                            <button className="btn btn-primary" style={{flex:1,padding:'14px'}} onClick={() => {
                                 const text = buildShippingText();
                                 navigator.clipboard.writeText(text).then(() => { toast('Copied to clipboard!', 'success'); }).catch(() => {
                                     const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); toast('Copied to clipboard!', 'success');
                                 });
-                            }}>
-                                📋 Copy to Clipboard
-                            </button>
-                            <button style={{padding:'14px 20px',borderRadius:'12px',border:'1px solid var(--border)',background:'var(--bg-input)',color:'var(--text-muted)',fontSize:'13px',fontWeight:600,cursor:'pointer',transition:'all 0.2s'}} onClick={resetShipForm}>
-                                🔄 Reset
-                            </button>
+                            }}>📋 Copy to Clipboard</button>
+                            <button className="btn btn-secondary" style={{padding:'14px 20px'}} onClick={resetShipForm}>🔄 Reset</button>
                         </div>
                         </>)}
                     </div>
                 </div>
             )}
-
-            {selectedSite && siteData[selectedSite] && (() => {
-                const site = siteData[selectedSite];
-                const pocs = getSitePOCs(selectedSite);
-                const siteTrips = installs.filter(t => site.city && t.location?.includes(site.city.split(',')[0]));
-                return (
-                    <div>
-                        <button className="btn btn-secondary" style={{marginBottom:'16px'}} onClick={() => {setSelectedSite(null);setEditingPOC(null);}}>← Back to Trips</button>
-                        
-                        {/* Base Map - Satellite Reference */}
-                        <div className="card" style={{padding:'20px',marginBottom:'16px'}}>
-                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
-                                <div>
-                                    <span className="card-title">🗺️ Base Layout — {site.abbr}</span>
-                                    <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>{selectedSite==='yokosuka'?'🇯🇵':selectedSite==='rota'?'🇪🇸':'🇺🇸'} {site.name}</div>
-                                </div>
-                                <button className="btn btn-sm btn-secondary" onClick={() => {
-                                    const win = window.open('','','width=900,height=700');
-                                    win.document.write('<html><head><title>' + site.abbr + ' - Base Reference</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#222}h2{margin:0 0 4px}h4{margin:12px 0 6px;color:#555}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}.card{padding:10px;border:1px solid #ccc;border-radius:6px;font-size:12px}.card b{display:block;margin-bottom:4px}.route{padding:12px;background:#f0f0f0;border-radius:6px;margin:12px 0;font-size:13px}@media print{body{margin:10px}}</style></head><body>');
-                                    win.document.write('<h2>🗺️ ' + site.abbr + ' — ' + site.name + '</h2>');
-                                    win.document.write('<p style="font-size:12px;color:#666;margin:4px 0 12px">Base reference — print & bring onsite. Screenshot the satellite map from the app for visual reference.</p>');
-                                    win.document.write('<p style="font-size:12px;margin:8px 0">Screenshot the satellite map from the app for visual reference.</p>');
-                                    if (pocs.filter(p=>p.name).length > 0) {
-                                        win.document.write('<h4>👤 Contacts</h4>');
-                                        pocs.filter(p=>p.name).forEach(p => {
-                                            win.document.write('<div style="font-size:12px;margin:4px 0"><b>' + p.name + '</b> — ' + p.role + (p.phone ? ' | 📞 ' + p.phone : '') + (p.email ? ' | ✉️ ' + p.email : '') + '</div>');
-                                        });
-                                    }
-                                    win.document.write('<h4>📦 Shipping</h4>');
-                                    win.document.write('<div class="grid" style="grid-template-columns:1fr 1fr">');
-                                    win.document.write('<div class="card" style="border-left:3px solid green;font-family:monospace;font-size:11px">' + site.addresses.unclass.lines.join('<br/>') + '</div>');
-                                    win.document.write('<div class="card" style="border-left:3px solid red;font-family:monospace;font-size:11px">' + site.addresses.class.lines.join('<br/>') + '</div>');
-                                    win.document.write('</div></body></html>');
-                                    win.document.close();
-                                    setTimeout(() => win.print(), 300);
-                                }}>🖨️ Print Reference</button>
-                            </div>
-                            <div id="site-leaflet-map" style={{borderRadius:'10px',overflow:'hidden',border:'2px solid var(--border)',height:'500px',background:'#1a1a2e'}}></div>
-
-                        </div>
-                        
-                        {/* POCs - Right under map */}
-                        <div className="card" style={{padding:'20px',marginBottom:'16px'}}>
-                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}>
-                                <span className="card-title">👤 Logistics & PMR Contacts</span>
-                                <button className="btn btn-sm btn-primary" onClick={() => {setEditingPOC('new');setPocForm({name:'',role:'',phone:'',email:'',notes:''});}}>+ Add Contact</button>
-                            </div>
-                            
-                            {editingPOC && (
-                                <div style={{padding:'16px',background:'var(--primary-glow)',borderRadius:'8px',border:'1px solid var(--primary)',marginBottom:'16px'}}>
-                                    <div style={{fontSize:'12px',fontWeight:600,marginBottom:'12px',color:'var(--primary)'}}>{editingPOC === 'new' ? 'Add New Contact' : 'Edit Contact'}</div>
-                                    <div className="form-row">
-                                        <div className="form-group"><label className="form-label">Name</label><input className="form-input" placeholder="John Smith" value={pocForm.name} onChange={e => setPocForm({...pocForm,name:e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">Role / Title</label><input className="form-input" placeholder="PMR Onsite Rep" value={pocForm.role} onChange={e => setPocForm({...pocForm,role:e.target.value})}/></div>
-                                    </div>
-                                    <div className="form-row">
-                                        <div className="form-group"><label className="form-label">Phone</label><input className="form-input" placeholder="(555) 123-4567" value={pocForm.phone} onChange={e => setPocForm({...pocForm,phone:e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">Email</label><input className="form-input" placeholder="john.smith@navy.mil" value={pocForm.email} onChange={e => setPocForm({...pocForm,email:e.target.value})}/></div>
-                                    </div>
-                                    <div className="form-group"><label className="form-label">Notes</label><input className="form-input" placeholder="Best contact for coordinating arrivals..." value={pocForm.notes} onChange={e => setPocForm({...pocForm,notes:e.target.value})}/></div>
-                                    <div className="btn-group" style={{marginTop:'12px'}}>
-                                        <button className="btn btn-sm btn-primary" onClick={() => savePOC(selectedSite)}>💾 Save</button>
-                                        <button className="btn btn-sm btn-secondary" onClick={() => setEditingPOC(null)}>Cancel</button>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {pocs.length === 0 ? (
-                                <div className="empty" style={{padding:'20px'}}>No contacts added yet. Click "Add Contact" to start building your POC list.</div>
-                            ) : (
-                                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))',gap:'12px'}}>
-                                    {pocs.map(poc => (
-                                        <div key={poc.id} style={{padding:'16px',background:'var(--bg-input)',borderRadius:'8px',border:'1px solid var(--border)'}}>
-                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
-                                                <div>
-                                                    <div style={{fontWeight:600,fontSize:'14px'}}>{poc.name || '(No name)'}</div>
-                                                    <div style={{fontSize:'11px',color:'var(--primary)',fontWeight:500}}>{poc.role}</div>
-                                                </div>
-                                                <div style={{display:'flex',gap:'4px'}}>
-                                                    <button className="btn btn-sm btn-secondary" style={{padding:'2px 6px',fontSize:'10px'}} onClick={() => {setEditingPOC(poc.id);setPocForm({name:poc.name,role:poc.role,phone:poc.phone,email:poc.email,notes:poc.notes});}}>✏️</button>
-                                                    <button className="btn btn-sm btn-danger" style={{padding:'2px 6px',fontSize:'10px'}} onClick={() => deletePOC(selectedSite, poc.id)}>×</button>
-                                                </div>
-                                            </div>
-                                            {poc.phone && <div style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px'}}>📞 <a href={`tel:${poc.phone}`} style={{color:'var(--text-dim)',textDecoration:'none'}}>{poc.phone}</a></div>}
-                                            {poc.email && <div style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px'}}>✉️ <a href={`mailto:${poc.email}`} style={{color:'var(--primary)',textDecoration:'none'}}>{poc.email}</a></div>}
-                                            {poc.notes && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'8px',fontStyle:'italic'}}>{poc.notes}</div>}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        
-                        {/* Shipping Addresses - Prominent */}
-                        <div className="card" style={{padding:'20px',marginBottom:'16px'}}>
-                            <span className="card-title" style={{fontSize:'16px',marginBottom:'16px',display:'block'}}>📦 Shipping Addresses</span>
-                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px'}}>
-                                <div style={{padding:'20px',background:'var(--bg-input)',borderRadius:'10px',border:'2px solid var(--green)'}}>
-                                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
-                                        <span style={{background:'var(--green)',color:'#000',padding:'3px 8px',borderRadius:'4px',fontSize:'10px',fontWeight:700}}>UNCLASSIFIED</span>
-                                        <span style={{fontSize:'12px',color:'var(--text-muted)'}}>{site.addresses.unclass.label}</span>
-                                    </div>
-                                    <div style={{fontFamily:'monospace',lineHeight:'1.8'}}>
-                                        {site.addresses.unclass.lines.map((line, i) => (
-                                            <div key={i} style={{fontSize:'13px',color: line.startsWith('⚠️') ? 'var(--amber)' : 'var(--text)',fontWeight: i===0 ? 700 : 400}}>{line}</div>
-                                        ))}
-                                    </div>
-                                    <button className="btn btn-sm btn-primary" style={{marginTop:'14px'}} onClick={() => {
-                                        navigator.clipboard?.writeText(site.addresses.unclass.lines.filter(l=>!l.startsWith('⚠️')).join('\n'));
-                                        toast('Address copied!','success');
-                                    }}>📋 Copy Address</button>
-                                </div>
-                                <div style={{padding:'20px',background:'var(--bg-input)',borderRadius:'10px',border:'2px solid var(--red)'}}>
-                                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
-                                        <span style={{background:'var(--red)',color:'#fff',padding:'3px 8px',borderRadius:'4px',fontSize:'10px',fontWeight:700}}>CLASSIFIED</span>
-                                        <span style={{fontSize:'12px',color:'var(--text-muted)'}}>{site.addresses.class.label}</span>
-                                    </div>
-                                    <div style={{fontFamily:'monospace',lineHeight:'1.8'}}>
-                                        {site.addresses.class.lines.map((line, i) => (
-                                            <div key={i} style={{fontSize:'13px',color: line.startsWith('⚠️') ? 'var(--amber)' : 'var(--text)',fontWeight: i===0 ? 700 : 400}}>{line}</div>
-                                        ))}
-                                    </div>
-                                    <button className="btn btn-sm btn-primary" style={{marginTop:'14px'}} onClick={() => {
-                                        navigator.clipboard?.writeText(site.addresses.class.lines.filter(l=>!l.startsWith('⚠️')).join('\n'));
-                                        toast('Address copied!','success');
-                                    }}>📋 Copy Address</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* Base Info & Ships */}
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px',marginBottom:'16px'}}>
-                            <div className="card" style={{padding:'20px'}}>
-                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'16px'}}>
-                                    <div>
-                                        <span className="card-title" style={{fontSize:'16px'}}>{site.abbr}</span>
-                                        <div style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}>{site.name}</div>
-                                    </div>
-                                    <span style={{fontSize:'32px'}}>{selectedSite==='yokosuka'?'🇯🇵':selectedSite==='rota'?'🇪🇸':'🇺🇸'}</span>
-                                </div>
-                                <div style={{fontSize:'13px',color:'var(--text-dim)',lineHeight:'1.6',marginBottom:'16px'}}>{site.base_info}</div>
-                                {site.ships_homeported && (
-                                    <div style={{padding:'12px',background:'var(--bg-input)',borderRadius:'8px'}}>
-                                        <div style={{fontSize:'11px',fontWeight:600,color:'var(--text-muted)',letterSpacing:'0.5px',marginBottom:'6px'}}>🚢 HOMEPORTED SHIPS</div>
-                                        <div style={{fontSize:'12px',color:'var(--text-dim)',lineHeight:'1.5'}}>{site.ships_homeported.join(', ')}</div>
-                                    </div>
-                                )}
-                                {siteTrips.length > 0 && (
-                                    <div style={{marginTop:'12px',padding:'12px',background:'var(--green-glow)',borderRadius:'8px',border:'1px solid var(--green)'}}>
-                                        <div style={{fontSize:'11px',fontWeight:600,color:'var(--green)',marginBottom:'6px'}}>✈️ UPCOMING TRIPS ({siteTrips.length})</div>
-                                        {siteTrips.slice(0,3).map(t => (
-                                            <div key={t.id} style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'4px'}}>• {t.ship} — {fmtDate(t.start)} {t.purpose ? `(${t.purpose})` : ''}</div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            
-                            {/* Notes - Bottom */}
-                            <div className="card" style={{padding:'20px'}}>
-                                <span className="card-title">📝 Site Notes & Intel</span>
-                                <div style={{marginTop:'12px'}}>
-                                    <textarea className="form-textarea" style={{minHeight:'180px',fontSize:'12px'}} placeholder={"Add your notes about " + site.abbr + "...\n\nExamples:\n• Best hotel nearby\n• WiFi info / local food spots\n• Key building numbers\n• Badge/access requirements\n• Rental car / Uber notes"} value={siteNotes[selectedSite]||''} onChange={e => setSiteNotes({...siteNotes, [selectedSite]: e.target.value})}/>
-                                </div>
-                                <div style={{marginTop:'8px',fontSize:'11px',color:'var(--text-muted)'}}>💾 Auto-saved to browser</div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            })()}
-            
-            {!selectedSite && viewMode === 'calendar' ? (
-                <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:'20px'}}>
-                    <div className="card" style={{padding:'16px'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}>
-                            <button className="btn btn-sm btn-secondary" onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1))}>‹</button>
-                            <h3 style={{margin:0,fontSize:'16px'}}>{calMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h3>
-                            <button className="btn btn-sm btn-secondary" onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1))}>›</button>
-                        </div>
-                        <div style={{display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:'2px',fontSize:'11px'}}>
-                            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                                <div key={d} style={{padding:'6px 4px',textAlign:'center',fontWeight:600,color:'var(--text-muted)',fontSize:'10px'}}>{d}</div>
-                            ))}
-                            {calDays.map((d, i) => (
-                                <div 
-                                    key={i} 
-                                    onClick={() => !d.otherMonth && setSelectedDate(d.date === selectedDate ? null : d.date)}
-                                    style={{
-                                        padding:'8px 4px',
-                                        textAlign:'center',
-                                        borderRadius:'6px',
-                                        cursor: d.otherMonth ? 'default' : 'pointer',
-                                        background: d.date === selectedDate ? 'var(--primary)' : d.date === today ? 'var(--blue-glow)' : d.trips?.length ? 'var(--green-glow)' : 'transparent',
-                                        color: d.date === selectedDate ? '#fff' : d.otherMonth ? 'var(--text-muted)' : 'var(--text)',
-                                        border: d.date === today ? '1px solid var(--blue)' : '1px solid transparent',
-                                        position:'relative',
-                                        transition:'all 0.15s'
-                                    }}
-                                >
-                                    {d.day}
-                                    {d.trips?.length > 0 && (
-                                        <div style={{position:'absolute',bottom:'2px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'2px'}}>
-                                            {d.trips.slice(0,3).map((_,j) => (
-                                                <div key={j} style={{width:'4px',height:'4px',borderRadius:'50%',background: d.date === selectedDate ? '#fff' : 'var(--green)'}}/>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        <div style={{marginTop:'12px',display:'flex',gap:'16px',fontSize:'10px',color:'var(--text-muted)'}}>
-                            <span><span style={{display:'inline-block',width:'8px',height:'8px',borderRadius:'50%',background:'var(--green)',marginRight:'4px'}}></span>Has trip</span>
-                            <span><span style={{display:'inline-block',width:'8px',height:'8px',borderRadius:'4px',background:'var(--blue-glow)',border:'1px solid var(--blue)',marginRight:'4px'}}></span>Today</span>
-                        </div>
-                    </div>
-                    
-                    <div className="card" style={{padding:'16px'}}>
-                        <div style={{fontSize:'13px',fontWeight:600,marginBottom:'12px',color:'var(--text-dim)'}}>
-                            {selectedDate ? `Trips on ${fmtDate(selectedDate)}` : 'Upcoming Trips'}
-                        </div>
-                        {selectedTrips.length === 0 ? (
-                            <div className="empty" style={{padding:'30px 10px',fontSize:'12px'}}>
-                                {selectedDate ? 'No trips on this date' : 'No upcoming trips scheduled'}
-                            </div>
-                        ) : (
-                            <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
-                                {selectedTrips.map(trip => (
-                                    <div key={trip.id} style={{padding:'12px',background:'var(--bg-input)',borderRadius:'8px',borderLeft:'3px solid var(--green)'}}>
-                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'6px'}}>
-                                            <div style={{fontWeight:600,fontSize:'13px'}}>{trip.ship}</div>
-                                            <span className="badge badge-info" style={{fontSize:'9px'}}>{trip.status}</span>
-                                        </div>
-                                        <div style={{fontSize:'11px',color:'var(--text-dim)',marginBottom:'4px'}}>
-                                            📍 {trip.location}
-                                        </div>
-                                        <div style={{fontSize:'10px',color:'var(--text-muted)'}}>
-                                            {fmtDate(trip.start)}{trip.end ? ` - ${fmtDate(trip.end)}` : ''}
-                                        </div>
-                                        {trip.purpose && <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px'}}>🎯 {trip.purpose}</div>}
-                                        <button className="btn btn-sm btn-danger" style={{marginTop:'8px',padding:'2px 8px',fontSize:'9px'}} onClick={() => del(trip.id)}>Delete</button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            ) : !selectedSite ? (
-                <div>
-                    {installs.length === 0 ? (
-                        <div className="empty">No trips scheduled</div>
-                    ) : (
-                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))',gap:'12px'}}>
-                            {installs.sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start)).map(i => {
-                                const isPast = i.end && parseLocalDate(i.end) < new Date(new Date().setHours(0,0,0,0));
-                                const isActive = parseLocalDate(i.start) <= new Date() && (!i.end || parseLocalDate(i.end) >= new Date(new Date().setHours(0,0,0,0)));
-                                const borderColor = i.status === 'Completed' ? 'var(--green)' : i.status === 'Cancelled' ? 'var(--red)' : i.status === 'Delayed' ? 'var(--amber)' : i.status === 'On Hold' ? 'var(--text-muted)' : isActive ? 'var(--blue)' : 'var(--primary)';
-                                return (
-                                    <div key={i.id} className="card" style={{padding:'16px',borderLeft:`3px solid ${borderColor}`,opacity: isPast && i.status !== 'Completed' ? 0.6 : 1}}>
-                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
-                                            <div style={{fontWeight:700,fontSize:'15px'}}>{i.ship}</div>
-                                            <span className={`badge ${i.status==='Completed'?'badge-success':i.status==='Cancelled'?'badge-urgent':i.status==='Delayed'?'badge-mild':i.status==='On Hold'?'':'badge-info'}`} style={{fontSize:'10px',...(i.status==='On Hold'?{background:'var(--bg-input)',color:'var(--text-muted)',border:'1px solid var(--border)'}:{})}}>{i.status === 'In Progress' ? '🟢 In Progress' : i.status === 'Delayed' ? '⚠️ Delayed' : i.status === 'On Hold' ? '⏸️ On Hold' : i.status}</span>
-                                        </div>
-                                        <div style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'12px'}}>
-                                            <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-dim)'}}>
-                                                <span>📍</span> <span>{i.location || '—'}</span>
-                                            </div>
-                                            <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-dim)'}}>
-                                                <span>📅</span> <span>{fmtDate(i.start)}{i.end ? ` → ${fmtDate(i.end)}` : ''}</span>
-                                            </div>
-                                            {i.purpose && (
-                                                <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-muted)'}}>
-                                                    <span>🎯</span> <span>{i.purpose}</span>
-                                                </div>
-                                            )}
-                                            {i.techs && (
-                                                <div style={{display:'flex',alignItems:'center',gap:'6px',color:'var(--text-muted)'}}>
-                                                    <span>👤</span> <span>{i.techs}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div style={{display:'flex',gap:'6px',marginTop:'12px',borderTop:'1px solid var(--border)',paddingTop:'10px'}}>
-                                            <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={() => {
-                                                setForm({ship:i.ship,location:i.location,start:i.start,end:i.end||'',purpose:i.purpose||'',status:i.status,techs:i.techs||''});
-                                                setEditingTrip(i.id);
-                                            }}>✏️ Edit</button>
-                                            <button className="btn btn-sm btn-danger" style={{fontSize:'10px',padding:'4px 10px'}} onClick={() => del(i.id)}>🗑️</button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            ) : null}
-            
-            {!selectedSite && <div className="card">
-                <span className="card-title">{editingTrip ? '✏️ Edit Trip' : 'Schedule New Trip'}</span>
-                <div className="form-row mt-md">
-                    <div className="form-group">
-                        <label className="form-label">Ship *</label>
-                        <select className="form-select" value={form.ship} onChange={e => setForm({...form, ship: e.target.value})}>
-                            <option value="">Select...</option>
-                            {sorted.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Destination</label>
-                        <select className="form-select" value={form.location} onChange={e => setForm({...form, location: e.target.value})}>
-                            {locations.map(l => <option key={l}>{l}</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Status</label>
-                        <select className="form-select" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
-                            {statuses.map(s => <option key={s}>{s}</option>)}
-                        </select>
-                    </div>
-                </div>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label className="form-label">Start Date *</label>
-                        <input type="date" className="form-input" value={form.start} onChange={e => setForm({...form, start: e.target.value})}/>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">End Date</label>
-                        <input type="date" className="form-input" value={form.end} onChange={e => setForm({...form, end: e.target.value})}/>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Purpose</label>
-                        <input className="form-input" placeholder="e.g., Install, Maintenance, Training..." value={form.purpose} onChange={e => setForm({...form, purpose: e.target.value})}/>
-                    </div>
-                </div>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label className="form-label">Techs / Travelers</label>
-                        <input className="form-input" placeholder="e.g., Uriel, Jay, Moe..." value={form.techs || ''} onChange={e => setForm({...form, techs: e.target.value})}/>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Notes</label>
-                        <input className="form-input" placeholder="Additional details..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}/>
-                    </div>
-                </div>
-                <div style={{display:'flex',gap:'8px',marginTop:'12px'}}>
-                    <button className="btn btn-primary" onClick={add}>{editingTrip ? '💾 Update Trip' : '+ Add Trip'}</button>
-                    {editingTrip && <button className="btn btn-secondary" onClick={() => { setEditingTrip(null); setForm({ ship:'', start:'', end:'', location:'Mayport, FL', purpose:'', notes:'', status:'Scheduled', techs:'' }); }}>Cancel</button>}
-                </div>
-            </div>}
         </div>
     );
 }
-
 function Parts({ parts, setParts, toast, logActivity }) {
     const [search, setSearch] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
     const [showShoppingList, setShowShoppingList] = useState(false);
     const [expandedCats, setExpandedCats] = useState({});
+    const [editPhoto, setEditPhoto] = useState(null);
+    const [photoUrl, setPhotoUrl] = useState('');
     const [builtComputers, setBuiltComputers] = useStorage('builtComputers', 4);
     const [targetSystems, setTargetSystems] = useStorage('targetSystems', 10);
+
+    const catIcons = { CPU: '🧠', RAM: '🔲', Motherboard: '🟩', 'Power Supply': '⚡', SSD: '💾', Storage: '🗄️', Case: '🖥️', Cooling: '❄️', 'Network Card': '📡', Cable: '🔌', 'Tape Drive': '📼', Optical: '💿', Peripheral: '🖱️', Other: '📦' };
+
+    const setPartPhoto = (id, url) => {
+        setParts(p => p.map(part => part.id === id ? {...part, photo: url} : part));
+        logActivity(`Updated photo for ${parts.find(p=>p.id===id)?.name?.substring(0,30) || 'part'}`);
+        setEditPhoto(null);
+        setPhotoUrl('');
+    };
 
     // Default REAP Cabinet PC Parts
     const defaultParts = [
@@ -6095,12 +5996,12 @@ function Parts({ parts, setParts, toast, logActivity }) {
         }
     };
 
-    const [addForm, setAddForm] = useState({ category: 'CPU', name: '', inStock: 0, need: 0, perBuild: 1 });
+    const [addForm, setAddForm] = useState({ category: 'CPU', name: '', inStock: 0, need: 0, perBuild: 1, photo: '' });
     const addPart = () => {
         if (!addForm.name.trim()) { toast('Part name required', 'error'); return; }
         setParts(p => [...p, { id: genId('P'), ...addForm }]);
         logActivity(`Added part: ${addForm.name}`, { category: addForm.category });
-        setAddForm({ category: 'CPU', name: '', inStock: 0, need: 0, perBuild: 1 });
+        setAddForm({ category: 'CPU', name: '', inStock: 0, need: 0, perBuild: 1, photo: '' });
         setShowAddForm(false);
         toast('Part added!', 'success');
     };
@@ -6243,6 +6144,10 @@ function Parts({ parts, setParts, toast, logActivity }) {
                             <label className="form-label">Per Build</label>
                             <input type="number" className="form-input" value={addForm.perBuild} onChange={e => setAddForm({...addForm, perBuild: parseInt(e.target.value) || 0})}/>
                         </div>
+                        <div className="form-group" style={{flex:1}}>
+                            <label className="form-label">Photo URL (optional)</label>
+                            <input className="form-input" value={addForm.photo} onChange={e => setAddForm({...addForm, photo: e.target.value})} placeholder="Paste image URL..."/>
+                        </div>
                         <div className="form-group" style={{alignSelf:'flex-end'}}>
                             <button className="btn btn-primary" onClick={addPart}>Add</button>
                         </div>
@@ -6298,6 +6203,12 @@ function Parts({ parts, setParts, toast, logActivity }) {
                                                 {/* Status dot */}
                                                 <span className="tip" data-tip={ss.label} style={{width:'8px',height:'8px',borderRadius:'50%',background:ss.color,flexShrink:0}}></span>
                                                 
+                                                {/* Photo thumbnail */}
+                                                <div onClick={() => { setEditPhoto(p.id); setPhotoUrl(p.photo || ''); }} className="tip" data-tip="Click to set photo" style={{width:'36px',height:'36px',borderRadius:'6px',background:'var(--bg-input)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',flexShrink:0,fontSize:'16px'}}>
+                                                    {p.photo ? <img src={p.photo} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }}/> : null}
+                                                    <span style={{display: p.photo ? 'none' : 'block'}}>{catIcons[p.category] || '📦'}</span>
+                                                </div>
+                                                
                                                 {/* Part name + bar */}
                                                 <div style={{flex:1,minWidth:0}}>
                                                     <div style={{fontSize:'12px',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
@@ -6339,6 +6250,25 @@ function Parts({ parts, setParts, toast, logActivity }) {
                     <div style={{textAlign:'center',padding:'40px',color:'var(--text-muted)'}}>No parts match your search</div>
                 )}
             </div>
+
+            {/* Photo Edit Modal */}
+            {editPhoto && (
+                <Modal title="Set Part Photo" onClose={() => { setEditPhoto(null); setPhotoUrl(''); }}>
+                    <div style={{textAlign:'center'}}>
+                        <div style={{width:'120px',height:'120px',borderRadius:'10px',background:'var(--bg-input)',border:'2px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',overflow:'hidden'}}>
+                            {photoUrl ? <img src={photoUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e => { e.target.style.display='none'; }}/> : <span style={{fontSize:'36px'}}>{catIcons[parts.find(p=>p.id===editPhoto)?.category] || '📦'}</span>}
+                        </div>
+                        <p style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'12px'}}>{parts.find(p=>p.id===editPhoto)?.name}</p>
+                        <input className="form-input" placeholder="Paste image URL here..." value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} style={{marginBottom:'12px',textAlign:'center'}}/>
+                        <p style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'16px'}}>Right-click any product image online → "Copy image address" → paste above</p>
+                        <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
+                            <button className="btn btn-primary" onClick={() => setPartPhoto(editPhoto, photoUrl)} disabled={!photoUrl.trim()}>Save Photo</button>
+                            {parts.find(p=>p.id===editPhoto)?.photo && <button className="btn btn-secondary" onClick={() => setPartPhoto(editPhoto, '')} style={{color:'var(--red)'}}>Remove</button>}
+                            <button className="btn btn-secondary" onClick={() => { setEditPhoto(null); setPhotoUrl(''); }}>Cancel</button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }
