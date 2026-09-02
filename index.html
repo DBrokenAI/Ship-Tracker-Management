@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T015";
+    var APP_BUILD = "2026-02-27T016";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5055,6 +5055,28 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     useEffect(() => { localStorage.setItem('sitePOCs', JSON.stringify(sitePOCs)); }, [sitePOCs]);
     useEffect(() => { localStorage.setItem('siteNotes', JSON.stringify(siteNotes)); }, [siteNotes]);
     
+    // Custom saved addresses per site (directions & shipping)
+    const [siteAddresses, setSiteAddresses] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('siteAddresses') || '{}'); } catch { return {}; }
+    });
+    useEffect(() => { localStorage.setItem('siteAddresses', JSON.stringify(siteAddresses)); }, [siteAddresses]);
+    const [addrForm, setAddrForm] = useState({ label: '', address: '', type: 'directions' });
+    const [showAddrForm, setShowAddrForm] = useState(false);
+    
+    const getSiteAddresses = (siteKey, type) => (siteAddresses[siteKey] || []).filter(a => a.type === type);
+    const addSiteAddress = (siteKey) => {
+        if (!addrForm.label.trim()) { toast('Enter a label', 'error'); return; }
+        const existing = siteAddresses[siteKey] || [];
+        setSiteAddresses({...siteAddresses, [siteKey]: [...existing, { id: 'addr_' + Date.now(), ...addrForm }]});
+        setAddrForm({ label: '', address: '', type: addrForm.type });
+        setShowAddrForm(false);
+        toast('Address saved!', 'success');
+    };
+    const deleteSiteAddress = (siteKey, addrId) => {
+        setSiteAddresses({...siteAddresses, [siteKey]: (siteAddresses[siteKey] || []).filter(a => a.id !== addrId)});
+        toast('Address removed', 'info');
+    };
+    
     const locations = ['San Diego, CA', 'Norfolk, VA', 'Mayport, FL', 'Pearl Harbor, HI', 'Yokosuka, Japan', 'Rota, Spain', 'Everett, WA', 'Point Mugu, CA', 'Washington D.C.', 'Other'];
     const statuses = ['Scheduled', 'In Progress', 'Completed', 'Delayed', 'Cancelled', 'On Hold'];
     
@@ -5590,7 +5612,9 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         )}
                         
                         {/* TAB: Directions */}
-                        {siteTab === 'directions' && (
+                        {siteTab === 'directions' && (() => {
+                            const dirAddrs = getSiteAddresses(selectedSite, 'directions');
+                            return (
                             <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
                                 <div className="card" style={{padding:'16px'}}>
                                     <div style={{fontSize:'13px',fontWeight:700,marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px'}}>🚗 Gate Access</div>
@@ -5604,13 +5628,63 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                                     <div style={{fontSize:'13px',fontWeight:700,marginBottom:'10px',display:'flex',alignItems:'center',gap:'8px',color:'var(--primary)'}}>🧭 Route to Piers</div>
                                     <div style={{fontSize:'13px',color:'var(--text)',lineHeight:'1.7',fontWeight:500}}>{site.route_info}</div>
                                 </div>
+                                
+                                {/* Saved addresses */}
+                                <div className="card" style={{padding:'16px'}}>
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
+                                        <div style={{fontSize:'13px',fontWeight:700,display:'flex',alignItems:'center',gap:'8px'}}>📍 Saved Addresses</div>
+                                        <button className="btn btn-sm btn-primary" onClick={() => { setShowAddrForm(true); setAddrForm({ label:'', address:'', type:'directions' }); }}>+ Add Address</button>
+                                    </div>
+                                    
+                                    {showAddrForm && addrForm.type === 'directions' && (
+                                        <div style={{padding:'12px',background:'var(--primary-glow)',borderRadius:'8px',border:'1px solid var(--primary)',marginBottom:'12px'}}>
+                                            <div className="form-row">
+                                                <div className="form-group" style={{flex:1}}>
+                                                    <label className="form-label">Label</label>
+                                                    <input className="form-input" placeholder="e.g. Hotel, Meeting Point, Warehouse..." value={addrForm.label} onChange={e => setAddrForm({...addrForm, label: e.target.value})}/>
+                                                </div>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Address</label>
+                                                <textarea className="form-textarea" style={{minHeight:'60px',fontSize:'12px'}} placeholder="123 Main St, Building B&#10;Norfolk, VA 23511" value={addrForm.address} onChange={e => setAddrForm({...addrForm, address: e.target.value})}/>
+                                            </div>
+                                            <div className="btn-group" style={{marginTop:'8px'}}>
+                                                <button className="btn btn-sm btn-primary" onClick={() => addSiteAddress(selectedSite)}>💾 Save</button>
+                                                <button className="btn btn-sm btn-secondary" onClick={() => setShowAddrForm(false)}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {dirAddrs.length === 0 && !showAddrForm ? (
+                                        <div style={{textAlign:'center',padding:'16px',color:'var(--text-muted)',fontSize:'12px'}}>No saved addresses yet</div>
+                                    ) : (
+                                        <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                                            {dirAddrs.map(addr => (
+                                                <div key={addr.id} style={{display:'flex',alignItems:'flex-start',gap:'12px',padding:'10px 12px',background:'var(--bg-input)',borderRadius:'8px',borderLeft:'3px solid var(--primary)'}}>
+                                                    <div style={{flex:1}}>
+                                                        <div style={{fontSize:'12px',fontWeight:600,marginBottom:'2px'}}>{addr.label}</div>
+                                                        <div style={{fontSize:'12px',color:'var(--text-dim)',fontFamily:'JetBrains Mono',whiteSpace:'pre-wrap',lineHeight:'1.5'}}>{addr.address}</div>
+                                                    </div>
+                                                    <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+                                                        <button className="btn btn-sm btn-secondary" style={{padding:'3px 8px',fontSize:'10px'}} onClick={() => { navigator.clipboard?.writeText(addr.address); toast('Copied!','success'); }}>📋</button>
+                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'10px',color:'var(--red)'}} onClick={() => deleteSiteAddress(selectedSite, addr.id)}>✕</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
+                            );
+                        })()}
                         
                         {/* TAB: Shipping */}
-                        {siteTab === 'shipping' && (
-                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
-                                <div className="card" style={{padding:'18px',borderLeft:'3px solid var(--green)'}}>
+                        {siteTab === 'shipping' && (() => {
+                            const shipAddrs = getSiteAddresses(selectedSite, 'shipping');
+                            return (
+                            <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                                    <div className="card" style={{padding:'18px',borderLeft:'3px solid var(--green)'}}>
                                     <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
                                         <span style={{background:'var(--green)',color:'#000',padding:'3px 10px',borderRadius:'4px',fontSize:'10px',fontWeight:700}}>UNCLASSIFIED</span>
                                     </div>
@@ -5639,7 +5713,55 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                                     }}>📋 Copy</button>
                                 </div>
                             </div>
-                        )}
+                                
+                                {/* Saved shipping addresses */}
+                                <div className="card" style={{padding:'16px'}}>
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
+                                        <div style={{fontSize:'13px',fontWeight:700,display:'flex',alignItems:'center',gap:'8px'}}>📬 Saved Shipping Addresses</div>
+                                        <button className="btn btn-sm btn-primary" onClick={() => { setShowAddrForm(true); setAddrForm({ label:'', address:'', type:'shipping' }); }}>+ Add Address</button>
+                                    </div>
+                                    
+                                    {showAddrForm && addrForm.type === 'shipping' && (
+                                        <div style={{padding:'12px',background:'var(--primary-glow)',borderRadius:'8px',border:'1px solid var(--primary)',marginBottom:'12px'}}>
+                                            <div className="form-row">
+                                                <div className="form-group" style={{flex:1}}>
+                                                    <label className="form-label">Label</label>
+                                                    <input className="form-input" placeholder="e.g. FedEx Drop-off, Receiving Dock, Alternate Address..." value={addrForm.label} onChange={e => setAddrForm({...addrForm, label: e.target.value})}/>
+                                                </div>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Address</label>
+                                                <textarea className="form-textarea" style={{minHeight:'60px',fontSize:'12px'}} placeholder="ATTN: John Smith&#10;Building 200, Receiving Bay&#10;1234 Base Road&#10;Norfolk, VA 23511" value={addrForm.address} onChange={e => setAddrForm({...addrForm, address: e.target.value})}/>
+                                            </div>
+                                            <div className="btn-group" style={{marginTop:'8px'}}>
+                                                <button className="btn btn-sm btn-primary" onClick={() => addSiteAddress(selectedSite)}>💾 Save</button>
+                                                <button className="btn btn-sm btn-secondary" onClick={() => setShowAddrForm(false)}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {shipAddrs.length === 0 && !showAddrForm ? (
+                                        <div style={{textAlign:'center',padding:'16px',color:'var(--text-muted)',fontSize:'12px'}}>No saved shipping addresses yet</div>
+                                    ) : (
+                                        <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                                            {shipAddrs.map(addr => (
+                                                <div key={addr.id} style={{display:'flex',alignItems:'flex-start',gap:'12px',padding:'10px 12px',background:'var(--bg-input)',borderRadius:'8px',borderLeft:'3px solid var(--amber)'}}>
+                                                    <div style={{flex:1}}>
+                                                        <div style={{fontSize:'12px',fontWeight:600,marginBottom:'2px'}}>{addr.label}</div>
+                                                        <div style={{fontSize:'12px',color:'var(--text-dim)',fontFamily:'JetBrains Mono',whiteSpace:'pre-wrap',lineHeight:'1.5'}}>{addr.address}</div>
+                                                    </div>
+                                                    <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+                                                        <button className="btn btn-sm btn-secondary" style={{padding:'3px 8px',fontSize:'10px'}} onClick={() => { navigator.clipboard?.writeText(addr.address); toast('Copied!','success'); }}>📋</button>
+                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'10px',color:'var(--red)'}} onClick={() => deleteSiteAddress(selectedSite, addr.id)}>✕</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            );
+                        })()}
                         
                         {/* TAB: Notes */}
                         {siteTab === 'notes' && (
