@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T022";
+    var APP_BUILD = "2026-02-27T023";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2749,6 +2749,33 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Open Issues */}
+                                    {selIssues.length > 0 && (
+                                        <div style={{marginBottom:'16px',borderRadius:'12px',overflow:'hidden',border: selIssues.some(i => i.threat === 'Urgent') ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(245,158,11,0.3)'}}>
+                                            <div style={{padding:'10px 16px',background: selIssues.some(i => i.threat === 'Urgent') ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                                                <span style={{fontSize:'11px',fontWeight:700,letterSpacing:'0.5px',color: selIssues.some(i => i.threat === 'Urgent') ? 'var(--red)' : 'var(--amber)'}}>{selIssues.some(i => i.threat === 'Urgent') ? '🚨' : '⚠️'} {selIssues.length} OPEN ISSUE{selIssues.length > 1 ? 'S' : ''}</span>
+                                                <button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setQuickIssueModal(true)}>+ Add Issue</button>
+                                            </div>
+                                            {selIssues.map((issue, idx) => (
+                                                <div key={issue.id} style={{padding:'10px 16px',borderTop:'1px solid var(--border)',display:'flex',alignItems:'flex-start',gap:'10px',background:'var(--bg-card)'}}>
+                                                    <span style={{fontSize:'10px',fontWeight:700,padding:'2px 8px',borderRadius:'4px',flexShrink:0,marginTop:'2px',background: issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',color: issue.threat === 'Urgent' ? '#fff' : '#000'}}>{issue.threat}</span>
+                                                    <div style={{flex:1,minWidth:0}}>
+                                                        <div style={{fontSize:'12px',fontWeight:600}}>{issue.title || issue.details}</div>
+                                                        {issue.title && issue.details && issue.title !== issue.details && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{issue.details}</div>}
+                                                        <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px',display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+                                                            <span>{fmtDate(issue.created)}</span>
+                                                            <span style={{padding:'1px 6px',borderRadius:'4px',fontSize:'9px',fontWeight:600,background: issue.responsibility === 'REAP' ? 'var(--primary-glow)' : 'var(--bg-input)',color: issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--text-muted)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--border)'}`}}>{issue.responsibility === 'REAP' ? '🛠️ REAP' : '🚢 Ship'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: x.responsibility === 'REAP' ? 'Ship' : 'REAP'} : x))}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
+                                                        <button className="btn btn-sm btn-success" style={{padding:'3px 8px',fontSize:'9px'}} onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {/* Timeline */}
                                     {emailHistory.filter(h => h.shipId === sel.id).length === 0 ? (
