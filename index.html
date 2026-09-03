@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T026";
+    var APP_BUILD = "2026-02-27T027";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -3013,9 +3013,15 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     <div className="activity-log">
                                         {activityLog.filter(a => a.text.includes(sel.name)).slice(0, 10).map(a => (
                                             <div key={a.id} className="activity-item" style={{flexDirection:'column',gap:'4px'}}>
-                                                <div style={{display:'flex',gap:'12px'}}>
-                                                    <span className="activity-time">{fmtTime(a.time)}</span>
-                                                    <span className="activity-text">{a.text}</span>
+                                                <div style={{display:'flex',gap:'8px',alignItems:'flex-start'}}>
+                                                    <div style={{width:'22px',height:'22px',borderRadius:'6px',background:'var(--primary-glow)',border:'1px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'8px',fontWeight:800,color:'var(--primary)',flexShrink:0,marginTop:'1px'}}>{(a.user || 'SY').substring(0,2).toUpperCase()}</div>
+                                                    <div style={{flex:1}}>
+                                                        <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'2px'}}>
+                                                            <span style={{fontSize:'11px',fontWeight:700,color:'var(--primary)'}}>{a.user || 'System'}</span>
+                                                            <span className="activity-time" style={{fontSize:'10px'}}>{fmtTime(a.time)}</span>
+                                                        </div>
+                                                        <span className="activity-text">{a.text}</span>
+                                                    </div>
                                                 </div>
                                                 {a.details && (
                                                     <div style={{marginLeft:'70px',padding:'8px',background:'var(--bg-input)',borderRadius:'6px',fontSize:'11px',color:'var(--text-dim)'}}>
@@ -3132,9 +3138,17 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             };
                             return (
                                 <div key={a.id} onClick={() => setActivityDetailModal(a)} style={{padding:'10px 12px',background:'var(--bg-input)',borderRadius:'6px',cursor:'pointer',border:'1px solid transparent',transition:'all 0.15s'}} onMouseOver={e => e.currentTarget.style.borderColor='var(--primary)'} onMouseOut={e => e.currentTarget.style.borderColor='transparent'}>
-                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                                        <div style={{flex:1}}>
-                                            <div style={{fontSize:'12px',fontWeight:500,color:'var(--text)',marginBottom:'2px'}}>{a.text}</div>
+                                    <div style={{display:'flex',alignItems:'flex-start',gap:'10px'}}>
+                                        {/* User avatar */}
+                                        <div style={{width:'30px',height:'30px',borderRadius:'8px',background:'var(--primary-glow)',border:'1.5px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:800,color:'var(--primary)',flexShrink:0,marginTop:'1px'}}>
+                                            {(a.user || 'SYS').substring(0,2).toUpperCase()}
+                                        </div>
+                                        <div style={{flex:1,minWidth:0}}>
+                                            <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'3px'}}>
+                                                <span style={{fontSize:'12px',fontWeight:700,color:'var(--primary)'}}>{a.user || 'System'}</span>
+                                                <span style={{fontSize:'10px',color:'var(--text-muted)'}}>{timeAgo(a.time)}</span>
+                                            </div>
+                                            <div style={{fontSize:'12px',fontWeight:500,color:'var(--text)',lineHeight:'1.4'}}>{a.text}</div>
                                             {a.details && (
                                                 <div style={{fontSize:'11px',color:'var(--text-dim)',padding:'4px 8px',background:'var(--bg-card)',borderRadius:'4px',marginTop:'4px'}}>
                                                     {a.details.resolution && <div>↳ <strong>Resolution:</strong> {a.details.resolution.substring(0, 60)}{a.details.resolution.length > 60 ? '...' : ''}</div>}
@@ -3147,13 +3161,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     {a.details.inPortUntil && <div>↳ <strong>Back:</strong> {fmtDate(a.details.inPortUntil)}</div>}
                                                 </div>
                                             )}
-                                            <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px'}}>
-                                                <span style={{color:'var(--primary)',fontWeight:600}}>{a.user || 'System'}</span>
-                                                <span style={{margin:'0 6px'}}>•</span>
-                                                {timeAgo(a.time)}
-                                            </div>
                                         </div>
-                                        <span style={{fontSize:'10px',color:'var(--text-muted)'}}>→</span>
                                     </div>
                                 </div>
                             );
@@ -4234,7 +4242,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity })
         saveOrder(newOrder);
     };
 
-    const resetOrder = () => { saveOrder(defaultOrder); toast('Ship order reset to default', 'info'); };
+    const resetOrder = () => { saveOrder(defaultOrder); logActivity('Reset daily checks ship order to default'); toast('Ship order reset to default', 'info'); };
     
     // Drag and drop state
     const [draggedShip, setDraggedShip] = useState(null);
@@ -5070,7 +5078,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
     const saveShipAddresses = (updates) => {
         const merged = { ...savedShipAddresses, ...updates };
         db.collection('config').doc('shippingAddresses').set(merged, { merge: true })
-            .then(() => toast('Shipping addresses saved!', 'success'))
+            .then(() => { toast('Shipping addresses saved!', 'success'); logActivity('Updated shipping addresses'); })
             .catch(err => { console.error(err); toast('Save failed', 'error'); });
     };
     
@@ -5130,12 +5138,15 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
         if (!addrForm.label.trim()) { toast('Enter a label', 'error'); return; }
         const existing = siteAddresses[siteKey] || [];
         setSiteAddresses({...siteAddresses, [siteKey]: [...existing, { id: 'addr_' + Date.now(), ...addrForm }]});
+        logActivity(`Added ${addrForm.type} address "${addrForm.label}" at ${siteData[siteKey]?.abbr || siteKey}`);
         setAddrForm({ label: '', address: '', type: addrForm.type });
         setShowAddrForm(false);
         toast('Address saved!', 'success');
     };
     const deleteSiteAddress = (siteKey, addrId) => {
+        const addr = (siteAddresses[siteKey] || []).find(a => a.id === addrId);
         setSiteAddresses({...siteAddresses, [siteKey]: (siteAddresses[siteKey] || []).filter(a => a.id !== addrId)});
+        logActivity(`Removed ${addr?.type || ''} address "${addr?.label || 'Unknown'}" from ${siteData[siteKey]?.abbr || siteKey}`);
         toast('Address removed', 'info');
     };
     
@@ -5391,14 +5402,18 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
         const existing = getSitePOCs(siteKey);
         if (editingPOC && editingPOC !== 'new') {
             setSitePOCs({...sitePOCs, [siteKey]: existing.map(p => p.id === editingPOC ? {...pocForm, id: editingPOC} : p)});
+            logActivity(`Updated contact ${pocForm.name || 'Unknown'} at ${siteData[siteKey]?.abbr || siteKey}`);
         } else {
             setSitePOCs({...sitePOCs, [siteKey]: [...existing, {...pocForm, id: 'poc_'+Date.now()}]});
+            logActivity(`Added contact ${pocForm.name || 'Unknown'} at ${siteData[siteKey]?.abbr || siteKey}`);
         }
         setEditingPOC(null); setPocForm({name:'',role:'',phone:'',email:'',notes:''});
         toast('Contact saved!', 'success');
     };
     const deletePOC = (siteKey, pocId) => {
+        const poc = getSitePOCs(siteKey).find(p => p.id === pocId);
         setSitePOCs({...sitePOCs, [siteKey]: getSitePOCs(siteKey).filter(p => p.id !== pocId)});
+        logActivity(`Removed contact ${poc?.name || 'Unknown'} from ${siteData[siteKey]?.abbr || siteKey}`);
         toast('Contact removed', 'info');
     };
     
