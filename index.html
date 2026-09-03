@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T037";
+    var APP_BUILD = "2026-02-27T040";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1630,6 +1630,352 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [aiEmailText, setAiEmailText] = useState('');
     const [aiParsing, setAiParsing] = useState(false);
     const [aiResult, setAiResult] = useState(null);
+    const [diagnostics, setDiagnostics] = useState(null);
+    const [suggestedIssue, setSuggestedIssue] = useState(null);
+    const [historyScan, setHistoryScan] = useState(null);
+    
+    // Scan all email history for a ship and find issue patterns
+    const scanEmailHistory = (shipId, shipName) => {
+        const shipEmails = emailHistory.filter(h => h.shipId === shipId).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        if (shipEmails.length === 0) { toast('No emails to scan', 'info'); return; }
+        
+        const patterns = [
+            { regex: /(?:router|cisco)[\s\S]{0,40}(?:down|offline|not responding|failed|issue|problem|error)/i, title: 'Router Issue', category: 'Network/Connectivity', threat: 'Urgent' },
+            { regex: /(?:no |lost |cannot |can't |unable to )(?:connect|connection|connectivity|comms|communicate)/i, title: 'Connection Lost', category: 'Network/Connectivity', threat: 'Urgent' },
+            { regex: /(?:network|connection)[\s\S]{0,30}(?:down|offline|dropped|lost)/i, title: 'Network Down', category: 'Network/Connectivity', threat: 'Urgent' },
+            { regex: /(?:drive|hdd|ssd|hard disk)[\s\S]{0,30}(?:fail|broken|error|bad|dead|clicking)/i, title: 'Drive Failure', category: 'Hardware', threat: 'Urgent' },
+            { regex: /(?:power supply|psu)[\s\S]{0,30}(?:fail|dead|blown|no power)/i, title: 'Power Supply Failure', category: 'Hardware', threat: 'Urgent' },
+            { regex: /(?:tape|lto)[\s\S]{0,30}(?:fail|error|broken|stuck|won't read)/i, title: 'Tape Drive Issue', category: 'Hardware', threat: 'Mild' },
+            { regex: /(?:crash|bsod|blue screen|freeze|frozen|locked up)/i, title: 'System Crash', category: 'Software', threat: 'Urgent' },
+            { regex: /(?:won't boot|no boot|boot fail|won't start|won't turn on)/i, title: 'Boot Failure', category: 'Software', threat: 'Urgent' },
+            { regex: /(?:satcom|satellite|shf|ehf)[\s\S]{0,30}(?:down|lost|no signal|fail)/i, title: 'SATCOM Issue', category: 'Communications', threat: 'Urgent' },
+            { regex: /(?:voip|phone)[\s\S]{0,30}(?:down|not working|no dial|dead)/i, title: 'VOIP Issue', category: 'Communications', threat: 'Mild' },
+            { regex: /(?:crypto|comsec|taclane|haipe)[\s\S]{0,30}(?:fail|issue|error|down|expired)/i, title: 'Crypto/COMSEC Issue', category: 'Security', threat: 'Urgent' },
+            { regex: /(?:intermittent|dropping|keeps disconnecting|unstable|flapping)/i, title: 'Intermittent Connection', category: 'Network/Connectivity', threat: 'Mild' },
+            { regex: /(?:slow|latency|lag)[\s\S]{0,20}(?:issue|problem|bad|poor|degraded)/i, title: 'Performance Issue', category: 'Network/Connectivity', threat: 'Mild' },
+            { regex: /(?:cable|connector)[\s\S]{0,30}(?:broken|damaged|bad|loose|fail)/i, title: 'Cable/Connector Issue', category: 'Hardware', threat: 'Mild' },
+            { regex: /(?:bcr|bcr not|bcr denied|waiting on bcr)/i, title: 'BCR Issue', category: 'Configuration', threat: 'Urgent' },
+            { regex: /(?:atu|atu expired|expired atu)/i, title: 'ATU Expired', category: 'Configuration', threat: 'Urgent' },
+            { regex: /(?:monitor|display|screen)[\s\S]{0,30}(?:blank|no signal|dead|flickering)/i, title: 'Display Issue', category: 'Hardware', threat: 'Mild' },
+            { regex: /(?:dns|name resolution|cannot resolve)/i, title: 'DNS Issue', category: 'Network/Connectivity', threat: 'Mild' },
+            { regex: /(?:fiber|sfp|optical)[\s\S]{0,30}(?:fail|error|no light|bad)/i, title: 'Fiber/SFP Issue', category: 'Hardware', threat: 'High' },
+        ];
+        
+        // Scan each email against all patterns
+        const findings = {};
+        shipEmails.forEach(email => {
+            const text = (email.emailText || '') + ' ' + (email.result?.emailSummary || '');
+            if (!text.trim()) return;
+            
+            patterns.forEach(p => {
+                if (p.regex.test(text)) {
+                    if (!findings[p.title]) {
+                        findings[p.title] = { ...p, mentions: [], firstSeen: null, lastSeen: null };
+                    }
+                    const snippet = text.substring(0, 200).replace(/\n/g, ' ').trim();
+                    findings[p.title].mentions.push({
+                        emailId: email.id,
+                        date: email.timestamp,
+                        sender: email.result?.sender?.name || email.result?.contactedBy || 'Unknown',
+                        snippet: snippet,
+                        summary: email.result?.emailSummary || ''
+                    });
+                    if (!findings[p.title].firstSeen || new Date(email.timestamp) < new Date(findings[p.title].firstSeen)) {
+                        findings[p.title].firstSeen = email.timestamp;
+                    }
+                    if (!findings[p.title].lastSeen || new Date(email.timestamp) > new Date(findings[p.title].lastSeen)) {
+                        findings[p.title].lastSeen = email.timestamp;
+                    }
+                }
+            });
+        });
+        
+        // Check which are already tracked as issues
+        const issueList = Object.values(findings).map(f => {
+            const alreadyTracked = issues.some(i => 
+                i.shipId === shipId && !i.resolved && 
+                (i.title?.toLowerCase().includes(f.title.toLowerCase()) || i.category === f.category)
+            );
+            return { ...f, alreadyTracked, mentionCount: f.mentions.length };
+        }).sort((a,b) => b.mentionCount - a.mentionCount);
+        
+        setHistoryScan({ shipId, shipName, totalEmails: shipEmails.length, findings: issueList });
+    };
+    
+    // Auto-detect issues from email text — lightweight, no API
+    const detectIssueFromText = (text, shipId, shipName) => {
+        if (!text || text.length < 10) return;
+        const t = text.toLowerCase();
+        
+        // Skip if text is clearly not reporting a problem
+        const positiveOnly = /^(all good|everything is working|no issues|systems are up|operational|running fine)/i.test(text.trim());
+        if (positiveOnly) return;
+        
+        // Issue patterns with specificity scoring
+        const patterns = [
+            { regex: /(?:router|cisco)[\s\S]{0,40}(?:down|offline|not responding|failed|issue|problem|error)/i, title: 'Router Issue', category: 'Network/Connectivity', threat: 'Urgent', weight: 3 },
+            { regex: /(?:no |lost |cannot |can't |unable to )(?:connect|connection|connectivity|comms|communicate)/i, title: 'Connection Lost', category: 'Network/Connectivity', threat: 'Urgent', weight: 3 },
+            { regex: /(?:network|connection)[\s\S]{0,30}(?:down|offline|dropped|lost)/i, title: 'Network Down', category: 'Network/Connectivity', threat: 'Urgent', weight: 3 },
+            { regex: /(?:drive|hdd|ssd|hard disk)[\s\S]{0,30}(?:fail|broken|error|bad|dead|clicking)/i, title: 'Drive Failure', category: 'Hardware Failure', threat: 'Urgent', weight: 3 },
+            { regex: /(?:power supply|psu)[\s\S]{0,30}(?:fail|dead|blown|no power)/i, title: 'Power Supply Failure', category: 'Hardware Failure', threat: 'Urgent', weight: 3 },
+            { regex: /(?:tape|lto)[\s\S]{0,30}(?:fail|error|broken|stuck|won't read|cannot read)/i, title: 'Tape Drive Issue', category: 'Hardware Failure', threat: 'Mild', weight: 2 },
+            { regex: /(?:optical|dvd|cd)[\s\S]{0,30}(?:fail|error|broken|cannot read|won't read)/i, title: 'Optical Drive Issue', category: 'Hardware Failure', threat: 'Mild', weight: 2 },
+            { regex: /(?:monitor|display|screen)[\s\S]{0,30}(?:blank|no signal|dead|flickering|broken)/i, title: 'Display Issue', category: 'Hardware Failure', threat: 'Mild', weight: 2 },
+            { regex: /(?:crash|bsod|blue screen|freeze|frozen|locked up|not responding)/i, title: 'System Crash/Freeze', category: 'Software/System', threat: 'Urgent', weight: 3 },
+            { regex: /(?:won't boot|no boot|boot fail|won't start|won't turn on)/i, title: 'Boot Failure', category: 'Software/System', threat: 'Urgent', weight: 3 },
+            { regex: /(?:satcom|satellite|shf|ehf)[\s\S]{0,30}(?:down|lost|no signal|fail|issue)/i, title: 'SATCOM Issue', category: 'Network/Connectivity', threat: 'Urgent', weight: 3 },
+            { regex: /(?:voip|phone)[\s\S]{0,30}(?:down|not working|no dial|dead|issue)/i, title: 'VOIP/Phone Issue', category: 'Network/Connectivity', threat: 'Mild', weight: 2 },
+            { regex: /(?:crypto|comsec|taclane|haipe|kg-)[\s\S]{0,30}(?:fail|issue|error|down|lost|expired)/i, title: 'Crypto/COMSEC Issue', category: 'Security', threat: 'Urgent', weight: 3 },
+            { regex: /(?:cable|connector)[\s\S]{0,30}(?:broken|damaged|bad|loose|fail)/i, title: 'Cable/Connector Issue', category: 'Hardware Failure', threat: 'Mild', weight: 2 },
+            { regex: /(?:intermittent|dropping|keeps disconnecting|unstable|flapping)/i, title: 'Intermittent Connection', category: 'Network/Connectivity', threat: 'Mild', weight: 2 },
+            { regex: /(?:slow|latency|lag|bandwidth|throughput)[\s\S]{0,20}(?:issue|problem|bad|poor|degraded)/i, title: 'Performance Degradation', category: 'Network/Connectivity', threat: 'Mild', weight: 2 },
+            { regex: /(?:bcr|bcr not|bcr denied|bcr rejected|waiting on bcr|awaiting bcr)/i, title: 'BCR Issue', category: 'Configuration', threat: 'Urgent', weight: 3 },
+            { regex: /(?:noc|noc needs|waiting on noc|noc implement)/i, title: 'Waiting on NOC', category: 'Configuration', threat: 'Mild', weight: 2 },
+            { regex: /(?:atu|atu expired|expired atu)/i, title: 'ATU Expired', category: 'Configuration', threat: 'Urgent', weight: 3 },
+        ];
+        
+        // Find matches
+        const matches = [];
+        patterns.forEach(p => {
+            const match = t.match(p.regex);
+            if (match) {
+                // Extract context around the match for the details
+                const idx = match.index;
+                const context = text.substring(Math.max(0, idx - 30), Math.min(text.length, idx + match[0].length + 60)).trim();
+                matches.push({ ...p, context, matchText: match[0] });
+            }
+        });
+        
+        if (matches.length === 0) return;
+        
+        // Pick the highest-weight match
+        matches.sort((a, b) => b.weight - a.weight);
+        const best = matches[0];
+        
+        // Check if this issue already exists on the ship
+        const existingIssue = issues.find(i => 
+            i.shipId === shipId && 
+            !i.resolved && 
+            (i.title?.toLowerCase().includes(best.title.toLowerCase()) || 
+             i.details?.toLowerCase().includes(best.title.toLowerCase()) ||
+             (i.category === best.category && i.details?.toLowerCase().includes(best.matchText.toLowerCase())))
+        );
+        if (existingIssue) return; // Already tracked
+        
+        // Build the suggested issue
+        setSuggestedIssue({
+            shipId,
+            shipName,
+            threat: best.threat,
+            title: best.title,
+            details: best.context.replace(/\n/g, ' ').substring(0, 150),
+            category: best.category,
+            responsibility: 'Ship',
+            allMatches: matches,
+            diagnosticId: best.regex.source.substring(0, 20),
+        });
+    };
+    
+    // ===== RULE-BASED DIAGNOSTIC ENGINE =====
+    const runDiagnostics = (text, equipment = [], issueData = {}) => {
+        const t = (text || '').toLowerCase();
+        const results = [];
+        
+        const kb = [
+            // === NETWORK / CONNECTIVITY ===
+            { id: 'net-no-connection', name: 'No Network Connection',
+              trigger: /no (?:network|connection|connectivity|comms|communications)|cannot connect|unable to connect|network down|completely offline|lost all connect/i,
+              severity: 'critical', category: 'Network',
+              causes: ['Physical cable disconnected or damaged', 'Switch/router port failure', 'NIC failure or disabled', 'IP address conflict or DHCP failure', 'VLAN misconfiguration'],
+              doThis: ['Check physical cable connections at both ends — reseat each one', 'Verify link lights on NIC and switch port (green = good, amber = issue, off = no link)', 'Run ipconfig /all — check for valid IP (not 169.254.x.x / APIPA)', 'Try a known-good cable to rule out cable failure', 'Check switch port status — may be err-disabled or admin down', 'Ping default gateway first, then DNS, then external'],
+              dontDoThis: ['Do NOT reboot the router without coordinating — it drops all connections', 'Do NOT change IP settings without documenting the original config', 'Do NOT swap cables without labeling which goes where', 'Do NOT assume it\'s the PC — check infrastructure first'],
+              tools: ['Cable tester', 'Known-good patch cable', 'Console cable for switch/router'] },
+            
+            { id: 'net-intermittent', name: 'Intermittent Connection / Drops',
+              trigger: /intermittent|drops|dropping|keeps disconnect|connection unstable|comes and goes|on and off|flapping|packet loss/i,
+              severity: 'high', category: 'Network',
+              causes: ['Loose or damaged cable (most common)', 'Duplex mismatch between NIC and switch', 'Electromagnetic interference (EMI) near cables', 'Overloaded switch port or bandwidth saturation', 'Failing NIC or switch port', 'STP reconvergence on the switch'],
+              doThis: ['Check cable runs for damage, kinks, tight bends, or proximity to power cables', 'Run continuous ping (ping -t) to gateway and note when drops occur', 'Check NIC settings — force speed/duplex to match switch (avoid Auto if issues persist)', 'Monitor switch port counters for CRC errors, runts, giants — signs of bad cable', 'Try moving to a different switch port', 'Check for scheduled tasks or backups consuming bandwidth'],
+              dontDoThis: ['Do NOT run network cables parallel to power cables — causes EMI', 'Do NOT use cables longer than 100m for copper ethernet', 'Do NOT ignore CRC errors — they always indicate a physical layer problem', 'Do NOT set duplex to Half unless specifically required'],
+              tools: ['Cable tester / certifier', 'Wireshark for packet analysis', 'Switch CLI for port statistics'] },
+            
+            { id: 'net-slow', name: 'Slow Network / High Latency',
+              trigger: /slow (?:network|connection|speed|transfer)|high latency|high ping|lag(?:ging)?|bandwidth|throughput|crawling|taking forever/i,
+              severity: 'medium', category: 'Network',
+              causes: ['Bandwidth saturation from file transfers or backups', 'Duplex mismatch causing collisions', 'DNS resolution delays', 'MTU size issues causing fragmentation', 'QoS misconfiguration deprioritizing traffic', 'Bad cable causing retransmissions'],
+              doThis: ['Run speed test between endpoints — compare to expected baseline', 'Check for large file transfers or backups in progress', 'Verify MTU settings (standard 1500, jumbo 9000) — run ping -f -l 1472 to test', 'Check DNS response time — nslookup with timing', 'Review switch port for errors, discards, or throttling', 'Trace route to destination to find where latency spikes'],
+              dontDoThis: ['Do NOT change MTU without understanding the full path', 'Do NOT disable QoS without knowing what it protects', 'Do NOT blame the network before checking if the application itself is slow', 'Do NOT run large transfers during operational hours without coordination'],
+              tools: ['iperf for bandwidth testing', 'tracert / pathping', 'Wireshark'] },
+            
+            { id: 'net-dns', name: 'DNS Resolution Failure',
+              trigger: /dns|name resolution|cannot resolve|could not find host|nslookup fail|server not found/i,
+              severity: 'high', category: 'Network',
+              causes: ['DNS server unreachable or down', 'Incorrect DNS settings on client', 'DNS cache poisoned or stale', 'Firewall blocking port 53', 'DNS zone file corruption'],
+              doThis: ['Run nslookup manually against the configured DNS server', 'Check DNS settings: ipconfig /all — verify DNS server IPs are correct', 'Flush DNS cache: ipconfig /flushdns', 'Try pinging by IP to confirm network works without DNS', 'Test against alternate DNS (8.8.8.8) to isolate local vs upstream'],
+              dontDoThis: ['Do NOT change DNS servers to public DNS on classified networks', 'Do NOT flush DNS cache on a server without understanding impact', 'Do NOT assume DNS is the problem if you can\'t ping by IP either'],
+              tools: ['nslookup', 'dig (Linux)', 'ipconfig'] },
+            
+            // === ROUTER / SWITCH ===
+            { id: 'rtr-down', name: 'Router Down / Not Responding',
+              trigger: /router (?:down|offline|not responding|failed|dead|unresponsive|crashed)|no (?:route|routing)|taclane (?:down|issue|fail)/i,
+              severity: 'critical', category: 'Router/Switch',
+              causes: ['Power failure or power supply issue', 'IOS crash or boot failure', 'Configuration error after change', 'Hardware failure (PSU, fan, memory)', 'Console cable needed for recovery'],
+              doThis: ['Check power — is the router plugged in and getting power? Check outlet with another device', 'Check console port — connect via console cable to see boot messages', 'If router is in rommon mode, it needs IOS recovery', 'Check for recent config changes that may have caused the issue', 'Document the LED status — which lights are on/off/blinking', 'If TACLANE: check HAIPE status lights, verify fill is loaded'],
+              dontDoThis: ['Do NOT power cycle a TACLANE without crypto coordination — fill may be lost', 'Do NOT reload without saving config (or you\'ll lose unsaved changes)', 'Do NOT attempt IOS upgrade without backup image and TFTP server ready', 'Do NOT change crypto keys without authorization'],
+              tools: ['Console cable (RJ45/DB9 or USB)', 'Putty/TeraTerm', 'TFTP server for recovery'] },
+            
+            { id: 'rtr-config', name: 'Router/Switch Configuration Issue',
+              trigger: /(?:router|switch) config|acl|access.list|vlan|trunk|route.table|ospf|eigrp|bgp|nat|pat|arp table|mac.table|spanning.tree|stp/i,
+              severity: 'high', category: 'Router/Switch',
+              causes: ['ACL blocking legitimate traffic', 'VLAN not trunked or wrong VLAN assignment', 'Routing table missing routes', 'NAT/PAT misconfiguration', 'STP blocking port due to loop detection'],
+              doThis: ['Show running-config and compare to known-good baseline', 'Check interface status: show ip interface brief', 'Verify VLANs: show vlan brief on switch', 'Check routing: show ip route — look for missing routes', 'Review ACLs: show access-lists — check hit counters', 'Save config before making changes: copy run start'],
+              dontDoThis: ['Do NOT modify ACLs on production equipment without a rollback plan', 'Do NOT remove trunk links without verifying what VLANs traverse them', 'Do NOT clear ARP/MAC tables unless you understand the impact', 'ALWAYS copy running-config startup-config after verified changes'],
+              tools: ['Console/SSH access', 'TFTP for config backup', 'Network diagram'] },
+            
+            // === SATCOM / COMMUNICATIONS ===
+            { id: 'sat-link', name: 'SATCOM Link Issue',
+              trigger: /satcom|satellite|shf|ehf|uhf|ku.band|link.budget|signal.strength|antenna|modem|no.comms|comms.down|wsc-6|usc-38/i,
+              severity: 'critical', category: 'Communications',
+              causes: ['Antenna pointing/tracking error', 'Modem lock lost', 'Satellite transponder issue (shore side)', 'Weather attenuation (rain fade)', 'Cable/waveguide damage between antenna and below-decks equipment', 'Frequency plan change not applied'],
+              doThis: ['Check modem status — is it locked to the satellite? Note Eb/No, BER, signal levels', 'Verify antenna is tracking — check AZ/EL and compare to expected satellite position', 'Contact shore station to verify transponder allocation is active', 'Check all cable connections from antenna to modem — especially waveguide joints', 'Review frequency plan — has there been a recent change?', 'Check for scheduled maintenance or planned outages'],
+              dontDoThis: ['Do NOT transmit without verifying you are on the correct satellite/transponder', 'Do NOT adjust antenna feed without proper training — can damage waveguide', 'Do NOT bypass safety interlocks on high-power transmitters', 'Do NOT change frequency/bandwidth without coordination with controlling authority'],
+              tools: ['Modem status display', 'Spectrum analyzer', 'Antenna control unit', 'FLTSATCOM schedule'] },
+            
+            { id: 'voip-issue', name: 'VOIP / Phone System Issue',
+              trigger: /voip|phone|telephone|handset|dial tone|no dial|call quality|echo|static|sip|phone not register|cannot call/i,
+              severity: 'medium', category: 'Communications',
+              causes: ['Phone not registered with call server', 'Network issue between phone and call server', 'PoE port not providing power', 'VLAN configuration (voice VLAN not set)', 'Codec mismatch or QoS issue causing poor quality'],
+              doThis: ['Check phone display — is it registered? Does it have an IP?', 'Verify PoE — is switch port providing power? Check with show power inline', 'Ensure voice VLAN is configured on switch port', 'Check network path to call server — can phone reach its gateway?', 'For quality issues: check for jitter/packet loss on the network path', 'Reboot phone by unplugging and replugging network cable'],
+              dontDoThis: ['Do NOT factory reset phone without saving its config/extension', 'Do NOT move phone to a different port without checking VLAN config', 'Do NOT use a non-PoE switch port unless phone has external power supply'],
+              tools: ['Switch CLI', 'Phone admin page (browser)', 'Wireshark for SIP debugging'] },
+            
+            // === HARDWARE ===
+            { id: 'hw-drive', name: 'Hard Drive / Storage Failure',
+              trigger: /hard drive|hdd|ssd|disk|storage|drive fail|bad sector|smart error|drive not detect|no drive|drive click|read error|write error|corrupt/i,
+              severity: 'high', category: 'Hardware',
+              causes: ['Drive reaching end of life (SMART errors)', 'Bad sectors developing', 'Cable loose or failed (SATA/SAS)', 'Controller failure', 'Drive not seated properly in hot-swap bay', 'Power issue to drive'],
+              doThis: ['Check SMART status: wmic diskdrive get status (Windows) or smartctl (Linux)', 'Check cable connections — reseat SATA/SAS data and power cables', 'Listen for clicking or grinding — indicates mechanical failure (replace immediately)', 'If hot-swap bay: remove and reseat the drive', 'Back up data immediately if drive is still readable but showing errors', 'Check Event Viewer/dmesg for disk errors with timestamps'],
+              dontDoThis: ['Do NOT continue using a drive with SMART warnings — it will fail', 'Do NOT open a hard drive — clean room required', 'Do NOT power cycle repeatedly if drive is clicking — makes recovery harder', 'Do NOT defragment an SSD — it reduces lifespan with no benefit', 'Do NOT ignore "predictive failure" alerts'],
+              tools: ['SMART monitoring tool', 'Known-good replacement drive', 'SATA/SAS cables'] },
+            
+            { id: 'hw-power', name: 'Power Supply Issue',
+              trigger: /power supply|psu|no power|won't turn on|won't boot|dead|ups|power flicker|electrical|surge|brownout|shut.?down unexpect/i,
+              severity: 'critical', category: 'Hardware',
+              causes: ['PSU failure (capacitor, fan, or regulator)', 'Power outlet dead or tripped breaker', 'UPS battery depleted or failed', 'Power cable loose or damaged', 'Surge damage to PSU', 'Overloaded circuit'],
+              doThis: ['Test the outlet with another device — confirm power is present', 'Check PSU fan — is it spinning? No fan = likely dead PSU', 'Try a different power cable', 'Check UPS status — battery level, load percentage, any alarms', 'If UPS: test on bypass to rule out UPS issue', 'Smell for burnt electronics — indicates component failure (replace, do not repair)', 'Check breaker panel if multiple devices lost power'],
+              dontDoThis: ['Do NOT open a PSU — high voltage capacitors inside even when unplugged', 'Do NOT daisy chain power strips or UPS units', 'Do NOT exceed UPS load capacity — check VA rating vs connected load', 'Do NOT bypass surge protection', 'Do NOT ignore burning smell — power down immediately'],
+              tools: ['Multimeter', 'Known-good power cable', 'Replacement PSU'] },
+            
+            { id: 'hw-tape', name: 'Tape Drive / LTO Issue',
+              trigger: /tape|lto|tape drive|backup fail|tape error|cleaning|tape stuck|eject|4mm|quantum|dat/i,
+              severity: 'medium', category: 'Hardware',
+              causes: ['Dirty read/write heads (most common)', 'Bad/worn tape media', 'SCSI/SAS cable or termination issue', 'Driver or firmware needs update', 'Tape stuck in mechanism', 'End of media life (exceeded write cycles)'],
+              doThis: ['Run a cleaning tape FIRST — fixes 70% of tape drive issues', 'Check SCSI termination — last device on chain needs terminator', 'Verify SCSI cable is properly seated at both ends', 'Check drive firmware version against manufacturer site', 'Try a known-good tape to rule out bad media', 'Check Device Manager for driver errors or conflicts'],
+              dontDoThis: ['Do NOT use a cleaning tape more than 50 times — track usage', 'Do NOT force-eject a stuck tape — use software eject or emergency pinhole', 'Do NOT mix SCSI cable types on the same chain (68-pin, 50-pin, etc.)', 'Do NOT touch the tape media surface', 'Do NOT reuse tapes past their rated write cycle count'],
+              tools: ['Cleaning tape', 'SCSI terminator', 'Known-good tape media', 'SCSI cable'] },
+            
+            { id: 'hw-optical', name: 'Optical Drive Issue',
+              trigger: /optical|cd|dvd|disc|disk read|cannot read|optical drive|compaq|lf-1094|disc error|media error/i,
+              severity: 'medium', category: 'Hardware',
+              causes: ['Dirty lens', 'Worn laser (end of life)', 'Bad disc media (scratched, degraded)', 'IDE/SATA cable issue', 'Driver conflict', 'Firmware incompatibility with media type'],
+              doThis: ['Try a different disc to rule out bad media', 'Use a lens cleaning disc', 'Check cable connections', 'Verify in Device Manager — check for errors', 'Try the disc in another drive to isolate', 'Check if drive appears in BIOS/UEFI'],
+              dontDoThis: ['Do NOT use scratched or cracked discs — can shatter at high RPM', 'Do NOT use liquid cleaners inside the drive', 'Do NOT force a disc in if the tray mechanism is jammed'],
+              tools: ['Lens cleaning disc', 'Known-good media', 'Replacement drive'] },
+            
+            { id: 'hw-monitor', name: 'Monitor / Display Issue',
+              trigger: /monitor|display|screen|no display|blank screen|no signal|flickering|resolution|vga|hdmi|displayport|dvi/i,
+              severity: 'low', category: 'Hardware',
+              causes: ['Wrong input selected on monitor', 'Cable loose or failed', 'GPU driver issue', 'Resolution set beyond monitor capability', 'GPU failure', 'Monitor power issue'],
+              doThis: ['Check input source on monitor — press Input/Source button', 'Reseat video cable at both ends', 'Try a different video cable', 'Connect to a different monitor to test if GPU is the issue', 'Boot to Safe Mode if resolution is wrong — resets display settings', 'Check GPU is fully seated in PCIe slot'],
+              dontDoThis: ['Do NOT assume the PC is dead just because there is no display — listen for boot sounds', 'Do NOT force a resolution the monitor cannot support'],
+              tools: ['Known-good video cable', 'Spare monitor for testing'] },
+            
+            // === SOFTWARE / SYSTEM ===
+            { id: 'sw-crash', name: 'System Crash / BSOD / Freeze',
+              trigger: /crash|bsod|blue screen|freeze|frozen|locked up|not responding|hang|system halt|stop error|kernel panic/i,
+              severity: 'high', category: 'Software/System',
+              causes: ['Driver conflict or corruption', 'RAM failure', 'Overheating (CPU or GPU)', 'Disk corruption', 'Windows update issue', 'Malware or security software conflict'],
+              doThis: ['Note the BSOD stop code if visible — critical for diagnosis', 'Check Event Viewer > System for critical errors around crash time', 'Run memory diagnostic: mdsched.exe', 'Check temperatures — is CPU thermal throttling?', 'Run sfc /scannow to check system file integrity', 'Check recently installed drivers or updates — rollback if suspicious', 'Run chkdsk /f on the system drive'],
+              dontDoThis: ['Do NOT repeatedly force-restart — can corrupt the OS', 'Do NOT ignore recurring BSODs — they indicate hardware or driver failure', 'Do NOT install random driver update tools — use manufacturer drivers', 'Do NOT disable Windows Error Reporting — it contains diagnostic data'],
+              tools: ['Event Viewer', 'Memory Diagnostic', 'BlueScreenView utility', 'CPU-Z for hardware info'] },
+            
+            { id: 'sw-boot', name: 'System Won\'t Boot / Boot Failure',
+              trigger: /won't boot|no boot|boot fail|bootloop|startup repair|bios|uefi|grub|boot device not found|operating system not found|ntldr|bootmgr/i,
+              severity: 'critical', category: 'Software/System',
+              causes: ['Boot order changed in BIOS', 'Boot drive disconnected or failed', 'MBR/BCD corruption', 'Recent Windows update corrupted boot files', 'UEFI/Legacy boot mode mismatch', 'Drive controller mode changed (AHCI vs IDE)'],
+              doThis: ['Enter BIOS — verify boot drive is detected and first in boot order', 'Check SATA/NVMe cable connection to boot drive', 'Try Startup Repair from Windows Recovery Environment', 'Rebuild BCD: bootrec /rebuildbcd from recovery prompt', 'Check if drive is visible in BIOS — if not, it is a hardware issue', 'Try booting from a USB recovery drive'],
+              dontDoThis: ['Do NOT reformat the drive unless you have a backup', 'Do NOT switch AHCI to IDE mode (or vice versa) without proper driver migration', 'Do NOT change UEFI to Legacy without understanding partition table (GPT vs MBR)'],
+              tools: ['USB recovery drive', 'BIOS access key', 'Bootable Linux USB for data recovery'] },
+            
+            // === SECURITY / CRYPTO ===
+            { id: 'sec-crypto', name: 'Crypto / COMSEC Issue',
+              trigger: /crypto|comsec|kg-|taclane|haipe|fill|key|certificate|cert |cer |pki|cac|smartcard|nss/i,
+              severity: 'critical', category: 'Security',
+              causes: ['Crypto key expired or not loaded', 'Certificate revoked or expired', 'HAIPE device lost sync', 'Key fill corrupted', 'CAC/PKI authentication failure', 'Clock skew causing cert validation failure'],
+              doThis: ['Check HAIPE/KG status indicators — reference the specific device TM', 'Verify system clock is accurate — cert validation fails with wrong time', 'Contact COMSEC custodian for key status and fill verification', 'Check CRL (Certificate Revocation List) is current', 'For CAC issues: try a different CAC reader, clean card contacts', 'Document all COMSEC serial numbers and key IDs before taking action'],
+              dontDoThis: ['Do NOT attempt key fill without COMSEC custodian authorization', 'Do NOT discuss key material details over unsecured channels', 'Do NOT zeroize a crypto device without explicit authorization', 'Do NOT bypass crypto for troubleshooting — maintain security posture', 'Do NOT handle crypto equipment without proper clearance and training'],
+              tools: ['KOI-18 or DTD for key fill', 'COMSEC custodian contact info', 'Device-specific technical manual'] },
+            
+            // === CABLES / PHYSICAL ===
+            { id: 'cable-scsi', name: 'SCSI Cable / Termination Issue',
+              trigger: /scsi|68.?pin|50.?pin|terminator|scsi cable|scsi error|scsi bus|scsi id|scsi conflict/i,
+              severity: 'medium', category: 'Cables/Physical',
+              causes: ['Missing terminator on last device', 'SCSI ID conflict (two devices with same ID)', 'Cable exceeds maximum length', 'Damaged or bent pins on connector', 'Mixed cable types on same chain', 'Improper cable routing near power sources'],
+              doThis: ['Verify terminator is installed on the last device in the SCSI chain', 'Check each device SCSI ID — must be unique (0-15, 7 reserved for controller)', 'Inspect all connectors for bent or broken pins', 'Verify cable length does not exceed spec (check LVD vs SE limits)', 'Ensure cable type matches all devices (68-pin, 50-pin, SCA)', 'Try removing devices from chain one at a time to isolate'],
+              dontDoThis: ['Do NOT mix LVD and SE devices on the same cable without proper converter', 'Do NOT force connectors — bent pins are permanent damage', 'Do NOT exceed 12m for LVD or 6m for SE SCSI cables', 'Do NOT hot-swap SCSI devices unless the bus supports it'],
+              tools: ['SCSI terminator', 'SCSI ID reference card', '68-pin to 50-pin adapter if needed'] },
+            
+            { id: 'cable-fiber', name: 'Fiber Optic Cable Issue',
+              trigger: /fiber|fibre|sfp|gbic|optical.*cable|light level|db loss|dirty.*connector|fiber break/i,
+              severity: 'high', category: 'Cables/Physical',
+              causes: ['Dirty fiber connectors (most common)', 'Fiber bend exceeding minimum bend radius', 'SFP module failure or incompatibility', 'Fiber break or macro bend in cable run', 'TX/RX reversed (crossover issue)', 'Wrong fiber type (single-mode vs multi-mode)'],
+              doThis: ['Clean both ends of fiber with proper fiber cleaning tool — ALWAYS clean before connecting', 'Check SFP light levels: show interface transceiver — compare to baseline', 'Verify fiber type matches SFP (SM=yellow jacket, MM=orange/aqua)', 'Check for tight bends in cable run — minimum bend radius typically 30mm', 'Try swapping SFP module with known-good', 'Use visual fault locator to find breaks'],
+              dontDoThis: ['Do NOT look into a lit fiber — laser radiation', 'Do NOT use compressed air on fiber connectors — use proper wipes', 'Do NOT exceed minimum bend radius — causes signal loss', 'Do NOT mix single-mode and multi-mode without proper media converter'],
+              tools: ['Fiber cleaning kit', 'Visual fault locator (VFL)', 'Optical power meter', 'Spare SFPs'] },
+            
+            { id: 'cable-ethernet', name: 'Ethernet Cable Issue',
+              trigger: /ethernet|rj45|cat5|cat6|patch cable|cable test|crossover|straight.through|cable bad|crimp|punch.down/i,
+              severity: 'medium', category: 'Cables/Physical',
+              causes: ['Bad crimp/termination', 'Cable damaged (crushed, kinked, stretched)', 'Wrong cable type (crossover vs straight-through)', 'Cable exceeds 100m maximum', 'EMI interference from nearby power cables', 'Incorrect pinout (T568A vs T568B mixed)'],
+              doThis: ['Test cable with cable tester — check all 8 wires and proper pairing', 'Replace with known-good cable to quickly isolate', 'Check for physical damage along cable run', 'Verify T568B pinout on both ends (standard for most installations)', 'Keep ethernet cables at least 12 inches from power cables', 'For long runs: test with cable certifier, not just continuity tester'],
+              dontDoThis: ['Do NOT run ethernet cables through HVAC ducts without plenum-rated cable', 'Do NOT pull cables by the connector — pull by the jacket', 'Do NOT use Cat5 for gigabit — use Cat5e minimum, Cat6 preferred', 'Do NOT staple cables — use proper cable clips or J-hooks'],
+              tools: ['Cable tester/certifier', 'Crimping tool + RJ45 connectors', 'Punch-down tool', 'Cable labels'] },
+        ];
+        
+        // Match against knowledge base
+        kb.forEach(rule => {
+            if (rule.trigger.test(text)) {
+                results.push(rule);
+            }
+        });
+        
+        // Also match based on detected equipment
+        if (equipment.includes('Router') || equipment.includes('Network')) {
+            if (!results.find(r => r.category === 'Router/Switch' || r.category === 'Network')) {
+                const netGeneral = kb.find(r => r.id === 'net-no-connection');
+                if (netGeneral && !results.includes(netGeneral)) results.push(netGeneral);
+            }
+        }
+        if (equipment.includes('Hard Drive')) {
+            if (!results.find(r => r.id === 'hw-drive')) results.push(kb.find(r => r.id === 'hw-drive'));
+        }
+        if (equipment.includes('LTO/Tape')) {
+            if (!results.find(r => r.id === 'hw-tape')) results.push(kb.find(r => r.id === 'hw-tape'));
+        }
+        if (equipment.includes('Power Supply')) {
+            if (!results.find(r => r.id === 'hw-power')) results.push(kb.find(r => r.id === 'hw-power'));
+        }
+        
+        // Deduplicate
+        const seen = new Set();
+        const unique = results.filter(r => { if (!r || seen.has(r.id)) return false; seen.add(r.id); return true; });
+        
+        // Sort by severity
+        const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        unique.sort((a, b) => (sevOrder[a.severity] || 3) - (sevOrder[b.severity] || 3));
+        
+        return unique;
+    };
     const [emailHistory, setEmailHistory] = useState(() => {
         try { return JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch { return []; }
     });
@@ -2161,6 +2507,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         
         logActivity(`${contactForm.name} marked ${sel.name} as ${contactForm.waitingReply ? 'waiting on reply' : 'contacted'} on ${fmtDate(contactDate)}`, { ship: sel.name, contactedBy: contactForm.name, notes: contactForm.notes, waitingReply: contactForm.waitingReply });
         toast(`${sel.name} marked as ${contactForm.waitingReply ? 'waiting on reply' : 'contacted'}`, 'success'); triggerConfirm();
+        // Auto-detect issues from email notes
+        if (contactForm.notes) detectIssueFromText(contactForm.notes, sel.id, sel.name);
         setContactModal(false);
     };
     
@@ -2541,8 +2889,17 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         await new Promise(resolve => setTimeout(resolve, 800));
 
         setAiResult(result);
+        // Run diagnostics if issue detected
+        if (result.issue?.hasIssue || result.equipment?.length > 0) {
+            const diag = runDiagnostics(text, result.equipment, result.issue);
+            setDiagnostics(diag.length > 0 ? diag : null);
+        } else {
+            setDiagnostics(null);
+        }
         setAiParsing(false);
         toast('Email parsed successfully!', 'success');
+        // Auto-detect issues from parsed email text
+        if (sel) detectIssueFromText(text, sel.id, sel.name);
     };
     
     const applyAiResult = () => {
@@ -2877,6 +3234,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     {/* Summary strip */}
                                     <div style={{display:'flex',gap:'16px',marginBottom:'20px',alignItems:'stretch',flexWrap:'wrap'}}>
                                         <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
+                                        <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={() => scanEmailHistory(sel.id, sel.name)}>🔍 Scan History</button>
                                         <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
                                             <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>LAST CONTACT</div>
                                             <div className="rel-time tip" data-tip={sel.lastContact ? fmtDate(sel.lastContact) : 'Never'} style={{fontSize:'16px',fontWeight:700,color: sel.lastContact ? 'var(--text)' : 'var(--red)'}}>{sel.lastContact ? relTime(sel.lastContact) : 'Never'}</div>
@@ -2893,6 +3251,84 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Suggested Issue Banner */}
+                                    {suggestedIssue && suggestedIssue.shipId === sel?.id && (
+                                        <div style={{marginBottom:'16px',borderRadius:'12px',overflow:'hidden',border:'2px solid rgba(245,158,11,0.5)',animation:'tabFade 0.3s ease'}}>
+                                            <div style={{padding:'12px 16px',background:'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.06))',display:'flex',alignItems:'center',gap:'10px'}}>
+                                                <span style={{fontSize:'20px'}}>🔍</span>
+                                                <div style={{flex:1}}>
+                                                    <div style={{fontSize:'12px',fontWeight:700,color:'var(--amber)'}}>Issue Detected from Email</div>
+                                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'1px'}}>Review and confirm to add to {suggestedIssue.shipName}'s issues</div>
+                                                </div>
+                                                <button onClick={() => setSuggestedIssue(null)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'16px',cursor:'pointer',padding:'4px'}}>✕</button>
+                                            </div>
+                                            <div style={{padding:'14px 16px',background:'var(--bg-card)'}}>
+                                                <div style={{display:'flex',gap:'8px',marginBottom:'10px',flexWrap:'wrap',alignItems:'center'}}>
+                                                    <span style={{padding:'3px 10px',borderRadius:'6px',fontSize:'10px',fontWeight:700,background: suggestedIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',color: suggestedIssue.threat === 'Urgent' ? '#fff' : '#000'}}>{suggestedIssue.threat}</span>
+                                                    <span style={{padding:'3px 8px',borderRadius:'4px',fontSize:'10px',background:'var(--bg-input)',color:'var(--text-muted)'}}>{suggestedIssue.category}</span>
+                                                </div>
+                                                <div style={{marginBottom:'10px'}}>
+                                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px',fontWeight:600}}>Issue Title</label>
+                                                    <input className="form-input" value={suggestedIssue.title} onChange={e => setSuggestedIssue({...suggestedIssue, title: e.target.value})} style={{fontSize:'13px',fontWeight:600}}/>
+                                                </div>
+                                                <div style={{marginBottom:'10px'}}>
+                                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px',fontWeight:600}}>Details (from email)</label>
+                                                    <textarea className="form-textarea" style={{minHeight:'50px',fontSize:'12px'}} value={suggestedIssue.details} onChange={e => setSuggestedIssue({...suggestedIssue, details: e.target.value})}/>
+                                                </div>
+                                                <div style={{display:'flex',gap:'8px',marginBottom:'10px'}}>
+                                                    <div style={{flex:1}}>
+                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Severity</label>
+                                                        <select className="form-select" value={suggestedIssue.threat} onChange={e => setSuggestedIssue({...suggestedIssue, threat: e.target.value})}>
+                                                            <option value="Urgent">Urgent</option>
+                                                            <option value="Mild">Mild</option>
+                                                        </select>
+                                                    </div>
+                                                    <div style={{flex:1}}>
+                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Responsibility</label>
+                                                        <select className="form-select" value={suggestedIssue.responsibility} onChange={e => setSuggestedIssue({...suggestedIssue, responsibility: e.target.value})}>
+                                                            <option value="Ship">🚢 Ship</option>
+                                                            <option value="REAP">🛠️ REAP</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                {/* Diagnostic tips */}
+                                                {(() => { const diag = runDiagnostics(suggestedIssue.details + ' ' + suggestedIssue.title, [], {}); return diag.length > 0 ? (
+                                                    <details style={{marginBottom:'10px'}}>
+                                                        <summary style={{fontSize:'11px',color:'var(--primary)',cursor:'pointer',fontWeight:600,padding:'4px 0'}}>🔧 Troubleshooting Tips ({diag.length})</summary>
+                                                        <div style={{marginTop:'8px',display:'flex',flexDirection:'column',gap:'8px'}}>
+                                                            {diag.slice(0, 2).map(d => (
+                                                                <div key={d.id} style={{padding:'10px 12px',background:'var(--bg-input)',borderRadius:'8px',fontSize:'11px'}}>
+                                                                    <div style={{fontWeight:700,marginBottom:'6px'}}>{d.name}</div>
+                                                                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                                                                        <div>
+                                                                            <div style={{fontWeight:700,color:'var(--green)',marginBottom:'4px',fontSize:'10px'}}>✅ TRY</div>
+                                                                            {d.doThis.slice(0, 3).map((s, i) => <div key={i} style={{color:'var(--text-dim)',marginBottom:'2px',paddingLeft:'8px'}}>• {s}</div>)}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div style={{fontWeight:700,color:'var(--red)',marginBottom:'4px',fontSize:'10px'}}>🚫 AVOID</div>
+                                                                            {d.dontDoThis.slice(0, 3).map((s, i) => <div key={i} style={{color:'var(--text-dim)',marginBottom:'2px',paddingLeft:'8px'}}>• {s}</div>)}
+                                                                        </div>
+                                                                    </div>
+                                                                    {d.tools && <div style={{marginTop:'6px',fontSize:'10px',color:'var(--text-muted)'}}>🧰 {d.tools.join(' • ')}</div>}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </details>
+                                                ) : null; })()}
+                                                <div style={{display:'flex',gap:'8px'}}>
+                                                    <button className="btn btn-primary" style={{flex:1,fontWeight:700}} onClick={() => {
+                                                        const newIssue = { id: genId('I'), shipId: suggestedIssue.shipId, threat: suggestedIssue.threat, title: suggestedIssue.title, details: suggestedIssue.details, category: suggestedIssue.category, responsibility: suggestedIssue.responsibility, created: new Date().toISOString(), resolved: false };
+                                                        setIssues(p => [...p, newIssue]);
+                                                        logActivity(`Auto-detected & added ${suggestedIssue.threat} issue to ${suggestedIssue.shipName}: ${suggestedIssue.title}`, { ship: suggestedIssue.shipName, threat: suggestedIssue.threat, details: suggestedIssue.details });
+                                                        toast(`Issue added to ${suggestedIssue.shipName}!`, 'success');
+                                                        setSuggestedIssue(null);
+                                                    }}>✓ Add Issue to {suggestedIssue.shipName}</button>
+                                                    <button className="btn btn-secondary" onClick={() => setSuggestedIssue(null)}>Dismiss</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Open Issues */}
                                     {selIssues.length > 0 && (
@@ -3699,6 +4135,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 }
                                 
                                 logActivity(`Updated ${item.shipName}: ${resText}`, { ship: item.shipName, resolution: resText, notes: f.notes, contactedBy: f.name || null });
+                                // Auto-detect issues from update notes
+                                const updateText = f.resolution === 'second_email' ? f.followupEmail : f.notes;
+                                if (updateText) detectIssueFromText(updateText, item.shipId, item.shipName);
                                 toast('Status updated', 'success');
                                 setClearEmailWaitingModal(null);
                                 setClearEmailWaitingForm({ resolution: 'received', notes: '', name: currentUser.username, followupEmail: '', date: '' });
@@ -3987,6 +4426,78 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 {/* Classification */}
                                 {aiResult.classification && (
                                     <div style={{textAlign:'center',padding:'6px',background:'var(--bg-card)',borderRadius:'4px',fontSize:'10px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px'}}>{aiResult.classification}</div>
+                                )}
+                                
+                                {/* DIAGNOSTICS PANEL */}
+                                {diagnostics && diagnostics.length > 0 && (
+                                    <div style={{marginTop:'12px',borderRadius:'12px',overflow:'hidden',border:'1px solid rgba(245,158,11,0.3)'}}>
+                                        <div style={{padding:'12px 16px',background:'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.08))',display:'flex',alignItems:'center',gap:'10px'}}>
+                                            <span style={{fontSize:'18px'}}>🔧</span>
+                                            <div>
+                                                <div style={{fontSize:'13px',fontWeight:700,color:'var(--amber)'}}>DIAGNOSTIC RESULTS</div>
+                                                <div style={{fontSize:'10px',color:'var(--text-muted)'}}>{diagnostics.length} potential issue{diagnostics.length > 1 ? 's' : ''} detected</div>
+                                            </div>
+                                        </div>
+                                        {diagnostics.map((diag, dIdx) => (
+                                            <div key={diag.id} style={{padding:'16px 18px',borderTop:'1px solid var(--border)',background:'var(--bg-card)'}}>
+                                                {/* Issue header */}
+                                                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
+                                                    <span style={{padding:'3px 10px',borderRadius:'6px',fontSize:'10px',fontWeight:700,background: diag.severity === 'critical' ? 'var(--red)' : diag.severity === 'high' ? 'var(--amber)' : 'var(--blue)',color: diag.severity === 'critical' ? '#fff' : '#000',textTransform:'uppercase'}}>{diag.severity}</span>
+                                                    <span style={{fontWeight:700,fontSize:'14px'}}>{diag.name}</span>
+                                                    <span style={{fontSize:'10px',padding:'2px 8px',borderRadius:'4px',background:'var(--bg-input)',color:'var(--text-muted)'}}>{diag.category}</span>
+                                                </div>
+                                                
+                                                {/* Possible causes */}
+                                                <div style={{marginBottom:'14px'}}>
+                                                    <div style={{fontSize:'10px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'0.5px',marginBottom:'6px'}}>🔍 POSSIBLE CAUSES</div>
+                                                    <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
+                                                        {diag.causes.slice(0, 4).map((c, i) => (
+                                                            <div key={i} style={{fontSize:'11px',color:'var(--text-dim)',paddingLeft:'12px',position:'relative'}}>
+                                                                <span style={{position:'absolute',left:0,color:'var(--text-muted)'}}>•</span> {c}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* DO and DON'T side by side */}
+                                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                                                    {/* DO THIS */}
+                                                    <div style={{padding:'12px 14px',borderRadius:'10px',background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.2)'}}>
+                                                        <div style={{fontSize:'11px',fontWeight:800,color:'var(--green)',marginBottom:'8px',display:'flex',alignItems:'center',gap:'6px'}}>✅ DO THIS</div>
+                                                        <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                                                            {diag.doThis.map((d, i) => (
+                                                                <div key={i} style={{fontSize:'11px',color:'var(--text)',lineHeight:'1.5',paddingLeft:'14px',position:'relative'}}>
+                                                                    <span style={{position:'absolute',left:0,color:'var(--green)',fontWeight:700,fontSize:'10px'}}>{i+1}.</span> {d}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* DON'T DO THIS */}
+                                                    <div style={{padding:'12px 14px',borderRadius:'10px',background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.2)'}}>
+                                                        <div style={{fontSize:'11px',fontWeight:800,color:'var(--red)',marginBottom:'8px',display:'flex',alignItems:'center',gap:'6px'}}>🚫 DON'T DO THIS</div>
+                                                        <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                                                            {diag.dontDoThis.map((d, i) => (
+                                                                <div key={i} style={{fontSize:'11px',color:'var(--text)',lineHeight:'1.5',paddingLeft:'14px',position:'relative'}}>
+                                                                    <span style={{position:'absolute',left:0,color:'var(--red)',fontWeight:700}}>✕</span> {d}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Tools needed */}
+                                                {diag.tools && diag.tools.length > 0 && (
+                                                    <div style={{marginTop:'10px',padding:'8px 12px',background:'var(--bg-input)',borderRadius:'8px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                                                        <span style={{fontSize:'10px',fontWeight:700,color:'var(--text-muted)'}}>🧰 TOOLS:</span>
+                                                        {diag.tools.map((tool, i) => (
+                                                            <span key={i} style={{fontSize:'10px',padding:'2px 8px',background:'var(--bg-card)',borderRadius:'4px',color:'var(--text-dim)',border:'1px solid var(--border)'}}>{tool}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
 
@@ -4328,6 +4839,101 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     </div>
                 )}
             </Modal>
+            
+            {/* History Scan Results */}
+            {historyScan && (
+                <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.7)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={e => { if (e.target === e.currentTarget) setHistoryScan(null); }}>
+                    <div style={{background:'var(--bg-card)',borderRadius:'16px',width:'100%',maxWidth:'750px',maxHeight:'85vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}}>
+                        <div style={{padding:'20px 24px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'var(--bg-card)',zIndex:1,borderRadius:'16px 16px 0 0'}}>
+                            <div>
+                                <div style={{fontSize:'18px',fontWeight:700}}>🔍 Email History Scan</div>
+                                <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>{historyScan.shipName} • {historyScan.totalEmails} emails scanned • {historyScan.findings.length} issue{historyScan.findings.length !== 1 ? 's' : ''} found</div>
+                            </div>
+                            <button onClick={() => setHistoryScan(null)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'24px',cursor:'pointer'}}>×</button>
+                        </div>
+                        <div style={{padding:'20px 24px'}}>
+                            {historyScan.findings.length === 0 ? (
+                                <div style={{textAlign:'center',padding:'48px',color:'var(--text-muted)'}}>
+                                    <div style={{fontSize:'36px',marginBottom:'12px'}}>✅</div>
+                                    <div style={{fontSize:'15px',fontWeight:600,color:'var(--text-dim)'}}>No issues detected</div>
+                                    <div style={{fontSize:'12px',marginTop:'4px'}}>Scanned {historyScan.totalEmails} emails — everything looks clean</div>
+                                </div>
+                            ) : (
+                                <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+                                    {historyScan.findings.map((finding, fIdx) => {
+                                        const diag = runDiagnostics(finding.title + ' ' + finding.category, [], {});
+                                        return (
+                                        <div key={fIdx} style={{borderRadius:'12px',border: finding.alreadyTracked ? '1px solid rgba(16,185,129,0.3)' : finding.threat === 'Urgent' ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--border)',overflow:'hidden'}}>
+                                            <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:'10px',background: finding.alreadyTracked ? 'rgba(16,185,129,0.06)' : finding.threat === 'Urgent' ? 'rgba(239,68,68,0.06)' : 'rgba(245,158,11,0.06)'}}>
+                                                <span style={{padding:'3px 10px',borderRadius:'6px',fontSize:'10px',fontWeight:700,background: finding.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',color: finding.threat === 'Urgent' ? '#fff' : '#000'}}>{finding.threat}</span>
+                                                <div style={{flex:1}}>
+                                                    <div style={{fontWeight:700,fontSize:'14px'}}>{finding.title}</div>
+                                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'1px'}}>{finding.category} • Mentioned in {finding.mentionCount} email{finding.mentionCount > 1 ? 's' : ''}{finding.mentionCount > 1 ? ' ⚠️ Recurring' : ''}</div>
+                                                </div>
+                                                {finding.alreadyTracked ? (
+                                                    <span style={{padding:'4px 12px',borderRadius:'6px',fontSize:'10px',fontWeight:700,background:'var(--green-glow)',color:'var(--green)',border:'1px solid var(--green)'}}>✓ Tracked</span>
+                                                ) : (
+                                                    <button className="btn btn-sm btn-primary" style={{fontWeight:700,fontSize:'11px'}} onClick={() => {
+                                                        const newIssue = { id: genId('I'), shipId: historyScan.shipId, threat: finding.threat, title: finding.title, details: finding.mentions[0]?.snippet?.substring(0,150) || finding.title, category: finding.category, responsibility: 'Ship', created: new Date().toISOString(), resolved: false };
+                                                        setIssues(p => [...p, newIssue]);
+                                                        logActivity(`Added issue from history scan: ${finding.title} on ${historyScan.shipName}`, { ship: historyScan.shipName, threat: finding.threat });
+                                                        toast(`Issue added: ${finding.title}`, 'success');
+                                                        setHistoryScan(prev => ({...prev, findings: prev.findings.map((f,i) => i === fIdx ? {...f, alreadyTracked: true} : f)}));
+                                                    }}>+ Add Issue</button>
+                                                )}
+                                            </div>
+                                            
+                                            <div style={{padding:'12px 18px',borderTop:'1px solid var(--border)'}}>
+                                                <div style={{fontSize:'10px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'0.5px',marginBottom:'8px'}}>📧 SOURCE EMAILS</div>
+                                                <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'150px',overflow:'auto'}}>
+                                                    {finding.mentions.map((m, mIdx) => (
+                                                        <div key={mIdx} style={{display:'flex',alignItems:'flex-start',gap:'8px',padding:'6px 10px',background:'var(--bg-input)',borderRadius:'6px',fontSize:'11px'}}>
+                                                            <div style={{width:'6px',height:'6px',borderRadius:'50%',background: mIdx === 0 ? 'var(--primary)' : 'var(--text-muted)',marginTop:'5px',flexShrink:0}}></div>
+                                                            <div style={{flex:1,minWidth:0}}>
+                                                                <div style={{display:'flex',gap:'6px',marginBottom:'2px'}}><span style={{fontWeight:700}}>{m.sender}</span><span style={{color:'var(--text-muted)'}}>• {fmtDate(m.date)}</span></div>
+                                                                <div style={{color:'var(--text-dim)',lineHeight:'1.4',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.summary || m.snippet}</div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div style={{display:'flex',gap:'16px',marginTop:'8px',fontSize:'10px',color:'var(--text-muted)'}}>
+                                                    <span>First: <strong style={{color:'var(--text-dim)'}}>{fmtDate(finding.firstSeen)}</strong></span>
+                                                    <span>Last: <strong style={{color:'var(--text-dim)'}}>{fmtDate(finding.lastSeen)}</strong></span>
+                                                </div>
+                                            </div>
+                                            
+                                            {diag.length > 0 && (
+                                                <details style={{borderTop:'1px solid var(--border)'}}>
+                                                    <summary style={{padding:'10px 18px',fontSize:'11px',color:'var(--primary)',cursor:'pointer',fontWeight:600,background:'var(--bg-input)'}}>🔧 Troubleshooting Guide</summary>
+                                                    <div style={{padding:'12px 18px'}}>
+                                                        {diag.slice(0,1).map(d => (
+                                                            <div key={d.id}>
+                                                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'8px'}}>
+                                                                    <div style={{padding:'10px',borderRadius:'8px',background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.15)'}}>
+                                                                        <div style={{fontSize:'10px',fontWeight:700,color:'var(--green)',marginBottom:'6px'}}>✅ DO THIS</div>
+                                                                        {d.doThis.slice(0,4).map((s,i) => <div key={i} style={{fontSize:'11px',color:'var(--text-dim)',marginBottom:'4px',paddingLeft:'10px',position:'relative',lineHeight:'1.4'}}><span style={{position:'absolute',left:0,color:'var(--green)'}}>→</span>{s}</div>)}
+                                                                    </div>
+                                                                    <div style={{padding:'10px',borderRadius:'8px',background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.15)'}}>
+                                                                        <div style={{fontSize:'10px',fontWeight:700,color:'var(--red)',marginBottom:'6px'}}>🚫 AVOID</div>
+                                                                        {d.dontDoThis.slice(0,4).map((s,i) => <div key={i} style={{fontSize:'11px',color:'var(--text-dim)',marginBottom:'4px',paddingLeft:'10px',position:'relative',lineHeight:'1.4'}}><span style={{position:'absolute',left:0,color:'var(--red)'}}>✕</span>{s}</div>)}
+                                                                    </div>
+                                                                </div>
+                                                                {d.tools && <div style={{fontSize:'10px',color:'var(--text-muted)',padding:'6px 10px',background:'var(--bg-input)',borderRadius:'6px'}}>🧰 {d.tools.join(' • ')}</div>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </details>
+                                            )}
+                                        </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             <ConfirmCheck show={showConfirm} onDone={() => setShowConfirm(false)}/>
         </div>
     );
