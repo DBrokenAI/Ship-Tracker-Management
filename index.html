@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T054";
+    var APP_BUILD = "2026-02-27T055";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5158,81 +5158,81 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             const pm = (isPending || isDeinstall) ? false : hasPingPM;
             const shipIssues = (issues || []).filter(i => i.shipId === s.id && !i.resolved);
             const emails = (emailHistory || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-            const noteParts = [];
+            let noteText = '';
             
-            // Pending install
+            // Clean any text for professional report output
+            const cleanForReport = function(text) {
+                if (!text) return '';
+                let t = text;
+                // Strip pipe-separated metadata fields
+                t = t.replace(/\s*[|]\s*From:\s*[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*Sent by\s*[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*Contacted by\s*[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*Logged by\s*[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*By:\s*[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*Response requested/gi, '');
+                t = t.replace(/\s*[|]\s*FYI only/gi, '');
+                t = t.replace(/\s*[|]\s*\d+ action item[^|]*/gi, '');
+                // Strip inline "From: name" or "Contacted by name" without pipes
+                t = t.replace(/From:\s*\S+/gi, '');
+                t = t.replace(/Contacted by\s+\S+/gi, '');
+                t = t.replace(/Sent by\s+\S+/gi, '');
+                t = t.replace(/Logged by\s+\S+/gi, '');
+                t = t.replace(/Updated by\s+\S+/gi, '');
+                // Strip common username patterns (lowercase, underscores, short handles)
+                t = t.replace(/\b[a-z][a-z0-9]*_[a-z][a-z0-9_]*/g, '');
+                t = t.replace(/\b[A-Z]_[A-Za-z]+/g, '');
+                // Clean up leftover artifacts
+                t = t.replace(/^\s*[|]\s*/g, '').replace(/\s*[|]\s*$/g, '');
+                t = t.replace(/\s*[|]\s*/g, '. ');
+                t = t.replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim();
+                t = t.replace(/^[.\s]+/, '').replace(/[.\s]+$/, '').trim();
+                return t;
+            };
+            
             if (isPending) {
-                noteParts.push('Pending Install \u2014 ' + s.type);
-                if (s.installDate) noteParts.push('Est. Install: ' + fmtDate(s.installDate));
-                if (s.location) noteParts.push('Location: ' + s.location);
+                const parts = ['Pending Install \u2014 ' + s.type];
+                if (s.installDate) parts.push('Est. Install: ' + fmtDate(s.installDate));
+                if (s.location) parts.push('Location: ' + s.location);
                 const shipTrip = (installs || []).find(t => t.ship === s.name && (t.status === 'Scheduled' || t.status === 'In Progress'));
-                if (shipTrip) noteParts.push('Trip: ' + fmtDate(shipTrip.start) + (shipTrip.end ? ' \u2192 ' + fmtDate(shipTrip.end) : '') + ' @ ' + shipTrip.location);
-            }
-            
-            // Pending deinstall
-            if (isDeinstall) {
-                noteParts.push('Pending Deinstall' + (s.deinstallDate ? ' \u2014 Est. ' + fmtDate(s.deinstallDate) : ''));
-            }
-            
-            // In port
-            if (s.inPort && s.inPortUntil && !isPending && !isDeinstall) {
-                noteParts.push('In Port until ' + fmtDate(s.inPortUntil));
-            }
-            
-            // Status brief for active ships
-            if (!isPending) {
+                if (shipTrip) parts.push('Trip: ' + fmtDate(shipTrip.start) + (shipTrip.end ? ' \u2192 ' + fmtDate(shipTrip.end) : '') + ' @ ' + shipTrip.location);
+                noteText = parts.join('\n');
+            } else if (isDeinstall) {
+                noteText = 'Pending Deinstall' + (s.deinstallDate ? ' \u2014 Est. ' + fmtDate(s.deinstallDate) : '');
+            } else {
+                const lines = [];
+                if (s.inPort && s.inPortUntil) {
+                    lines.push('In Port until ' + fmtDate(s.inPortUntil));
+                }
                 const lastEmail = emails.length > 0 ? emails[0] : null;
-                const lastSender = lastEmail?.result?.sender?.name || lastEmail?.result?.contactedBy || null;
-                const isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship' || lastSender === '\uD83D\uDEA2 Ship';
-                let sum = lastEmail?.result?.emailSummary || '';
-                sum = sum.replace(/\s*\|\s*From:\s*[^|]+/gi, '').replace(/\s*\|\s*(?:Sent|Contacted|Logged) by\s*[^|]+/gi, '').replace(/\s*\|\s*By:\s*[^|]+/gi, '').replace(/\s*\|\s*Response requested/gi, '').replace(/\s*\|\s*FYI only/gi, '').replace(/\s*\|\s*\d+ action item.*$/gi, '').replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').trim();
-                
-                // Build narrative: issue + comms + status
-                const narrative = [];
-                
-                // What the issue is
-                if (shipIssues.length > 0) {
-                    shipIssues.forEach(iss => {
-                        const title = iss.title || iss.details || 'Issue reported';
-                        const detail = iss.details && iss.title && iss.details !== iss.title ? iss.details : '';
-                        narrative.push(title + (detail ? '. ' + detail : ''));
+                const emailNotes = lastEmail ? (lastEmail.result ? (lastEmail.result.emailSummary || '') : '') : '';
+                const manualNotes = s.lastSaid || '';
+                if (manualNotes) {
+                    const cleaned = cleanForReport(manualNotes);
+                    if (cleaned) lines.push(cleaned);
+                } else if (emailNotes) {
+                    const cleaned = cleanForReport(emailNotes);
+                    if (cleaned) lines.push(cleaned);
+                } else if (shipIssues.length > 0) {
+                    shipIssues.forEach(function(iss) {
+                        lines.push(iss.title || iss.details || 'Issue reported');
                     });
                 }
-                
-                // What communication happened + where we stand
                 if (lastEmail) {
-                    if (isFromShip) {
-                        // Ship replied to us
-                        if (sum && !shipIssues.some(iss => sum.toLowerCase().includes((iss.title || '').toLowerCase().substring(0,10)))) {
-                            narrative.push('Ship responded: ' + sum);
-                        } else if (!shipIssues.length) {
-                            narrative.push('Received response from ship.');
-                        }
-                    } else if (lastSender) {
-                        // We reached out
-                        if (sum && !shipIssues.some(iss => sum.toLowerCase().includes((iss.title || '').toLowerCase().substring(0,10)))) {
-                            narrative.push(sum);
-                        }
-                        if (s.waitingReply) {
-                            narrative.push('Contacted ship, awaiting response.');
-                        } else {
-                            narrative.push('Reached out to ship forces.');
-                        }
+                    const lastSender = lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null;
+                    const isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
+                    if (s.waitingReply) {
+                        lines.push('Contacted ship, awaiting response.');
+                    } else if (isFromShip && lines.length > 0) {
+                        lines.push('Ship has responded.');
                     }
-                } else if (!shipIssues.length && s.lastSaid) {
-                    narrative.push(s.lastSaid);
                 }
-                
-                if (narrative.length > 0) {
-                    noteParts.push(narrative.join(' '));
-                }
-                
-                // Date at the end
-                if (lastEmail?.timestamp) {
-                    noteParts.push(fmtDate(lastEmail.timestamp));
+                if (lastEmail && lastEmail.timestamp) {
+                    lines.push(fmtDate(lastEmail.timestamp));
                 } else if (s.lastContact) {
-                    noteParts.push(fmtDate(s.lastContact));
+                    lines.push(fmtDate(s.lastContact));
                 }
+                noteText = lines.join('\n');
             }
             
             return {
@@ -5244,7 +5244,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 files: (isPending || isDeinstall) ? '' : (c.hdSpace || '0'), 
                 diode: (isPending || isDeinstall) ? 'N/A' : (c.diode || (am || pm ? 'Up' : 'N/A')), 
                 phone: (isPending || isDeinstall) ? 'Down' : (c.phone || (am || pm ? 'Up' : 'Down')),
-                notes: noteParts.join('\n'), amUp: am, pmUp: pm
+                notes: noteText, amUp: am, pmUp: pm
             };
         };
         return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow) };
