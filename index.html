@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T046";
+    var APP_BUILD = "2026-02-27T047";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5165,10 +5165,12 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 });
             }
             
-            // Last email - full summary, no truncation
+            // Last email - full summary, strip sender info
             if (emails.length > 0) {
                 const last = emails[0];
-                const sum = last.result?.emailSummary || '';
+                let sum = last.result?.emailSummary || '';
+                // Remove "From: Name" / "Sent by Name" / "By: Name" / "Response requested" patterns
+                sum = sum.replace(/\s*\|\s*From:\s*[^|]+/gi, '').replace(/\s*\|\s*(?:Sent|Contacted|Logged) by\s*[^|]+/gi, '').replace(/\s*\|\s*By:\s*[^|]+/gi, '').replace(/\s*\|\s*Response requested/gi, '').replace(/\s*\|\s*FYI only/gi, '').replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').trim();
                 if (sum && !shipIssues.some(iss => sum.toLowerCase().includes((iss.title || '').toLowerCase().substring(0,10)))) {
                     noteParts.push(sum);
                 }
