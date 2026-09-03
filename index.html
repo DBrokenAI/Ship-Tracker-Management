@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T059";
+    var APP_BUILD = "2026-02-27T060";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5284,15 +5284,24 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     const copyEndOfDay = () => {
         const el = document.getElementById('eod-table-container');
         if (!el) return;
-        // Copy as rich HTML for email paste
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        document.execCommand('copy');
-        sel.removeAllRanges();
-        logActivity(`Exported end-of-day report for ${date}`);
+        // Get the HTML with all inline styles baked in for email clients
+        const htmlContent = el.innerHTML;
+        // Use Clipboard API for rich HTML paste
+        if (navigator.clipboard && navigator.clipboard.write) {
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const plainBlob = new Blob([el.innerText], { type: 'text/plain' });
+            navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': plainBlob })]);
+        } else {
+            // Fallback
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            const sel2 = window.getSelection();
+            sel2.removeAllRanges();
+            sel2.addRange(range);
+            document.execCommand('copy');
+            sel2.removeAllRanges();
+        }
+        logActivity('Exported end-of-day report for ' + date);
         toast('Report copied — paste into email!', 'success');
     };
 
@@ -5695,7 +5704,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
                 const cs = {padding:'10px 14px',border:'1px solid #3a3a4e',fontSize:'13px',verticalAlign:'top',lineHeight:'1.7'};
                 const hd = {...cs, fontWeight:700, background:'#252540',textAlign:'center',fontSize:'12px',color:'#aab',letterSpacing:'0.5px',padding:'12px 14px'};
-                const sec = {padding:'12px 16px',background:'linear-gradient(90deg, #1e3a5f, #243b5a)',textAlign:'center',fontWeight:700,fontSize:'14px',color:'#fff',border:'1px solid #3a3a4e',letterSpacing:'1px'};
+                const sec = {padding:'12px 16px',background:'#1e3a5f',textAlign:'center',fontWeight:700,fontSize:'14px',color:'#fff',border:'1px solid #3a3a4e',letterSpacing:'1px'};
                 const sn = {...cs, fontWeight:700, fontSize:'14px', minWidth:'70px', background:'#16162e'};
                 const onC = {color:'#51cf66'};
                 const offC = {color:'#ff6b6b'};
@@ -5742,7 +5751,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                         {renderRows(data.fullReap)}
                                     </>)}
                                     {data.miniReap.length > 0 && (<>
-                                        <tr><td colSpan={7} style={{...sec, background:'linear-gradient(90deg, #1e5a3a, #1e5a3a)'}}>Mini-Reap</td></tr>
+                                        <tr><td colSpan={7} style={{...sec, background:'#1e5a3a'}}>Mini-Reap</td></tr>
                                         {renderRows(data.miniReap)}
                                     </>)}
                                 </tbody>
