@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T044";
+    var APP_BUILD = "2026-02-27T046";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5151,20 +5151,45 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             const c = getCheck(s.id);
             const am = isTruthy(c.statusAM);
             const pm = isTruthy(c.statusPM);
-            // Build notes from issues + emails
             const shipIssues = (issues || []).filter(i => i.shipId === s.id && !i.resolved);
             const emails = (emailHistory || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
             const noteParts = [];
-            if (shipIssues.length > 0) shipIssues.forEach(iss => noteParts.push(iss.title || iss.details?.substring(0,60)));
+            
+            // Open issues - full text
+            if (shipIssues.length > 0) {
+                shipIssues.forEach(iss => {
+                    const issueText = iss.title && iss.details && iss.title !== iss.details 
+                        ? `${iss.title}: ${iss.details}` 
+                        : (iss.title || iss.details || 'Issue reported');
+                    noteParts.push(issueText);
+                });
+            }
+            
+            // Last email - full summary, no truncation
             if (emails.length > 0) {
                 const last = emails[0];
                 const sum = last.result?.emailSummary || '';
-                if (sum) noteParts.push(sum.substring(0,80));
-                if (last.timestamp) noteParts.push(fmtDate(last.timestamp));
+                if (sum && !shipIssues.some(iss => sum.toLowerCase().includes((iss.title || '').toLowerCase().substring(0,10)))) {
+                    noteParts.push(sum);
+                }
             }
-            if (s.lastSaid && noteParts.length === 0) noteParts.push(s.lastSaid.substring(0,80));
+            
+            // Ship notes if nothing else
+            if (s.lastSaid && noteParts.length === 0) {
+                noteParts.push(s.lastSaid);
+            }
+            
+            // Status tags
             if (s.inPort && s.inPortUntil) noteParts.push('⚓ In Port until ' + fmtDate(s.inPortUntil));
-            if (s.pendingDeinstall) noteParts.push('🔻 Pending Deinstall');
+            if (s.pendingDeinstall) noteParts.push('🔻 Pending Deinstall' + (s.deinstallDate ? ' — ' + fmtDate(s.deinstallDate) : ''));
+            
+            // Last contact date at the end
+            if (emails.length > 0 && emails[0].timestamp) {
+                noteParts.push(fmtDate(emails[0].timestamp));
+            } else if (s.lastContact) {
+                noteParts.push(fmtDate(s.lastContact));
+            }
+            
             return {
                 name: s.name, am: am ? (c.pingAM || 'Online') : 'Offline', pm: pm ? (c.pingPM || 'Online') : 'Offline',
                 files: c.hdSpace || '0', diode: c.diode || (am || pm ? 'Up' : 'N/A'), phone: c.phone || (am || pm ? 'Up' : 'Down'),
@@ -5302,6 +5327,34 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         }
     };
 
+    const exportMorningReport = () => {
+        const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+        const dashSorted = [...ships].sort((a, b) => {
+            if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
+            return hullNum(a.name) - hullNum(b.name);
+        });
+        let r = `REAP Morning Status — ${dateLabel}\n${'─'.repeat(40)}\n\n`;
+        dashSorted.forEach(s => {
+            if (s.pendingInstall) return;
+            const c = getCheck(s.id);
+            const am = isTruthy(c.statusAM); const pm = isTruthy(c.statusPM);
+            let st = am && pm ? '✅ Up' : !am && !pm ? '❌ Down' : am && !pm ? '⚡ Up / Down' : '⚡ Down / Up';
+            const ping = c.pingAM || c.pingPM ? ` (${c.pingAM || '-'}/${c.pingPM || '-'} ms)` : '';
+            const tags = [];
+            if (s.inPort && s.inPortUntil) tags.push('⚓ IN PORT');
+            if (s.pendingDeinstall) tags.push('🔻 Deinstall');
+            r += `  ${s.name.padEnd(10)} ${st}${ping}${tags.length ? ' ' + tags.join(' ') : ''}\n`;
+        });
+        const pending = dashSorted.filter(s => s.pendingInstall);
+        if (pending.length > 0) { r += `\n🔧 PENDING INSTALLS\n`; pending.forEach(s => { r += `  ${s.name.padEnd(10)} ${s.type} • Est: ${s.installDate ? fmtDate(s.installDate) : 'TBD'}\n`; }); }
+        const total = dashSorted.filter(s => !s.pendingInstall).length;
+        const online = dashSorted.filter(s => { if (s.pendingInstall) return false; const c = getCheck(s.id); return isTruthy(c.statusAM) || isTruthy(c.statusPM); }).length;
+        r += `\n${'─'.repeat(40)}\nOnline: ${online}/${total} • Pending: ${pending.length}\n`;
+        navigator.clipboard.writeText(r);
+        logActivity(`Exported morning status report for ${date}`);
+        toast('Morning report copied!', 'success');
+    };
+
     return (
         <div className="page active">
             <div className="page-header">
@@ -5374,15 +5427,15 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <button className="btn btn-sm btn-primary" onClick={() => setDate(toDateString(new Date()))}>Today</button>
                     </div>
                     <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-                        <button className="btn btn-sm btn-secondary" onClick={() => setBulkPasteModal(true)}>📋 Bulk Paste</button>
                         <button className="btn btn-sm btn-warning" onClick={copyYesterday}>Copy Yesterday</button>
                         <button className="btn btn-sm btn-success" onClick={exportForExcel}>📊 Excel</button>
-                        <button className="btn btn-sm btn-secondary" onClick={exportStatus}>📧 End of Day</button>
+                        <button className="btn btn-sm btn-secondary" onClick={exportMorningReport}>☀️ Morning</button>
+                        <button className="btn btn-sm btn-primary" onClick={exportStatus}>📧 End of Day</button>
                     </div>
                 </div>
 
                 {/* Quick Mark Buttons */}
-                <div style={{display:'flex',gap:'8px',marginTop:'12px',paddingTop:'12px',borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
+                <div style={{display:'flex',gap:'8px',marginTop:'12px',paddingTop:'12px',borderTop:'1px solid var(--border)',flexWrap:'wrap',alignItems:'center'}}>
                     <span style={{fontSize:'11px',color:'var(--text-muted)',alignSelf:'center'}}>Quick Mark:</span>
                     <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff'}} onClick={() => bulkMark('statusAM', true)}>All AM Online</button>
                     <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff'}} onClick={() => bulkMark('statusAM', false)}>All AM Offline</button>
@@ -5556,67 +5609,72 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             {showEndOfDay && (() => {
                 const data = getEndOfDayData();
                 const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
-                const cellStyle = {padding:'8px 12px',border:'1px solid #444',fontSize:'12px',verticalAlign:'top'};
-                const headerStyle = {...cellStyle, fontWeight:700, background:'#2a2a3e',textAlign:'center',fontSize:'11px',color:'#ccc'};
-                const sectionStyle = {padding:'10px 12px',background:'#1e3a5f',textAlign:'center',fontWeight:700,fontSize:'13px',color:'#fff',border:'1px solid #444'};
-                const shipStyle = {...cellStyle, fontWeight:700, fontSize:'13px', minWidth:'60px'};
-                const offlineStyle = {color:'#ff6b6b'};
-                const onlineStyle = {color:'#51cf66'};
+                const cs = {padding:'10px 14px',border:'1px solid #3a3a4e',fontSize:'13px',verticalAlign:'top',lineHeight:'1.7'};
+                const hd = {...cs, fontWeight:700, background:'#252540',textAlign:'center',fontSize:'12px',color:'#aab',letterSpacing:'0.5px',padding:'12px 14px'};
+                const sec = {padding:'12px 16px',background:'linear-gradient(90deg, #1e3a5f, #243b5a)',textAlign:'center',fontWeight:700,fontSize:'14px',color:'#fff',border:'1px solid #3a3a4e',letterSpacing:'1px'};
+                const sn = {...cs, fontWeight:700, fontSize:'14px', minWidth:'70px', background:'#16162e'};
+                const onC = {color:'#51cf66'};
+                const offC = {color:'#ff6b6b'};
                 const renderRows = (rows) => rows.map((r, i) => (
-                    <tr key={i}>
-                        <td style={shipStyle}>{r.name}</td>
-                        <td style={{...cellStyle, textAlign:'center', ...(r.amUp ? onlineStyle : offlineStyle), fontWeight:600}}>{r.am}</td>
-                        <td style={{...cellStyle, textAlign:'center', ...(r.pmUp ? onlineStyle : offlineStyle), fontWeight:600}}>{r.pm}</td>
-                        <td style={{...cellStyle, textAlign:'center'}}>{r.files}</td>
-                        <td style={{...cellStyle, textAlign:'center', color: r.diode === 'Up' ? '#51cf66' : r.diode === 'Down' || r.diode === 'Output-down' ? '#ff6b6b' : '#888'}}>{r.diode}</td>
-                        <td style={{...cellStyle, textAlign:'center', color: r.phone === 'Up' ? '#51cf66' : '#ff6b6b'}}>{r.phone}</td>
-                        <td style={{...cellStyle, whiteSpace:'pre-wrap', maxWidth:'300px', lineHeight:'1.5', fontSize:'11px', color:'#ddd'}}>{r.notes}</td>
+                    <tr key={i} style={{background: i % 2 === 0 ? '#1a1a2e' : '#1e1e34'}}>
+                        <td style={sn}>{r.name}</td>
+                        <td style={{...cs, textAlign:'center', ...(r.amUp ? onC : offC), fontWeight:700, fontSize:'14px'}}>{r.am}</td>
+                        <td style={{...cs, textAlign:'center', ...(r.pmUp ? onC : offC), fontWeight:700, fontSize:'14px'}}>{r.pm}</td>
+                        <td style={{...cs, textAlign:'center', color:'#aab'}}>{r.files}</td>
+                        <td style={{...cs, textAlign:'center', fontWeight:600, color: r.diode === 'Up' ? '#51cf66' : r.diode === 'Down' || r.diode === 'Output-down' ? '#ff6b6b' : '#666'}}>{r.diode}</td>
+                        <td style={{...cs, textAlign:'center', fontWeight:600, color: r.phone === 'Up' ? '#51cf66' : r.phone === 'Down' ? '#ff6b6b' : '#666'}}>{r.phone}</td>
+                        <td style={{...cs, whiteSpace:'pre-wrap', minWidth:'300px', fontSize:'12px', color:'#d4d4e0', lineHeight:'1.8'}}>{r.notes}</td>
                     </tr>
                 ));
                 return (
-                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={e => { if(e.target === e.currentTarget) setShowEndOfDay(false); }}>
-                    <div style={{background:'var(--bg-card)',borderRadius:'16px',width:'100%',maxWidth:'950px',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
-                        <div style={{padding:'16px 24px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'var(--bg-card)',zIndex:1,borderRadius:'16px 16px 0 0'}}>
+                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}} onClick={e => { if(e.target === e.currentTarget) setShowEndOfDay(false); }}>
+                    <div style={{background:'#12122a',borderRadius:'16px',width:'100%',maxWidth:'1100px',maxHeight:'92vh',overflow:'auto',border:'1px solid #3a3a4e',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+                        <div style={{padding:'18px 24px',borderBottom:'1px solid #3a3a4e',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'#12122a',zIndex:1,borderRadius:'16px 16px 0 0'}}>
                             <div>
-                                <div style={{fontSize:'16px',fontWeight:700}}>📧 End of Day Report</div>
-                                <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>{dateLabel} • Copy and paste into email</div>
+                                <div style={{fontSize:'17px',fontWeight:700,color:'#fff'}}>📧 End of Day Status Report</div>
+                                <div style={{fontSize:'12px',color:'#888',marginTop:'3px'}}>{dateLabel}</div>
                             </div>
                             <div style={{display:'flex',gap:'8px'}}>
-                                <button className="btn btn-primary" style={{fontWeight:700}} onClick={copyEndOfDay}>📋 Copy Report</button>
-                                <button onClick={() => setShowEndOfDay(false)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'20px',cursor:'pointer'}}>✕</button>
+                                <button className="btn btn-primary" style={{fontWeight:700,padding:'10px 20px'}} onClick={copyEndOfDay}>📋 Copy for Email</button>
+                                <button onClick={() => setShowEndOfDay(false)} style={{background:'none',border:'1px solid #3a3a4e',color:'#888',fontSize:'16px',cursor:'pointer',borderRadius:'8px',width:'36px',height:'36px',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
                             </div>
                         </div>
-                        <div style={{padding:'16px 24px'}} id="eod-table-container">
-                            <table style={{width:'100%',borderCollapse:'collapse',background:'#1a1a2e',color:'#e0e0e0',fontFamily:'Arial, sans-serif'}}>
+                        <div style={{padding:'20px 24px'}} id="eod-table-container">
+                            <table style={{width:'100%',borderCollapse:'collapse',background:'#1a1a2e',color:'#e0e0e0',fontFamily:'Segoe UI, Arial, sans-serif',borderRadius:'8px',overflow:'hidden'}}>
                                 <thead>
                                     <tr>
-                                        <th style={headerStyle}></th>
-                                        <th style={headerStyle}>AM</th>
-                                        <th style={headerStyle}>PM</th>
-                                        <th style={headerStyle}>Files</th>
-                                        <th style={headerStyle}>Diode</th>
-                                        <th style={headerStyle}>Phone</th>
-                                        <th style={headerStyle}>Notes</th>
+                                        <th style={{...hd,textAlign:'left',paddingLeft:'16px',minWidth:'70px'}}></th>
+                                        <th style={{...hd,minWidth:'80px'}}>AM</th>
+                                        <th style={{...hd,minWidth:'80px'}}>PM</th>
+                                        <th style={{...hd,minWidth:'55px'}}>Files</th>
+                                        <th style={{...hd,minWidth:'70px'}}>Diode</th>
+                                        <th style={{...hd,minWidth:'70px'}}>Phone</th>
+                                        <th style={hd}>Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {data.fullReap.length > 0 && (<>
-                                        <tr><td colSpan={7} style={sectionStyle}>Full Reap</td></tr>
+                                        <tr><td colSpan={7} style={sec}>Full Reap</td></tr>
                                         {renderRows(data.fullReap)}
                                     </>)}
                                     {data.miniReap.length > 0 && (<>
-                                        <tr><td colSpan={7} style={{...sectionStyle, background:'#1e5a3a'}}>Mini-Reap</td></tr>
+                                        <tr><td colSpan={7} style={{...sec, background:'linear-gradient(90deg, #1e5a3a, #1e5a3a)'}}>Mini-Reap</td></tr>
                                         {renderRows(data.miniReap)}
                                     </>)}
                                     {data.pending.length > 0 && (<>
-                                        <tr><td colSpan={7} style={{...sectionStyle, background:'#5a4a1e'}}>Pending Installs</td></tr>
+                                        <tr><td colSpan={7} style={{...sec, background:'linear-gradient(90deg, #5a4a1e, #5a4a1e)'}}>Pending Installs</td></tr>
                                         {data.pending.map((s, i) => {
                                             const shipTrip = (installs || []).find(t => t.ship === s.name && (t.status === 'Scheduled' || t.status === 'In Progress'));
+                                            const noteLines = [];
+                                            noteLines.push(s.type + ' System');
+                                            noteLines.push('Install Date: ' + (s.installDate ? fmtDate(s.installDate) : 'TBD'));
+                                            noteLines.push('Location: ' + (s.location || 'TBD'));
+                                            if (shipTrip) noteLines.push('Trip: ' + fmtDate(shipTrip.start) + (shipTrip.end ? ' → '+fmtDate(shipTrip.end) : '') + ' @ ' + shipTrip.location + (shipTrip.techs ? ' ('+shipTrip.techs+')' : ''));
                                             return (
-                                            <tr key={i}>
-                                                <td style={shipStyle}>{s.name}</td>
-                                                <td colSpan={5} style={{...cellStyle, textAlign:'center', color:'#f0ad4e'}}>{s.type} • Install: {s.installDate ? fmtDate(s.installDate) : 'TBD'} • {s.location || 'Location TBD'}</td>
-                                                <td style={{...cellStyle, fontSize:'11px', color:'#ddd', whiteSpace:'pre-wrap'}}>{shipTrip ? `Trip: ${fmtDate(shipTrip.start)}${shipTrip.end ? ' → '+fmtDate(shipTrip.end) : ''}\n${shipTrip.location}${shipTrip.techs ? '\n'+shipTrip.techs : ''}` : ''}</td>
+                                            <tr key={i} style={{background: i % 2 === 0 ? '#1a1a2e' : '#1e1e34'}}>
+                                                <td style={sn}>{s.name}</td>
+                                                <td colSpan={5} style={{...cs, textAlign:'center', color:'#f0ad4e', fontWeight:700, fontSize:'13px'}}>Pending Installation</td>
+                                                <td style={{...cs, whiteSpace:'pre-wrap', minWidth:'300px', fontSize:'12px', color:'#d4d4e0', lineHeight:'1.8'}}>{noteLines.join('\n')}</td>
                                             </tr>);
                                         })}
                                     </>)}
