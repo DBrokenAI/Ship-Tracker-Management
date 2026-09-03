@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T034";
+    var APP_BUILD = "2026-02-27T035";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5707,22 +5707,42 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
             )}
             
             {/* Base selector grid */}
-            <div style={{marginBottom:'20px'}}>
-                <div style={{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px'}}>📍 INSTALLATION BASES</div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:'8px'}}>
+            <div style={{marginBottom:'24px'}}>
+                <div style={{textAlign:'center',marginBottom:'16px'}}>
+                    <div style={{fontSize:'14px',fontWeight:700,color:'var(--text)',letterSpacing:'0.5px'}}>Installation Bases</div>
+                    <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>Select a base to view maps, contacts, directions & shipping</div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:'12px',maxWidth:'900px',margin:'0 auto'}}>
                     {Object.entries(siteData).map(([key, site]) => {
                         const shipCount = sorted.filter(s => s.location && site.city && s.location.includes(site.city.split(',')[0])).length;
                         const pocCount = getSitePOCs(key).filter(p => p.name).length;
+                        const siteTrips = (installs || []).filter(t => site.city && t.location?.includes(site.city.split(',')[0]) && (t.status === 'Scheduled' || t.status === 'In Progress'));
+                        const baseIcons = { everett: '🏔️', sandiego: '🌴', pearlharbor: '🌺', mayport: '🐊', norfolk: '⚓', yokosuka: '⛩️', rota: '🏰', pointmugu: '🎯' };
+                        const stateAbbr = { everett: 'WA', sandiego: 'CA', pearlharbor: 'HI', mayport: 'FL', norfolk: 'VA', yokosuka: 'JP', rota: 'ES', pointmugu: 'CA' };
                         return (
-                            <div key={key} onClick={() => { setSelectedSite(key); setSiteTab('map'); }} style={{padding:'14px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',cursor:'pointer',transition:'all 0.15s',display:'flex',flexDirection:'column',gap:'6px'}} onMouseOver={e => { e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.transform='translateY(-1px)'; }} onMouseOut={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.transform='translateY(0)'; }}>
-                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                    <span style={{fontSize:'20px'}}>{siteFlag(key)}</span>
-                                    {shipCount > 0 && <span style={{background:'var(--primary)',color:'#fff',borderRadius:'10px',padding:'1px 8px',fontSize:'10px',fontWeight:700}}>{shipCount}</span>}
-                                </div>
-                                <div style={{fontWeight:700,fontSize:'14px'}}>{site.abbr}</div>
-                                <div style={{fontSize:'11px',color:'var(--text-muted)'}}>{site.city}</div>
-                                <div style={{display:'flex',gap:'6px',marginTop:'2px'}}>
-                                    {pocCount > 0 && <span style={{fontSize:'9px',color:'var(--green)'}}>👤 {pocCount}</span>}
+                            <div key={key} onClick={() => { setSelectedSite(key); setSiteTab('map'); }} style={{padding:'0',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',cursor:'pointer',transition:'all 0.2s',overflow:'hidden',position:'relative'}} onMouseOver={e => { e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.2)'; }} onMouseOut={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='none'; }}>
+                                {/* Top accent bar */}
+                                <div style={{height:'4px',background: siteTrips.length > 0 ? 'linear-gradient(90deg, var(--primary), var(--blue))' : 'var(--border)'}}></div>
+                                
+                                <div style={{padding:'18px 16px',textAlign:'center'}}>
+                                    {/* Icon + Flag */}
+                                    <div style={{fontSize:'32px',marginBottom:'8px',filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'}}>{baseIcons[key] || '📍'}</div>
+                                    
+                                    {/* Base name */}
+                                    <div style={{fontWeight:800,fontSize:'15px',marginBottom:'2px',letterSpacing:'-0.3px'}}>{site.abbr}</div>
+                                    
+                                    {/* Location */}
+                                    <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'4px',marginBottom:'10px'}}>
+                                        <span style={{fontSize:'12px'}}>{siteFlag(key)}</span>
+                                        <span style={{fontSize:'11px',color:'var(--text-muted)',fontWeight:500}}>{site.city}</span>
+                                    </div>
+                                    
+                                    {/* Stats row */}
+                                    <div style={{display:'flex',justifyContent:'center',gap:'10px',fontSize:'10px'}}>
+                                        {shipCount > 0 && <div style={{display:'flex',alignItems:'center',gap:'3px',padding:'3px 8px',background:'var(--primary-glow)',borderRadius:'6px',color:'var(--primary)',fontWeight:700,border:'1px solid rgba(25,169,116,0.2)'}}>🚢 {shipCount}</div>}
+                                        {pocCount > 0 && <div style={{display:'flex',alignItems:'center',gap:'3px',padding:'3px 8px',background:'var(--bg-input)',borderRadius:'6px',color:'var(--text-dim)',fontWeight:600}}>👤 {pocCount}</div>}
+                                        {siteTrips.length > 0 && <div style={{display:'flex',alignItems:'center',gap:'3px',padding:'3px 8px',background:'var(--blue-glow)',borderRadius:'6px',color:'var(--blue)',fontWeight:700,border:'1px solid rgba(59,130,246,0.2)'}}>✈️ {siteTrips.length}</div>}
+                                    </div>
                                 </div>
                             </div>
                         );
