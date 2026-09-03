@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T027";
+    var APP_BUILD = "2026-02-27T028";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1479,6 +1479,43 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [quickIssueModal, setQuickIssueModal] = useState(false);
     const [quickIssue, setQuickIssue] = useState({ threat: 'Mild', details: '', responsibility: 'Ship' });
     const [typeFilter, setTypeFilter] = useState('all');
+    const [dashReorder, setDashReorder] = useState(false);
+    const [dashDragShip, setDashDragShip] = useState(null);
+    const [dashDragOver, setDashDragOver] = useState(null);
+    const [dashShipOrder, setDashShipOrder] = useState([]);
+    
+    // Load dashboard ship order from Firebase
+    useEffect(() => {
+        const unsub = db.collection('settings').doc('dashboardShipOrder').onSnapshot(doc => {
+            if (doc.exists && doc.data().order) {
+                setDashShipOrder(doc.data().order);
+            }
+        });
+        return () => unsub();
+    }, []);
+    
+    const saveDashOrder = (order) => {
+        setDashShipOrder(order);
+        db.collection('settings').doc('dashboardShipOrder').set({ order, updatedAt: new Date().toISOString() }).catch(err => console.error('Save order error:', err));
+    };
+    
+    const handleDashDragStart = (e, shipId) => { setDashDragShip(shipId); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', shipId); } catch {} };
+    const handleDashDragOver = (e, shipId) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (shipId !== dashDragOver) setDashDragOver(shipId); };
+    const handleDashDragEnd = () => { setDashDragShip(null); setDashDragOver(null); };
+    const handleDashDrop = (e, targetId) => {
+        e.preventDefault();
+        if (!dashDragShip || dashDragShip === targetId) { handleDashDragEnd(); return; }
+        const currentIds = sorted.map(s => s.id);
+        const fromIdx = currentIds.indexOf(dashDragShip);
+        const toIdx = currentIds.indexOf(targetId);
+        if (fromIdx === -1 || toIdx === -1) { handleDashDragEnd(); return; }
+        const newOrder = [...currentIds];
+        newOrder.splice(fromIdx, 1);
+        newOrder.splice(toIdx, 0, dashDragShip);
+        saveDashOrder(newOrder);
+        handleDashDragEnd();
+    };
+    const resetDashOrder = () => { saveDashOrder([]); logActivity('Reset dashboard ship order to default'); toast('Ship order reset', 'info'); };
     const [contactModal, setContactModal] = useState(false);
     const [contactForm, setContactForm] = useState({ name: '', date: toDateString(new Date()), notes: '', waitingReply: false });
     const [activityDetailModal, setActivityDetailModal] = useState(null);
@@ -1951,6 +1988,17 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         } else if (typeFilter !== 'all') {
             result = result.filter(s => s.type === typeFilter);
         }
+        // If custom order exists, use it; otherwise default sort
+        if (dashShipOrder.length > 0 && !globalSearch && typeFilter === 'all') {
+            return result.sort((a, b) => {
+                const aIdx = dashShipOrder.indexOf(a.id);
+                const bIdx = dashShipOrder.indexOf(b.id);
+                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                if (aIdx !== -1) return -1;
+                if (bIdx !== -1) return 1;
+                return hullNum(a.name) - hullNum(b.name);
+            });
+        }
         return result.sort((a, b) => {
             const ai = issues.filter(i => i.shipId === a.id && !i.resolved), bi = issues.filter(i => i.shipId === b.id && !i.resolved);
             const au = ai.some(i => i.threat === 'Urgent') ? 2 : ai.some(i => i.threat === 'Mild') ? 1 : 0;
@@ -1960,7 +2008,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             if (be.days !== ae.days) return be.days - ae.days;
             return hullNum(a.name) - hullNum(b.name);
         });
-    }, [ships, issues, globalSearch, typeFilter, today]);
+    }, [ships, issues, globalSearch, typeFilter, today, dashShipOrder]);
     
     const selIssues = useMemo(() => sel ? issues.filter(i => i.shipId === sel.id && !i.resolved) : [], [sel, issues]);
     
@@ -2575,7 +2623,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             
             <div className="dash-grid">
                 <div className="card">
-                    <div className="card-title" style={{display:'flex',alignItems:'center',gap:'12px'}}>Select Ship <span style={{marginLeft:'auto',fontWeight:'normal',color:'var(--text-muted)',fontSize:'11px'}}>{sorted.length} shown</span>{ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length > 0 && <span style={{fontSize:'10px',color:'var(--green)',fontWeight:500,display:'flex',alignItems:'center',gap:'4px'}}><span style={{width:'8px',height:'8px',borderRadius:'2px',background:'var(--green)'}}></span>{ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length} updated today</span>}</div>
+                    <div className="card-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>Select Ship <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>{dashReorder ? <><button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px',background:'var(--primary)',color:'#000',fontWeight:700}} onClick={() => setDashReorder(false)}>✓ Done</button><button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 8px'}} onClick={resetDashOrder}>↩ Reset</button></> : <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setDashReorder(true)}>↕ Reorder</button>}<span style={{fontWeight:'normal',color:'var(--text-muted)',fontSize:'11px'}}>{sorted.length} shown</span></span>{ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length > 0 && <span style={{fontSize:'10px',color:'var(--green)',fontWeight:500,display:'flex',alignItems:'center',gap:'4px'}}><span style={{width:'8px',height:'8px',borderRadius:'2px',background:'var(--green)'}}></span>{ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length} updated today</span>}</div>
                     <div className="ship-list">
                         <div className="ship-list-header"><span>STATUS</span><span>SHIP</span><span>TYPE</span><span>COMMS</span><span>HOMEPORT</span></div>
                         {sorted.map(ship => {
@@ -2589,7 +2637,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             const isDeinstall = ship.pendingDeinstall;
                             const topIssue = si.length > 0 ? si.sort((a,b) => a.threat === 'Urgent' ? -1 : 1)[0] : null;
                             const updatedToday = ship.lastContact && fmtDateInput(ship.lastContact) === today;
-                            return (<div key={ship.id} onClick={() => setSel(ship)} style={{cursor:'pointer'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}><span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}><span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span><button style={{fontSize:'9px',padding:'2px 8px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button></span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(ship.lastContact)} style={{color:'var(--text-muted)',fontSize:'10px'}}>{relTime(ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? `Back ${fmtDate(ship.inPortUntil)}` : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {topIssue.details.substring(0, 50)}{topIssue.details.length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
+                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined} style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'opacity 0.15s'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}>{dashReorder && <span style={{color:'var(--text-muted)',fontSize:'12px',cursor:'grab',userSelect:'none',padding:'0 4px',flexShrink:0}}>⋮⋮</span>}<span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}><span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span><button style={{fontSize:'9px',padding:'2px 8px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button></span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(ship.lastContact)} style={{color:'var(--text-muted)',fontSize:'10px'}}>{relTime(ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? `Back ${fmtDate(ship.inPortUntil)}` : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {topIssue.details.substring(0, 50)}{topIssue.details.length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
                         })}
                     </div>
                 </div>
