@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T043";
+    var APP_BUILD = "2026-02-27T044";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5396,14 +5396,11 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 <div className="card mt-md">
                     <div className="check-row check-header-sticky" style={{background:'var(--bg-input)',fontWeight:600}}>
                         <span className="check-header">Hull #</span>
-                        <span className="check-header">Port</span>
                         <span className="check-header tip" data-tip="Morning ping response time">AM Ping</span>
                         <span className="check-header tip" data-tip="Afternoon ping response time">PM Ping</span>
                         <span className="check-header tip" data-tip="Hard drive free space">HD Space</span>
                         <span className="check-header tip" data-tip="Primary connectivity status">Primary</span>
                         <span className="check-header tip" data-tip="Alternate connectivity status">Alternate</span>
-                        <span className="check-header tip" data-tip="Diode indicator status">Diode</span>
-                        <span className="check-header tip" data-tip="VOIP phone status">Phone</span>
                     </div>
                     <div>{sorted.map((s, idx) => {
                         const c = getCheck(s.id);
@@ -5428,7 +5425,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                         {status === 'pending' && <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff',fontWeight:600,padding:'4px 12px',fontSize:'11px'}} onClick={() => { setShips(p => p.map(x => x.id === s.id ? {...x, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()} : x)); logActivity(`Marked ${s.name} as installed from Daily Checks`); toast(`${s.name} is now active and ready for monitoring!`, 'success'); }}>✓ Mark Installed</button>}
                                     </span>
                                 ) : (<>
-                                <span style={{fontSize:'11px',color: status === 'inport' ? 'var(--blue)' : 'var(--text-dim)'}}>{status === 'inport' ? '⚓' : ''} {s.location || '—'}</span>
                                 <div style={{display:'flex',alignItems:'center'}}>
                                     <input
                                         ref={el => inputRefs.current[`${s.id}-pingAM`] = el}
@@ -5464,12 +5460,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                 </div>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusAM} onChange={e => update(s.id, 'statusAM', e.target.checked)}/>Online</label>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusPM} onChange={e => update(s.id, 'statusPM', e.target.checked)}/>Online</label>
-                                <select style={{padding:'4px 6px',fontSize:'10px',borderRadius:'4px',border:'1px solid var(--border)',background:'var(--bg-input)',color: c.diode === 'Up' ? 'var(--green)' : c.diode === 'Down' || c.diode === 'Output-down' ? 'var(--red)' : 'var(--text-muted)',fontWeight:600,width:'70px'}} value={c.diode || ''} onChange={e => update(s.id, 'diode', e.target.value)}>
-                                    <option value="">—</option><option value="Up">Up</option><option value="Down">Down</option><option value="N/A">N/A</option><option value="Output-down">Out-Down</option>
-                                </select>
-                                <select style={{padding:'4px 6px',fontSize:'10px',borderRadius:'4px',border:'1px solid var(--border)',background:'var(--bg-input)',color: c.phone === 'Up' ? 'var(--green)' : c.phone === 'Down' ? 'var(--red)' : 'var(--text-muted)',fontWeight:600,width:'60px'}} value={c.phone || ''} onChange={e => update(s.id, 'phone', e.target.value)}>
-                                    <option value="">—</option><option value="Up">Up</option><option value="Down">Down</option>
-                                </select>
                                 </>)}
                             </div>
                         );
