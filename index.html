@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T042";
+    var APP_BUILD = "2026-02-27T043";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1529,7 +1529,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     </button>
                 </div>
                 {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers}/>}
-                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} issues={issues} emailHistory={emailHistory} toast={toast} logActivity={logActivity}/>}
+                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} issues={issues} toast={toast} logActivity={logActivity}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
                 {page === 4 && <Inventory ships={ships} setShips={setShips} dailyChecks={dailyChecks} toast={toast} logActivity={logActivity}/>}
                 {page === 5 && <Installs ships={ships} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
@@ -4939,13 +4939,18 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     );
 }
 
-function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, emailHistory, toast, logActivity }) {
+function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toast, logActivity }) {
     const [date, setDate] = useState(toDateString(new Date()));
     const [bulkPasteModal, setBulkPasteModal] = useState(false);
     const [bulkPasteText, setBulkPasteText] = useState('');
     const [bulkPasteType, setBulkPasteType] = useState('am');
     const [viewMode, setViewMode] = useState('table');
     const [showEndOfDay, setShowEndOfDay] = useState(false);
+    
+    // Read email history from localStorage for end-of-day report
+    const emailHistory = useMemo(() => {
+        try { return JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch { return []; }
+    }, [showEndOfDay]);
     const [saveStatus, setSaveStatus] = useState('');
     
     // Load dashboard ship order for report
