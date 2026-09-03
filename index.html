@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T033";
+    var APP_BUILD = "2026-02-27T034";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1529,7 +1529,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     </button>
                 </div>
                 {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers}/>}
-                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} toast={toast} logActivity={logActivity}/>}
+                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} toast={toast} logActivity={logActivity}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
                 {page === 4 && <Inventory ships={ships} setShips={setShips} dailyChecks={dailyChecks} toast={toast} logActivity={logActivity}/>}
                 {page === 5 && <Installs ships={ships} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
@@ -4333,13 +4333,22 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     );
 }
 
-function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity }) {
+function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logActivity }) {
     const [date, setDate] = useState(toDateString(new Date()));
     const [bulkPasteModal, setBulkPasteModal] = useState(false);
     const [bulkPasteText, setBulkPasteText] = useState('');
     const [bulkPasteType, setBulkPasteType] = useState('am');
     const [viewMode, setViewMode] = useState('table');
     const [saveStatus, setSaveStatus] = useState('');
+    
+    // Load dashboard ship order for report
+    const [dashOrder, setDashOrder] = useState([]);
+    useEffect(() => {
+        const unsub = db.collection('settings').doc('dashboardShipOrder').onSnapshot(doc => {
+            if (doc.exists && doc.data().order) setDashOrder(doc.data().order);
+        });
+        return () => unsub();
+    }, []);
     const saveTimer = useRef(null);
     const inputRefs = useRef({});
     const [reorderMode, setReorderMode] = useState(false);
@@ -4517,8 +4526,78 @@ function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity })
     };
 
     const exportStatus = () => {
-        let r = `REAP Status Report - ${parseLocalDate(date).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'})}\n${'─'.repeat(40)}\n\n`;
-        sorted.forEach(s => { const c = getCheck(s.id); let st = 'Up'; if (!c.statusAM && !c.statusPM) st = 'Down'; else if (c.statusAM && !c.statusPM) st = 'Up / Down'; else if (!c.statusAM && c.statusPM) st = 'Down / Up'; r += `${s.name} - ${st}\n`; });
+        const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+        
+        // Sort ships by dashboard order
+        const dashSorted = [...ships].sort((a, b) => {
+            if (dashOrder.length > 0) {
+                const aIdx = dashOrder.indexOf(a.id);
+                const bIdx = dashOrder.indexOf(b.id);
+                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                if (aIdx !== -1) return -1;
+                if (bIdx !== -1) return 1;
+            }
+            return hullNum(a.name) - hullNum(b.name);
+        });
+        
+        let r = '';
+        r += `══════════════════════════════════════\n`;
+        r += `    REAP DAILY STATUS REPORT\n`;
+        r += `    ${dateLabel}\n`;
+        r += `══════════════════════════════════════\n\n`;
+        
+        // Ship statuses
+        r += `FLEET STATUS\n`;
+        r += `──────────────────────────────────────\n`;
+        dashSorted.forEach(s => {
+            if (s.pendingInstall) return;
+            const c = getCheck(s.id);
+            const am = isTruthy(c.statusAM);
+            const pm = isTruthy(c.statusPM);
+            let st;
+            if (am && pm) st = '✅ Up';
+            else if (!am && !pm) st = '❌ Down';
+            else if (am && !pm) st = '⚡ Up / Down';
+            else st = '⚡ Down / Up';
+            
+            const pingInfo = c.pingAM || c.pingPM ? ` (${c.pingAM || '-'}/${c.pingPM || '-'} ms)` : '';
+            const inPort = s.inPort && s.inPortUntil && parseLocalDate(s.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
+            const portTag = inPort ? ' ⚓ IN PORT' : '';
+            const deinstallTag = s.pendingDeinstall ? ' 🔻 Pending Deinstall' : '';
+            
+            r += `  ${s.name.padEnd(10)} ${st}${pingInfo}${portTag}${deinstallTag}\n`;
+        });
+        
+        // Pending installs
+        const pendingShips = dashSorted.filter(s => s.pendingInstall);
+        if (pendingShips.length > 0) {
+            r += `\n🔧 PENDING INSTALLS\n`;
+            r += `──────────────────────────────────────\n`;
+            pendingShips.forEach(s => {
+                r += `  ${s.name.padEnd(10)} Est: ${s.installDate ? fmtDate(s.installDate) : 'TBD'}\n`;
+            });
+        }
+        
+        // Upcoming trips/installs
+        const todayStr = toDateString(new Date());
+        const upcomingTrips = (installs || []).filter(t => t.status === 'Scheduled' && t.start >= todayStr).sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start));
+        if (upcomingTrips.length > 0) {
+            r += `\n✈️ UPCOMING TRIPS\n`;
+            r += `──────────────────────────────────────\n`;
+            upcomingTrips.forEach(t => {
+                r += `  ${(t.ship || '').padEnd(10)} ${t.location || ''}\n`;
+                r += `  ${''.padEnd(10)} ${fmtDate(t.start)}${t.end ? ' → ' + fmtDate(t.end) : ''}${t.techs ? ' • ' + t.techs : ''}\n`;
+            });
+        }
+        
+        // Summary
+        const totalShips = dashSorted.filter(s => !s.pendingInstall).length;
+        const onlineCount = dashSorted.filter(s => { if (s.pendingInstall) return false; const c = getCheck(s.id); return isTruthy(c.statusAM) || isTruthy(c.statusPM); }).length;
+        r += `\n──────────────────────────────────────\n`;
+        r += `Online: ${onlineCount}/${totalShips} • Pending: ${pendingShips.length}`;
+        if (upcomingTrips.length > 0) r += ` • Trips: ${upcomingTrips.length}`;
+        r += `\n══════════════════════════════════════\n`;
+        
         navigator.clipboard.writeText(r);
         logActivity(`Exported daily status report for ${date}`);
         toast('Status report copied!', 'success');
