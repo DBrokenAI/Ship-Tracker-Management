@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T058";
+    var APP_BUILD = "2026-02-27T059";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5150,94 +5150,116 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             const c = getCheck(s.id);
             const isPending = s.pendingInstall;
             const isDeinstall = s.pendingDeinstall;
-            // Report status based on ping values - if a ping was recorded, ship was reachable
             const hasPingAM = c.pingAM && c.pingAM.trim() !== '';
             const hasPingPM = c.pingPM && c.pingPM.trim() !== '';
             const am = (isPending || isDeinstall) ? false : hasPingAM;
             const pm = (isPending || isDeinstall) ? false : hasPingPM;
-            const shipIssues = (issues || []).filter(i => i.shipId === s.id && !i.resolved);
-            const emails = (getEmailHistory() || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-            let noteText = '';
+            const shipIssues = (issues || []).filter(function(i) { return i.shipId === s.id && !i.resolved; });
+            const emails = (getEmailHistory() || []).filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
             
-            // Clean any text for professional report output
-            const cleanForReport = function(text) {
+            // Proofread text for professional report
+            var proofread = function(text) {
                 if (!text) return '';
-                let t = text;
-                // Strip pipe-separated metadata fields
-                t = t.replace(/\s*[|]\s*From:\s*[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Sent by\s*[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Contacted by\s*[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Logged by\s*[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*By:\s*[^|]*/gi, '');
+                var t = text;
+                // Strip all metadata patterns
+                t = t.replace(/\s*[|]\s*From:[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*Sent by[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*Contacted by[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*Logged by[^|]*/gi, '');
+                t = t.replace(/\s*[|]\s*By:[^|]*/gi, '');
                 t = t.replace(/\s*[|]\s*Response requested/gi, '');
                 t = t.replace(/\s*[|]\s*FYI only/gi, '');
                 t = t.replace(/\s*[|]\s*\d+ action item[^|]*/gi, '');
-                // Strip inline "From: name" or "Contacted by name" without pipes
+                t = t.replace(/\s*[|]\s*General status update/gi, '');
+                // Strip inline sender references
                 t = t.replace(/From:\s*\S+/gi, '');
-                t = t.replace(/Contacted by\s+\S+/gi, '');
-                t = t.replace(/Sent by\s+\S+/gi, '');
-                t = t.replace(/Logged by\s+\S+/gi, '');
-                t = t.replace(/Updated by\s+\S+/gi, '');
-                // Strip common username patterns (lowercase, underscores, short handles)
+                t = t.replace(/Contacted by\s+\S+\s*/gi, '');
+                t = t.replace(/Sent by\s+\S+\s*/gi, '');
+                t = t.replace(/Logged by\s+\S+\s*/gi, '');
+                t = t.replace(/Updated by\s+\S+\s*/gi, '');
+                t = t.replace(/Marked by\s+\S+\s*/gi, '');
+                // Strip username patterns
                 t = t.replace(/\b[a-z][a-z0-9]*_[a-z][a-z0-9_]*/g, '');
-                t = t.replace(/\b[A-Z]_[A-Za-z]+/g, '');
-                // Clean up leftover artifacts
+                t = t.replace(/\b[A-Z]_[A-Za-z]+\b/g, '');
+                t = t.replace(/\b[a-z]{1,3}[A-Z][a-z]+\b/g, function(m) { return m.length <= 4 ? '' : m; });
+                // Convert pipes to periods
                 t = t.replace(/^\s*[|]\s*/g, '').replace(/\s*[|]\s*$/g, '');
                 t = t.replace(/\s*[|]\s*/g, '. ');
-                t = t.replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim();
-                t = t.replace(/^[.\s]+/, '').replace(/[.\s]+$/, '').trim();
+                // Fix sentence formatting
+                t = t.replace(/\.\s*\./g, '.');
+                t = t.replace(/\s{2,}/g, ' ');
+                t = t.replace(/^[\s.,|]+/, '').replace(/[\s.,|]+$/, '');
+                // Capitalize first letter of each sentence
+                t = t.replace(/(^|[.!?]\s+)([a-z])/g, function(m, p, c) { return p + c.toUpperCase(); });
+                // Ensure ends with period if it has content
+                t = t.trim();
+                if (t && !t.match(/[.!?]$/)) t = t + '.';
+                // Remove empty sentences
+                t = t.replace(/\.\s*\./g, '.').trim();
                 return t;
             };
             
+            var noteText = '';
+            
             if (isPending) {
-                const parts = ['Pending Install \u2014 ' + s.type];
-                if (s.installDate) parts.push('Est. Install: ' + fmtDate(s.installDate));
+                var parts = ['Pending Install \u2014 ' + s.type];
+                if (s.installDate) parts.push('Install: ' + fmtDate(s.installDate));
                 if (s.location) parts.push('Location: ' + s.location);
-                const shipTrip = (installs || []).find(t => t.ship === s.name && (t.status === 'Scheduled' || t.status === 'In Progress'));
+                var shipTrip = (installs || []).find(function(t2) { return t2.ship === s.name && (t2.status === 'Scheduled' || t2.status === 'In Progress'); });
                 if (shipTrip) parts.push('Trip: ' + fmtDate(shipTrip.start) + (shipTrip.end ? ' \u2192 ' + fmtDate(shipTrip.end) : '') + ' @ ' + shipTrip.location);
                 noteText = parts.join('\n');
             } else if (isDeinstall) {
                 noteText = 'Pending Deinstall' + (s.deinstallDate ? ' \u2014 Est. ' + fmtDate(s.deinstallDate) : '');
             } else {
-                const lines = [];
-                if (s.inPort && s.inPortUntil) {
-                    lines.push('In Port until ' + fmtDate(s.inPortUntil));
-                }
-                const lastEmail = emails.length > 0 ? emails[0] : null;
-                const emailNotes = lastEmail ? (lastEmail.result ? (lastEmail.result.emailSummary || '') : '') : '';
-                const manualNotes = s.lastSaid || '';
-                const lastSender = lastEmail ? (lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null) : null;
-                const isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
+                var lines = [];
                 
-                // LINE 1: Issue — what's wrong or what's happening
+                // In port
+                if (s.inPort && s.inPortUntil) {
+                    lines.push('In Port until ' + fmtDate(s.inPortUntil) + '.');
+                }
+                
+                var lastEmail = emails.length > 0 ? emails[0] : null;
+                var hasEmails = emails.length > 0;
+                var lastSender = lastEmail ? (lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null) : null;
+                var isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
+                
+                // ISSUE LINE: what's wrong
                 if (shipIssues.length > 0) {
                     shipIssues.forEach(function(iss) {
-                        lines.push(iss.title || iss.details || 'Issue reported');
+                        lines.push(proofread(iss.title || iss.details || 'Issue reported'));
                     });
                 }
                 
-                // LINE 2: Communication — what was said/done
-                if (manualNotes) {
-                    const cleaned = cleanForReport(manualNotes);
-                    if (cleaned) lines.push(cleaned);
-                } else if (emailNotes) {
-                    const cleaned = cleanForReport(emailNotes);
-                    if (cleaned) lines.push(cleaned);
+                // COMMUNICATION LINE: only from actual existing emails, NOT stale lastSaid
+                if (hasEmails) {
+                    var emailSum = lastEmail.result ? (lastEmail.result.emailSummary || '') : '';
+                    var cleaned = proofread(emailSum);
+                    if (cleaned && cleaned !== '.') {
+                        lines.push(cleaned);
+                    }
+                }
+                // Only use lastSaid if there are NO emails at all AND no issues
+                // This prevents deleted email data from persisting
+                if (!hasEmails && shipIssues.length === 0 && s.lastSaid) {
+                    var cleanedManual = proofread(s.lastSaid);
+                    if (cleanedManual && cleanedManual !== '.') {
+                        lines.push(cleanedManual);
+                    }
                 }
                 
-                // LINE 3: Status — where we stand
-                if (s.waitingReply) {
-                    lines.push('Awaiting response from ship.');
-                } else if (lastEmail && isFromShip) {
-                    lines.push('Ship has responded.');
-                } else if (lastEmail && !isFromShip && shipIssues.length > 0) {
-                    lines.push('Reached out to ship forces.');
+                // STATUS LINE: where we stand
+                if (hasEmails) {
+                    if (s.waitingReply) {
+                        lines.push('Awaiting response from ship.');
+                    } else if (isFromShip) {
+                        lines.push('Ship has responded.');
+                    }
                 }
                 
-                // LINE 4: Date — always last
-                if (lastEmail && lastEmail.timestamp) {
+                // DATE: always last
+                if (hasEmails && lastEmail.timestamp) {
                     lines.push(fmtDate(lastEmail.timestamp));
-                } else if (s.lastContact) {
+                } else if (s.lastContact && shipIssues.length > 0) {
                     lines.push(fmtDate(s.lastContact));
                 }
                 
@@ -5256,7 +5278,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 notes: noteText, amUp: am, pmUp: pm
             };
         };
-        return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow) };
     };
     
     const copyEndOfDay = () => {
