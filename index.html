@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T025";
+    var APP_BUILD = "2026-02-27T026";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2891,7 +2891,16 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                                 
                                                                 {/* Actions */}
                                                                 <div style={{display:'flex',gap:'8px',marginTop:'14px',paddingTop:'12px',borderTop:'1px solid var(--border)',alignItems:'center',flexWrap:'wrap'}}>
-                                                                    <button style={{padding:'7px 16px',fontSize:'11px',background:'var(--primary)',color:'#000',borderRadius:'8px',border:'none',cursor:'pointer',fontWeight:700}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: currentUser.username, followupEmail: '', date: '' }); }}>📧 Add Update</button>
+                                                                    <button style={{padding:'7px 16px',fontSize:'11px',background:'var(--primary)',color:'#000',borderRadius:'8px',border:'none',cursor:'pointer',fontWeight:700}} onClick={(e) => { e.stopPropagation(); 
+                                                                        // Determine who sent this email to auto-populate the next expected action
+                                                                        const thisWasFromShip = isFromShip;
+                                                                        // If this was from ship → next should be us replying (current user)
+                                                                        // If this was from us → next should be ship replying
+                                                                        const nextName = thisWasFromShip ? currentUser.username : '__SHIP__';
+                                                                        const nextResolution = thisWasFromShip ? 'waiting_ours' : 'received';
+                                                                        setClearEmailWaitingModal(h); 
+                                                                        setClearEmailWaitingForm({ resolution: nextResolution, notes: '', name: nextName, followupEmail: '', date: '' }); 
+                                                                    }}>📧 Add Update</button>
                                                                     <button style={{padding:'7px 12px',fontSize:'11px',background:'var(--bg-input)',color:'var(--text-dim)',borderRadius:'8px',border:'1px solid var(--border)',cursor:'pointer',fontWeight:500}} onClick={(e) => { e.stopPropagation();
                                                                         const d = new Date(h.timestamp); 
                                                                         setEditEmailForm({ 
@@ -3396,21 +3405,35 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     const setF = (updates) => setClearEmailWaitingForm(prev => ({...prev, ...updates}));
                     const colors = { received: 'var(--green)', waiting_ours: 'var(--amber)', second_email: 'var(--blue)' };
                     const activeColor = colors[f.resolution];
+                    const nameIsShip = f.name === '__SHIP__' || f.name === 'Ship';
                     return (
                     <>
-                        <div style={{padding:'10px 12px',background:'var(--bg-input)',borderRadius:'6px',marginBottom:'16px',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'12px'}}>
+                        <div style={{padding:'10px 14px',background:'var(--bg-input)',borderRadius:'8px',marginBottom:'16px',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'12px'}}>
                             <span><strong>{clearEmailWaitingModal.shipName}</strong></span>
                             <span style={{color:'var(--text-muted)'}}>Original: {new Date(clearEmailWaitingModal.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        
+                        {/* Direction hint */}
+                        <div style={{padding:'10px 14px',marginBottom:'16px',borderRadius:'8px',background: nameIsShip ? 'rgba(59,130,246,0.08)' : 'rgba(25,169,116,0.08)',border: nameIsShip ? '1px solid rgba(59,130,246,0.25)' : '1px solid rgba(25,169,116,0.25)',display:'flex',alignItems:'center',gap:'10px',fontSize:'12px'}}>
+                            <span style={{fontSize:'18px'}}>{nameIsShip ? '🚢' : '📤'}</span>
+                            <div>
+                                <div style={{fontWeight:700,color: nameIsShip ? 'var(--blue)' : 'var(--primary)'}}>{nameIsShip ? 'Expecting: Ship replied to us' : `Expecting: We (${f.name}) replied to ship`}</div>
+                                <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'2px'}}>Change below if this isn't what happened</div>
+                            </div>
                         </div>
                         
                         {/* Resolution options - compact tabs */}
                         <div style={{display:'flex',gap:'4px',marginBottom:'16px'}}>
                             {[
-                                { key: 'received', icon: '✅', label: 'They Replied' },
-                                { key: 'waiting_ours', icon: '⏳', label: 'On Our End' },
+                                { key: 'received', icon: '🚢', label: 'Ship Replied' },
+                                { key: 'waiting_ours', icon: '📤', label: 'We Replied' },
                                 { key: 'second_email', icon: '📧', label: 'Follow-up Sent' }
                             ].map(opt => (
-                                <button key={opt.key} onClick={() => setF({ resolution: opt.key })} style={{
+                                <button key={opt.key} onClick={() => { 
+                                    // Auto-swap name based on resolution
+                                    const newName = opt.key === 'received' ? '__SHIP__' : opt.key === 'waiting_ours' ? currentUser.username : f.name === '__SHIP__' ? currentUser.username : f.name;
+                                    setF({ resolution: opt.key, name: newName }); 
+                                }} style={{
                                     flex:1, padding:'10px 8px', borderRadius:'6px', cursor:'pointer', textAlign:'center',
                                     background: f.resolution === opt.key ? colors[opt.key] + '22' : 'var(--bg-input)',
                                     border: f.resolution === opt.key ? `2px solid ${colors[opt.key]}` : '1px solid var(--border)',
@@ -3464,7 +3487,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         <div className="form-group" style={{margin:'0 0 16px 0'}}>
                             <label className="form-label" style={{fontSize:'11px'}}>{f.resolution === 'second_email' ? 'Follow-up Email Content *' : 'Notes / Reply Summary'}</label>
                             <textarea className="form-textarea" style={{minHeight: f.resolution === 'second_email' ? '100px' : '70px'}} 
-                                placeholder={f.resolution === 'second_email' ? 'Paste or summarize the follow-up email...' : f.resolution === 'received' ? 'What did they say?' : 'What needs to happen on our end?'} 
+                                placeholder={f.resolution === 'second_email' ? 'Paste or summarize the follow-up email...' : f.resolution === 'received' ? 'What did the ship say in their reply?' : 'What did we tell them?'} 
                                 value={f.resolution === 'second_email' ? f.followupEmail : f.notes} 
                                 onChange={e => f.resolution === 'second_email' ? setF({ followupEmail: e.target.value }) : setF({ notes: e.target.value })}/>
                         </div>
