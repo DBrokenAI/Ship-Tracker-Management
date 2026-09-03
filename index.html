@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T049";
+    var APP_BUILD = "2026-02-27T050";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5143,8 +5143,10 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
             return hullNum(a.name) - hullNum(b.name);
         });
-        const fullReap = dashSorted.filter(s => s.type === 'Full REAP' && !s.pendingInstall);
-        const miniReap = dashSorted.filter(s => s.type === 'Mini REAP' && !s.pendingInstall);
+        // Keep dashboard order within each group
+        const activeShips = dashSorted.filter(s => !s.pendingInstall);
+        const fullReap = activeShips.filter(s => s.type === 'Full REAP');
+        const miniReap = activeShips.filter(s => s.type === 'Mini REAP');
         const pending = dashSorted.filter(s => s.pendingInstall);
         
         const getShipRow = (s) => {
