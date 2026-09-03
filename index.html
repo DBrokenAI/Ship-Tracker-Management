@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T018";
+    var APP_BUILD = "2026-02-27T019";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1042,6 +1042,7 @@ const parseLocalDate = (d) => {
     return new Date(d);
 };
 // Get date string in YYYY-MM-DD format from Date object (local time)
+const isTruthy = (v) => v === true || v === 'true' || v === 1;
 const toDateString = (d) => {
     const date = d instanceof Date ? d : new Date(d);
     const y = date.getFullYear();
@@ -1577,8 +1578,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             const dayChecks = dailyChecks.filter(c => c.date === date);
             dayChecks.forEach(c => {
                 totalChecks += 2;
-                if (c.statusAM) onlineChecks++;
-                if (c.statusPM) onlineChecks++;
+                if (isTruthy(c.statusAM)) onlineChecks++;
+                if (isTruthy(c.statusPM)) onlineChecks++;
             });
         });
         const weeklyUptime = totalChecks > 0 ? Math.round((onlineChecks / totalChecks) * 100) : 0;
@@ -1614,9 +1615,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 const check = dayChecks.find(c => c.shipId === ship.id);
                 if (!check) {
                     offline++;
-                } else if (check.statusAM && check.statusPM) {
+                } else if (isTruthy(check.statusAM) && isTruthy(check.statusPM)) {
                     online++;
-                } else if (!check.statusAM && !check.statusPM) {
+                } else if (!isTruthy(check.statusAM) && !isTruthy(check.statusPM)) {
                     offline++;
                 } else {
                     partial++;
@@ -1876,9 +1877,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
         const ydStr = toDateString(yesterday);
         const ydChecks = dailyChecks.filter(c => c.date === ydStr);
-        const ydOnline = ydChecks.filter(c => c.statusAM && c.statusPM).length;
+        const ydOnline = ydChecks.filter(c => (isTruthy(c.statusAM)) && (isTruthy(c.statusPM))).length;
         const tdChecks = dailyChecks.filter(c => c.date === today);
-        const tdOnline = tdChecks.filter(c => c.statusAM && c.statusPM).length;
+        const tdOnline = tdChecks.filter(c => (isTruthy(c.statusAM)) && (isTruthy(c.statusPM))).length;
         const urgent = issues.filter(i => i.threat === 'Urgent' && !i.resolved).length;
         const due = ships.filter(s => s.nextCheck && new Date(s.nextCheck) <= new Date(Date.now() + 7*86400000)).length;
         const missing = ships.filter(s => !s.ciscoRouter || (!s.hddStar && !s.hdd) || !s.hddData || !s.crna1 || !s.crna2).length;
@@ -1895,10 +1896,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         let online = 0, offline = 0, noData = 0, pendingInstall = 0, pendingDeinstall = 0;
         ships.forEach(ship => {
             if (ship.pendingInstall) { pendingInstall++; return; }
-            if (ship.pendingDeinstall) { pendingDeinstall++; }
+            if (ship.pendingDeinstall) { pendingDeinstall++; return; }
             const check = todayChecks.find(c => c.shipId === ship.id);
-            if (!check) noData++;
-            else if (check.statusAM && check.statusPM) online++;
+            if (!check) { noData++; return; }
+            // Coerce to boolean in case stored as string
+            const am = isTruthy(check.statusAM);
+            const pm = isTruthy(check.statusPM);
+            if (am || pm) online++;
             else offline++;
         });
         
@@ -4348,8 +4352,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, toast, logActivity })
     // Calculate stats
     const stats = useMemo(() => {
         const todayChecks = checks.filter(c => c.date === date);
-        const online = todayChecks.filter(c => c.statusAM && c.statusPM).length;
-        const partial = todayChecks.filter(c => (c.statusAM && !c.statusPM) || (!c.statusAM && c.statusPM)).length;
+        const online = todayChecks.filter(c => (isTruthy(c.statusAM)) && (isTruthy(c.statusPM))).length;
+        const partial = todayChecks.filter(c => ((isTruthy(c.statusAM)) && !(isTruthy(c.statusPM))) || (!(isTruthy(c.statusAM)) && (isTruthy(c.statusPM)))).length;
         const offline = todayChecks.filter(c => !c.statusAM && !c.statusPM).length;
         const noData = ships.length - todayChecks.length;
         const inPort = ships.filter(s => s.inPort && parseLocalDate(s.inPortUntil) >= new Date(new Date().setHours(0,0,0,0))).length;
