@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T023";
+    var APP_BUILD = "2026-02-27T024";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2793,10 +2793,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                             {emailHistory.filter(h => h.shipId === sel.id).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map((h, idx, arr) => {
                                                 const isLatest = idx === 0;
                                                 const isIssue = h.result?.issue?.hasIssue;
-                                                const senderName = h.result?.sender?.name 
+                                                const rawName = h.result?.sender?.name 
                                                     || h.result?.contactedBy 
                                                     || (h.changes?.find(c => c.startsWith('By: '))?.replace('By: ', ''))
                                                     || null;
+                                                const isFromShip = rawName === '__SHIP__' || rawName === 'Ship' || rawName === '🚢 Ship';
+                                                const senderName = isFromShip ? null : rawName;
                                                 const summary = h.result?.emailSummary || '';
                                                 const age = Math.floor((Date.now() - new Date(h.timestamp).getTime()) / 86400000);
                                                 const isWaiting = h.result?.waitingReply;
@@ -2821,13 +2823,17 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                         {/* Header row */}
                                                         <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
                                                             {/* Avatar for latest only */}
-                                                            {isLatest && <div style={{width:'42px',height:'42px',borderRadius:'12px',background:`linear-gradient(135deg, ${dotColor}25, ${dotColor}10)`,border:`2px solid ${dotColor}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontWeight:800,color:dotColor,flexShrink:0}}>{senderName ? senderName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase() : '—'}</div>}
+                                                            {isLatest && <div style={{width:'42px',height:'42px',borderRadius:'12px',background: isFromShip ? 'linear-gradient(135deg, rgba(59,130,246,0.25), rgba(59,130,246,0.10))' : `linear-gradient(135deg, ${dotColor}25, ${dotColor}10)`,border: isFromShip ? '2px solid var(--blue)' : `2px solid ${dotColor}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize: isFromShip ? '20px' : '14px',fontWeight:800,color: isFromShip ? 'var(--blue)' : dotColor,flexShrink:0}}>{isFromShip ? '🚢' : (senderName ? senderName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase() : '—')}</div>}
                                                             
                                                             <div style={{flex:1,minWidth:0}}>
                                                                 <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                                                                    <span style={{fontSize: isLatest ? '16px' : '12px',fontWeight: isLatest ? 800 : 600,color:'var(--text)'}}>{senderName || <span style={{color:'var(--text-muted)',fontWeight:400,fontStyle:'italic'}}>Unknown</span>}</span>
+                                                                    <span style={{fontSize: isLatest ? '16px' : '12px',fontWeight: isLatest ? 800 : 600,color: isFromShip ? 'var(--blue)' : 'var(--text)'}}>
+                                                                        {isFromShip ? '🚢 Reply from Ship' : (senderName || <span style={{color:'var(--text-muted)',fontWeight:400,fontStyle:'italic'}}>Unknown</span>)}
+                                                                    </span>
+                                                                    {!isFromShip && !isLatest && senderName && <span style={{fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'var(--primary-glow)',color:'var(--primary)',border:'1px solid var(--primary)',fontWeight:600,marginLeft:'2px'}}>→ Sent</span>}
+                                                                    {isFromShip && !isLatest && <span style={{fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)',fontWeight:600,marginLeft:'2px'}}>← Reply</span>}
                                                                     
-                                                                    {isLatest && <span style={{fontSize:'9px',fontWeight:700,padding:'3px 10px',borderRadius:'10px',background:`linear-gradient(135deg, ${dotColor}, ${dotColor}cc)`,color:'#fff',letterSpacing:'0.5px',boxShadow:`0 2px 8px ${dotColor}33`}}>LATEST</span>}
+                                                                    {isLatest && <span style={{fontSize:'9px',fontWeight:700,padding:'3px 10px',borderRadius:'10px',background: isFromShip ? 'linear-gradient(135deg, var(--blue), rgba(59,130,246,0.8))' : `linear-gradient(135deg, ${dotColor}, ${dotColor}cc)`,color:'#fff',letterSpacing:'0.5px',boxShadow: isFromShip ? '0 2px 8px rgba(59,130,246,0.33)' : `0 2px 8px ${dotColor}33`}}>{isFromShip ? '← LATEST REPLY' : '→ LATEST SENT'}</span>}
                                                                     {isWaiting && <span style={{fontSize:'9px',fontWeight:600,padding:'2px 8px',borderRadius:'10px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳ Waiting</span>}
                                                                     {isIssue && <span style={{fontSize:'9px',fontWeight:600,padding:'2px 8px',borderRadius:'10px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}}>{h.result.issue.threat === 'Urgent' ? '🚨 Urgent' : '⚠️ Issue'}</span>}
                                                                 </div>
@@ -3070,6 +3076,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                 <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                             ))}
+                            <option value="__SHIP__">🚢 Ship (Reply)</option>
                         </select>
                     </div>
                     <div className="form-group">
@@ -3428,6 +3435,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                         {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                             <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                                         ))}
+                                            <option value="__SHIP__">🚢 Ship (Reply)</option>
                                     </select>
                                 </div>
                             )}
@@ -3442,6 +3450,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                         {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                             <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                                         ))}
+                                            <option value="__SHIP__">🚢 Ship (Reply)</option>
                                     </select>
                                 </div>
                                 <div className="form-group" style={{margin:0}}>
@@ -6529,6 +6538,7 @@ function EmailStatus({ ships, setShips, issues, toast, logActivity, currentUser,
                             {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
                                 <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
                             ))}
+                            <option value="__SHIP__">🚢 Ship (Reply)</option>
                         </select>
                     </div>
                     <div className="form-group">
