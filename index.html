@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T053";
+    var APP_BUILD = "2026-02-27T054";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5151,8 +5151,11 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             const c = getCheck(s.id);
             const isPending = s.pendingInstall;
             const isDeinstall = s.pendingDeinstall;
-            const am = (isPending || isDeinstall) ? false : isTruthy(c.statusAM);
-            const pm = (isPending || isDeinstall) ? false : isTruthy(c.statusPM);
+            // Report status based on ping values - if a ping was recorded, ship was reachable
+            const hasPingAM = c.pingAM && c.pingAM.trim() !== '';
+            const hasPingPM = c.pingPM && c.pingPM.trim() !== '';
+            const am = (isPending || isDeinstall) ? false : hasPingAM;
+            const pm = (isPending || isDeinstall) ? false : hasPingPM;
             const shipIssues = (issues || []).filter(i => i.shipId === s.id && !i.resolved);
             const emails = (emailHistory || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
             const noteParts = [];
