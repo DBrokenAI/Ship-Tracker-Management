@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T035";
+    var APP_BUILD = "2026-02-27T036";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -6097,7 +6097,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
             
             {/* ═══════════════ TRIP FORM MODAL ═══════════════ */}
             {showTripForm && (
-                <Modal title={editingTrip ? '✏️ Edit Trip' : '✈️ Schedule New Trip'} onClose={() => { setShowTripForm(false); setEditingTrip(null); }}>
+                <Modal open={showTripForm} title={editingTrip ? '✏️ Edit Trip' : '✈️ Schedule New Trip'} onClose={() => { setShowTripForm(false); setEditingTrip(null); }}>
                     <div className="form-row">
                         <div className="form-group">
                             <label className="form-label">Ship *</label>
