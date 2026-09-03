@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T056";
+    var APP_BUILD = "2026-02-27T057";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -4948,9 +4948,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     const [showEndOfDay, setShowEndOfDay] = useState(false);
     
     // Read email history from localStorage for end-of-day report
-    const emailHistory = useMemo(() => {
-        try { return JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch { return []; }
-    }, [showEndOfDay]);
+    // Read fresh from localStorage every render — no caching
+    const getEmailHistory = () => { try { return JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e) { return []; } };
     const [saveStatus, setSaveStatus] = useState('');
     
     // Load dashboard ship order for report
@@ -5157,7 +5156,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             const am = (isPending || isDeinstall) ? false : hasPingAM;
             const pm = (isPending || isDeinstall) ? false : hasPingPM;
             const shipIssues = (issues || []).filter(i => i.shipId === s.id && !i.resolved);
-            const emails = (emailHistory || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const emails = (getEmailHistory() || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
             let noteText = '';
             
             // Clean any text for professional report output
