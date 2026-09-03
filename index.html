@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T028";
+    var APP_BUILD = "2026-02-27T029";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1289,8 +1289,18 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     const toast = (msg, type = 'info') => { const id = Date.now(); setToasts(t => [...t, { id, message: msg, type }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000); };
     const logActivity = (text, details = null) => { 
         const newEntry = { id: genId('A'), text, details, user: currentUser?.username || 'Unknown', time: new Date().toISOString() };
-        setActivityLog(prev => [newEntry, ...prev.slice(0, 199)]); 
+        setActivityLog(prev => [newEntry, ...prev.slice(0, 499)]); 
     };
+    
+    // Log login once per session
+    const loginLogged = useRef(false);
+    useEffect(() => {
+        if (currentUser?.username && !loginLogged.current && activityLog !== undefined) {
+            loginLogged.current = true;
+            const entry = { id: genId('A'), text: `${currentUser.username} logged in`, details: null, user: currentUser.username, time: new Date().toISOString() };
+            setActivityLog(prev => [entry, ...prev.slice(0, 499)]);
+        }
+    }, [currentUser]);
     
     const submitFeedback = () => {
         if (!feedbackText.trim()) { toast('Please enter your suggestion', 'error'); return; }
@@ -2817,7 +2827,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                         </div>
                                                     </div>
                                                     <div style={{display:'flex',gap:'4px',flexShrink:0}}>
-                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: x.responsibility === 'REAP' ? 'Ship' : 'REAP'} : x))}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
+                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details).substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
                                                         <button className="btn btn-sm btn-success" style={{padding:'3px 8px',fontSize:'9px'}} onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
                                                     </div>
                                                 </div>
@@ -2961,7 +2971,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                                         setEditEmailEntry(h); 
                                                                     }}>✏️ Edit</button>
                                                                     <div style={{flex:1}}/>
-                                                                    <button style={{padding:'7px 12px',fontSize:'11px',background:'transparent',color:'var(--red)',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.15)',cursor:'pointer',fontWeight:500,opacity:0.7}} onClick={(e) => { e.stopPropagation(); if(confirm('Delete this email entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); toast('Entry deleted', 'info'); } }}>🗑 Delete</button>
+                                                                    <button style={{padding:'7px 12px',fontSize:'11px',background:'transparent',color:'var(--red)',borderRadius:'8px',border:'1px solid rgba(239,68,68,0.15)',cursor:'pointer',fontWeight:500,opacity:0.7}} onClick={(e) => { e.stopPropagation(); if(confirm('Delete this email entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); logActivity(`Deleted email log entry for ${sel?.name || 'Unknown'} from ${fmtDate(h.timestamp)}`); toast('Entry deleted', 'info'); } }}>🗑 Delete</button>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -3011,7 +3021,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                             {issue.title && issue.details && issue.title !== issue.details && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>{issue.details}</div>}
                                                         </div>
                                                         <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
-                                                            <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} title={`Switch to ${issue.responsibility === 'REAP' ? 'Ship' : 'REAP'}`} onClick={() => setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: x.responsibility === 'REAP' ? 'Ship' : 'REAP'} : x))}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
+                                                            <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} title={`Switch to ${issue.responsibility === 'REAP' ? 'Ship' : 'REAP'}`} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details).substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
                                                             <button className="btn btn-sm btn-success" onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
                                                         </div>
                                                     </div>
@@ -3174,7 +3184,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     <div style={{textAlign:'center',padding:'30px 20px',color:'var(--text-muted)'}}><div style={{fontSize:'28px',marginBottom:'6px',opacity:0.5}}>📋</div><div style={{fontSize:'12px'}}>No activity yet — actions will appear here as your team works</div></div>
                 ) : (
                     <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
-                        {activityLog.slice(0, 8).map(a => {
+                        {activityLog.slice(0, 15).map(a => {
                             const timeAgo = (date) => {
                                 const mins = Math.floor((new Date() - new Date(date)) / 60000);
                                 if (mins < 1) return 'Just now';
@@ -3675,6 +3685,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 }
                                 
                                 toast('Entry updated', 'success');
+                                logActivity(`Edited email log for ${editEmailEntry.shipName || sel?.name || 'Unknown'}`, { contactedBy: editEmailForm.contactedBy, summary: editEmailForm.summary?.substring(0,50) });
                                 setEditEmailEntry(null);
                             }}>Save Changes</button>
                         </div>
