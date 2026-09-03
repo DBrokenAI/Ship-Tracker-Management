@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T024";
+    var APP_BUILD = "2026-02-27T025";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2807,10 +2807,10 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     : isWaiting ? 'var(--blue)' : 'var(--green)';
                                                 
                                                 return (
-                                                <div key={h.id} style={{position:'relative',marginBottom: isLatest ? '20px' : idx < arr.length - 1 ? '2px' : '0',cursor: isLatest ? 'default' : 'pointer'}} onClick={() => { if (!isLatest) setExpandedEmails(prev => ({...prev, [h.id]: !prev[h.id]})); }}>
+                                                <div key={h.id} style={{position:'relative',marginBottom: isLatest ? '20px' : idx < arr.length - 1 ? '6px' : '0',cursor: isLatest ? 'default' : 'pointer'}} onClick={() => { if (!isLatest) setExpandedEmails(prev => ({...prev, [h.id]: !prev[h.id]})); }}>
                                                     
                                                     {/* Timeline dot */}
-                                                    <div style={{position:'absolute',left:'-24px',top: isLatest ? '22px' : '14px',width: isLatest ? '16px' : '8px',height: isLatest ? '16px' : '8px',borderRadius:'50%',background: dotColor,border: isLatest ? `3px solid var(--bg-main)` : `2px solid var(--bg-main)`,boxShadow: isLatest ? `0 0 0 4px ${dotColor}44, 0 0 16px ${dotColor}55` : 'none',zIndex:2,transition:'all 0.2s',marginLeft: isLatest ? '-4px' : '0'}}></div>
+                                                    <div style={{position:'absolute',left:'-24px',top: isLatest ? '22px' : '16px',width: isLatest ? '16px' : '10px',height: isLatest ? '16px' : '10px',borderRadius:'50%',background: dotColor,border: isLatest ? `3px solid var(--bg-main)` : `2px solid var(--bg-main)`,boxShadow: isLatest ? `0 0 0 4px ${dotColor}44, 0 0 16px ${dotColor}55` : `0 0 0 2px ${dotColor}22`,zIndex:2,transition:'all 0.2s',marginLeft: isLatest ? '-4px' : '-1px'}}></div>
                                                     
                                                     {/* Separator label between latest and history */}
                                                     {idx === 1 && arr.length > 1 && (
@@ -2818,7 +2818,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     )}
                                                     
                                                     {/* Entry card */}
-                                                    <div style={{padding: isLatest ? '20px 22px' : isExpanded ? '14px 16px' : '8px 16px',borderRadius: isLatest ? '16px' : '10px',background: isLatest ? `linear-gradient(135deg, var(--bg-card), ${dotColor}08)` : isExpanded ? 'var(--bg-card)' : 'transparent',border: isLatest ? `2px solid ${dotColor}55` : isExpanded ? '1px solid var(--border)' : '1px solid transparent',transition:'all 0.15s',boxShadow: isLatest ? `0 4px 24px ${dotColor}18, 0 0 0 1px ${dotColor}15, inset 0 1px 0 rgba(255,255,255,0.03)` : 'none'}}>
+                                                    <div style={{padding: isLatest ? '20px 22px' : isExpanded ? '16px 18px' : '12px 16px',borderRadius: isLatest ? '16px' : '10px',background: isLatest ? `linear-gradient(135deg, var(--bg-card), ${dotColor}08)` : isExpanded ? 'var(--bg-card)' : 'var(--bg-card)',border: isLatest ? `2px solid ${dotColor}55` : isExpanded ? `1px solid ${dotColor}33` : '1px solid var(--border)',transition:'all 0.15s',boxShadow: isLatest ? `0 4px 24px ${dotColor}18, 0 0 0 1px ${dotColor}15, inset 0 1px 0 rgba(255,255,255,0.03)` : 'none'}}>
                                                         
                                                         {/* Header row */}
                                                         <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
@@ -2827,7 +2827,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                             
                                                             <div style={{flex:1,minWidth:0}}>
                                                                 <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                                                                    <span style={{fontSize: isLatest ? '16px' : '12px',fontWeight: isLatest ? 800 : 600,color: isFromShip ? 'var(--blue)' : 'var(--text)'}}>
+                                                                    <span style={{fontSize: isLatest ? '16px' : '13px',fontWeight: isLatest ? 800 : 700,color: isFromShip ? 'var(--blue)' : 'var(--text)'}}>
                                                                         {isFromShip ? '🚢 Reply from Ship' : (senderName || <span style={{color:'var(--text-muted)',fontWeight:400,fontStyle:'italic'}}>Unknown</span>)}
                                                                     </span>
                                                                     {!isFromShip && !isLatest && senderName && <span style={{fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'var(--primary-glow)',color:'var(--primary)',border:'1px solid var(--primary)',fontWeight:600,marginLeft:'2px'}}>→ Sent</span>}
@@ -2843,8 +2843,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                             </div>
                                                             
                                                             <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'2px',flexShrink:0}}>
-                                                                <span style={{fontSize: isLatest ? '11px' : '10px',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{fmtDate(h.timestamp)}</span>
-                                                                {age > 0 && <span style={{fontSize:'10px',color: age > 14 ? 'var(--red)' : age > 7 ? 'var(--amber)' : 'var(--text-muted)'}}>{age}d ago</span>}
+                                                                <span style={{fontSize: isLatest ? '11px' : '11px',color:'var(--text-dim)',whiteSpace:'nowrap',fontWeight:500}}>{fmtDate(h.timestamp)}</span>
+                                                                {age > 0 && <span style={{fontSize:'10px',fontWeight:600,color: age > 14 ? 'var(--red)' : age > 7 ? 'var(--amber)' : 'var(--text-muted)'}}>{age}d ago</span>}
                                                             </div>
                                                             
                                                             {!isLatest && <span style={{fontSize:'10px',color:'var(--text-muted)',transition:'transform 0.15s',transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',flexShrink:0}}>▾</span>}
@@ -2852,7 +2852,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                         
                                                         {/* Summary preview (collapsed non-latest only) */}
                                                         {!isLatest && !isExpanded && summary && (
-                                                            <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{summary}</div>
+                                                            <div style={{fontSize:'12px',color:'var(--text-dim)',marginTop:'5px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'1.4'}}>{summary}</div>
                                                         )}
                                                         
                                                         {/* Expanded content */}
