@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T029";
+    var APP_BUILD = "2026-02-27T030";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -698,6 +698,7 @@ function LoginPage({ onLogin, users, loginAttempts, setLoginAttempts }) {
         }
         if (user.status === 'pending') { setError('Your account is pending approval.'); return; }
         if (user.status === 'denied') { setError('Your access was denied. Contact admin.'); return; }
+        if (user.status === 'deactivated') { setError('Your account has been deactivated. Contact admin.'); return; }
         
         const newHash = hashPassword(password);
         if (user.passwordHash !== newHash) {
@@ -823,19 +824,144 @@ function AdminPanel({ users, onClose }) {
     const pending = users.filter(u => u.status === 'pending');
     const approved = users.filter(u => u.status === 'approved');
     const denied = users.filter(u => u.status === 'denied');
+    const deactivated = users.filter(u => u.status === 'deactivated');
     const approve = (u) => db.collection('users').doc(u.id).update({ status: 'approved', approvedAt: new Date().toISOString() });
     const deny = (u) => db.collection('users').doc(u.id).update({ status: 'denied', deniedAt: new Date().toISOString() });
-    const del = (u) => { if (!u.isAdmin && confirm(`Delete ${u.username}?`)) db.collection('users').doc(u.id).delete(); };
+    const deactivate = (u) => { if (confirm(`Deactivate ${u.username}? They won't be able to log in.`)) db.collection('users').doc(u.id).update({ status: 'deactivated', deactivatedAt: new Date().toISOString() }); };
+    const del = (u) => { if (!u.isAdmin && confirm(`Permanently delete ${u.username}? This cannot be undone.`)) db.collection('users').doc(u.id).delete(); };
     const resetPw = (u) => { const p = prompt(`New password for ${u.username}:`); if (p && p.length >= 4) { db.collection('users').doc(u.id).update({ passwordHash: hashPassword(p) }); alert('Password reset!'); } };
+    
+    const [onlineList, setOnlineList] = useState([]);
+    useEffect(() => {
+        const unsub = db.collection('presence').onSnapshot(snap => {
+            const now = Date.now();
+            setOnlineList(snap.docs.map(d => d.data()).filter(u => now - u.lastSeen < 120000).map(u => u.username));
+        });
+        return () => unsub();
+    }, []);
+    
+    const getLastActive = (u) => {
+        if (!u.lastLogin?.timestamp) return 'Never';
+        const d = new Date(u.lastLogin.timestamp);
+        const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+        if (days === 0) return 'Today';
+        if (days === 1) return 'Yesterday';
+        if (days < 7) return `${days} days ago`;
+        if (days < 30) return `${Math.floor(days/7)} weeks ago`;
+        return `${Math.floor(days/30)} months ago`;
+    };
+    
+    const isOnline = (username) => onlineList.includes(username);
 
     return (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
-            <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',width:'100%',maxWidth:'600px',maxHeight:'80vh',overflow:'auto'}}>
-                <div style={{padding:'20px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}><h2 style={{fontSize:'18px',fontWeight:600}}>👑 Admin Panel</h2><button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'24px',cursor:'pointer'}}>×</button></div>
-                <div style={{padding:'20px'}}>
-                    {pending.length > 0 && <div style={{marginBottom:'24px'}}><h3 style={{fontSize:'14px',color:'var(--amber)',marginBottom:'12px'}}><span style={{background:'var(--amber)',color:'#000',padding:'2px 8px',borderRadius:'10px',fontSize:'12px',marginRight:'8px'}}>{pending.length}</span>Pending</h3>{pending.map(u => <div key={u.id} style={{background:'var(--amber-glow)',border:'1px solid var(--amber)',borderRadius:'8px',padding:'12px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontWeight:600}}>{u.username}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>{new Date(u.requestedAt).toLocaleString()}</div></div><div style={{display:'flex',gap:'8px'}}><button onClick={() => approve(u)} style={{padding:'6px 12px',background:'var(--green)',color:'#000',border:'none',borderRadius:'6px',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>✓</button><button onClick={() => deny(u)} style={{padding:'6px 12px',background:'var(--red)',color:'#fff',border:'none',borderRadius:'6px',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>✕</button></div></div>)}</div>}
-                    <div style={{marginBottom:'24px'}}><h3 style={{fontSize:'14px',color:'var(--green)',marginBottom:'12px'}}>✓ Approved ({approved.length})</h3>{approved.map(u => <div key={u.id} style={{background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',padding:'12px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontWeight:600,display:'flex',alignItems:'center',gap:'8px'}}>{u.username}{u.isAdmin && <span style={{background:'var(--primary)',color:'#000',padding:'2px 6px',borderRadius:'4px',fontSize:'10px'}}>ADMIN</span>}</div>{u.lastLogin?.timestamp && <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px'}}>Last login: {new Date(u.lastLogin.timestamp).toLocaleDateString()} {new Date(u.lastLogin.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>}</div>{!u.isAdmin && <div style={{display:'flex',gap:'8px'}}><button onClick={() => resetPw(u)} style={{padding:'6px 12px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>Reset PW</button><button onClick={() => del(u)} style={{padding:'6px 12px',background:'var(--red-glow)',color:'var(--red)',border:'1px solid var(--red)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>Delete</button></div>}</div>)}</div>
-                    {denied.length > 0 && <div><h3 style={{fontSize:'14px',color:'var(--red)',marginBottom:'12px'}}>✕ Denied ({denied.length})</h3>{denied.map(u => <div key={u.id} style={{background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',padding:'12px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center',opacity:0.7}}><div style={{fontWeight:600}}>{u.username}</div><div style={{display:'flex',gap:'8px'}}><button onClick={() => approve(u)} style={{padding:'6px 12px',background:'var(--green-glow)',color:'var(--green)',border:'1px solid var(--green)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>Approve</button><button onClick={() => del(u)} style={{padding:'6px 12px',background:'var(--red-glow)',color:'var(--red)',border:'1px solid var(--red)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>Delete</button></div></div>)}</div>}
+            <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'16px',width:'100%',maxWidth:'700px',maxHeight:'85vh',overflow:'auto'}}>
+                <div style={{padding:'20px 24px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div>
+                        <h2 style={{fontSize:'18px',fontWeight:700}}>👑 Admin Panel</h2>
+                        <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>{approved.length} active • {onlineList.length} online now</div>
+                    </div>
+                    <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'24px',cursor:'pointer'}}>×</button>
+                </div>
+                <div style={{padding:'20px 24px'}}>
+                    
+                    {/* Pending */}
+                    {pending.length > 0 && <div style={{marginBottom:'24px'}}>
+                        <h3 style={{fontSize:'13px',color:'var(--amber)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'8px'}}>
+                            <span style={{background:'var(--amber)',color:'#000',padding:'2px 10px',borderRadius:'10px',fontSize:'11px',fontWeight:700}}>{pending.length}</span> Pending Approval
+                        </h3>
+                        {pending.map(u => (
+                            <div key={u.id} style={{background:'var(--amber-glow)',border:'1px solid var(--amber)',borderRadius:'10px',padding:'14px 16px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                <div>
+                                    <div style={{fontWeight:700,fontSize:'14px'}}>{u.username}</div>
+                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'2px'}}>Requested: {new Date(u.requestedAt).toLocaleDateString()}</div>
+                                </div>
+                                <div style={{display:'flex',gap:'8px'}}>
+                                    <button onClick={() => approve(u)} style={{padding:'8px 16px',background:'var(--green)',color:'#000',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>✓ Approve</button>
+                                    <button onClick={() => deny(u)} style={{padding:'8px 16px',background:'var(--red)',color:'#fff',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>✕ Deny</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>}
+                    
+                    {/* Active Users */}
+                    <div style={{marginBottom:'24px'}}>
+                        <h3 style={{fontSize:'13px',color:'var(--green)',marginBottom:'12px'}}>✓ Active Users ({approved.length})</h3>
+                        <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                            {approved.sort((a, b) => {
+                                // Online first, then by last login
+                                const aOn = isOnline(a.username) ? 1 : 0;
+                                const bOn = isOnline(b.username) ? 1 : 0;
+                                if (bOn !== aOn) return bOn - aOn;
+                                const aTime = a.lastLogin?.timestamp ? new Date(a.lastLogin.timestamp).getTime() : 0;
+                                const bTime = b.lastLogin?.timestamp ? new Date(b.lastLogin.timestamp).getTime() : 0;
+                                return bTime - aTime;
+                            }).map(u => (
+                                <div key={u.id} style={{background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',padding:'12px 16px',display:'flex',alignItems:'center',gap:'12px'}}>
+                                    {/* Online indicator */}
+                                    <div style={{width:'10px',height:'10px',borderRadius:'50%',background: isOnline(u.username) ? 'var(--green)' : 'var(--text-muted)',boxShadow: isOnline(u.username) ? '0 0 8px var(--green)' : 'none',flexShrink:0}}></div>
+                                    
+                                    {/* Avatar */}
+                                    <div style={{width:'34px',height:'34px',borderRadius:'8px',background: u.isAdmin ? 'var(--primary-glow)' : 'var(--bg-card)',border: u.isAdmin ? '2px solid var(--primary)' : '1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:800,color: u.isAdmin ? 'var(--primary)' : 'var(--text-muted)',flexShrink:0}}>
+                                        {u.username.substring(0,2).toUpperCase()}
+                                    </div>
+                                    
+                                    {/* Info */}
+                                    <div style={{flex:1,minWidth:0}}>
+                                        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                                            <span style={{fontWeight:700,fontSize:'13px'}}>{u.username}</span>
+                                            {u.isAdmin && <span style={{background:'var(--primary)',color:'#000',padding:'2px 8px',borderRadius:'6px',fontSize:'9px',fontWeight:700}}>ADMIN</span>}
+                                            {isOnline(u.username) && <span style={{fontSize:'9px',color:'var(--green)',fontWeight:600}}>● Online</span>}
+                                        </div>
+                                        <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'3px',display:'flex',gap:'12px'}}>
+                                            <span>Last active: {getLastActive(u)}</span>
+                                            {u.lastLogin?.timestamp && <span>• {new Date(u.lastLogin.timestamp).toLocaleDateString()}</span>}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Actions */}
+                                    {!u.isAdmin && (
+                                        <div style={{display:'flex',gap:'6px',flexShrink:0}}>
+                                            <button onClick={() => resetPw(u)} className="tip" data-tip="Reset password" style={{padding:'6px 10px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',color:'var(--text-dim)'}}>🔑</button>
+                                            <button onClick={() => deactivate(u)} className="tip" data-tip="Deactivate account" style={{padding:'6px 10px',background:'var(--amber-glow)',border:'1px solid var(--amber)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',color:'var(--amber)'}}>⏸</button>
+                                            <button onClick={() => del(u)} className="tip" data-tip="Delete permanently" style={{padding:'6px 10px',background:'var(--red-glow)',color:'var(--red)',border:'1px solid var(--red)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>🗑</button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* Deactivated */}
+                    {deactivated.length > 0 && <div style={{marginBottom:'24px'}}>
+                        <h3 style={{fontSize:'13px',color:'var(--text-muted)',marginBottom:'12px'}}>⏸ Deactivated ({deactivated.length})</h3>
+                        {deactivated.map(u => (
+                            <div key={u.id} style={{background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',padding:'12px 16px',marginBottom:'6px',display:'flex',justifyContent:'space-between',alignItems:'center',opacity:0.6}}>
+                                <div>
+                                    <div style={{fontWeight:600}}>{u.username}</div>
+                                    <div style={{fontSize:'10px',color:'var(--text-muted)'}}>Deactivated: {u.deactivatedAt ? new Date(u.deactivatedAt).toLocaleDateString() : 'Unknown'}</div>
+                                </div>
+                                <div style={{display:'flex',gap:'6px'}}>
+                                    <button onClick={() => approve(u)} style={{padding:'6px 14px',background:'var(--green-glow)',color:'var(--green)',border:'1px solid var(--green)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',fontWeight:600}}>↩ Reactivate</button>
+                                    <button onClick={() => del(u)} style={{padding:'6px 10px',background:'var(--red-glow)',color:'var(--red)',border:'1px solid var(--red)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>🗑</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>}
+                    
+                    {/* Denied */}
+                    {denied.length > 0 && <div>
+                        <h3 style={{fontSize:'13px',color:'var(--red)',marginBottom:'12px'}}>✕ Denied ({denied.length})</h3>
+                        {denied.map(u => (
+                            <div key={u.id} style={{background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',padding:'12px 16px',marginBottom:'6px',display:'flex',justifyContent:'space-between',alignItems:'center',opacity:0.5}}>
+                                <div style={{fontWeight:600}}>{u.username}</div>
+                                <div style={{display:'flex',gap:'6px'}}>
+                                    <button onClick={() => approve(u)} style={{padding:'6px 14px',background:'var(--green-glow)',color:'var(--green)',border:'1px solid var(--green)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',fontWeight:600}}>Approve</button>
+                                    <button onClick={() => del(u)} style={{padding:'6px 10px',background:'var(--red-glow)',color:'var(--red)',border:'1px solid var(--red)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>🗑</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>}
                 </div>
             </div>
         </div>
