@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T050";
+    var APP_BUILD = "2026-02-27T051";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5143,19 +5143,34 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
             return hullNum(a.name) - hullNum(b.name);
         });
-        // Keep dashboard order within each group
-        const activeShips = dashSorted.filter(s => !s.pendingInstall);
-        const fullReap = activeShips.filter(s => s.type === 'Full REAP');
-        const miniReap = activeShips.filter(s => s.type === 'Mini REAP');
-        const pending = dashSorted.filter(s => s.pendingInstall);
+        // All ships in their type groups, pending ships included as offline
+        const fullReap = dashSorted.filter(s => s.type === 'Full REAP');
+        const miniReap = dashSorted.filter(s => s.type === 'Mini REAP');
         
         const getShipRow = (s) => {
             const c = getCheck(s.id);
-            const am = isTruthy(c.statusAM);
-            const pm = isTruthy(c.statusPM);
+            const isPending = s.pendingInstall;
+            const isDeinstall = s.pendingDeinstall;
+            // Pending installs and deinstalls are always offline
+            const am = (isPending || isDeinstall) ? false : isTruthy(c.statusAM);
+            const pm = (isPending || isDeinstall) ? false : isTruthy(c.statusPM);
             const shipIssues = (issues || []).filter(i => i.shipId === s.id && !i.resolved);
             const emails = (emailHistory || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
             const noteParts = [];
+            
+            // Pending install info first
+            if (isPending) {
+                noteParts.push('🔧 Pending Install — ' + s.type);
+                if (s.installDate) noteParts.push('Est. Install: ' + fmtDate(s.installDate));
+                if (s.location) noteParts.push('Location: ' + s.location);
+                const shipTrip = (installs || []).find(t => t.ship === s.name && (t.status === 'Scheduled' || t.status === 'In Progress'));
+                if (shipTrip) noteParts.push('Trip: ' + fmtDate(shipTrip.start) + (shipTrip.end ? ' → ' + fmtDate(shipTrip.end) : '') + ' @ ' + shipTrip.location);
+            }
+            
+            // Pending deinstall info
+            if (isDeinstall) {
+                noteParts.push('🔻 Pending Deinstall' + (s.deinstallDate ? ' — Est. ' + fmtDate(s.deinstallDate) : ''));
+            }
             
             // Open issues - full text
             if (shipIssues.length > 0) {
@@ -5171,7 +5186,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             if (emails.length > 0) {
                 const last = emails[0];
                 let sum = last.result?.emailSummary || '';
-                // Remove "From: Name" / "Sent by Name" / "By: Name" / "Response requested" patterns
                 sum = sum.replace(/\s*\|\s*From:\s*[^|]+/gi, '').replace(/\s*\|\s*(?:Sent|Contacted|Logged) by\s*[^|]+/gi, '').replace(/\s*\|\s*By:\s*[^|]+/gi, '').replace(/\s*\|\s*Response requested/gi, '').replace(/\s*\|\s*FYI only/gi, '').replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').trim();
                 if (sum && !shipIssues.some(iss => sum.toLowerCase().includes((iss.title || '').toLowerCase().substring(0,10)))) {
                     noteParts.push(sum);
@@ -5183,9 +5197,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 noteParts.push(s.lastSaid);
             }
             
-            // Status tags
-            if (s.inPort && s.inPortUntil) noteParts.push('⚓ In Port until ' + fmtDate(s.inPortUntil));
-            if (s.pendingDeinstall) noteParts.push('🔻 Pending Deinstall' + (s.deinstallDate ? ' — ' + fmtDate(s.deinstallDate) : ''));
+            // In port
+            if (s.inPort && s.inPortUntil && !isPending && !isDeinstall) noteParts.push('⚓ In Port until ' + fmtDate(s.inPortUntil));
             
             // Last contact date at the end
             if (emails.length > 0 && emails[0].timestamp) {
@@ -5200,13 +5213,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 amPing: am && c.pingAM ? c.pingAM : '',
                 pm: pm ? 'Online' : 'Offline', 
                 pmPing: pm && c.pingPM ? c.pingPM : '',
-                files: c.hdSpace || '0', 
-                diode: c.diode || (am || pm ? 'Up' : 'N/A'), 
-                phone: c.phone || (am || pm ? 'Up' : 'Down'),
+                files: (isPending || isDeinstall) ? '' : (c.hdSpace || '0'), 
+                diode: (isPending || isDeinstall) ? 'N/A' : (c.diode || (am || pm ? 'Up' : 'N/A')), 
+                phone: (isPending || isDeinstall) ? 'Down' : (c.phone || (am || pm ? 'Up' : 'Down')),
                 notes: noteParts.join('\n'), amUp: am, pmUp: pm
             };
         };
-        return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow), pending };
+        return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow) };
     };
     
     const copyEndOfDay = () => {
@@ -5345,21 +5358,23 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         });
         let r = `REAP Morning Status — ${dateLabel}\n${'─'.repeat(40)}\n\n`;
         dashSorted.forEach(s => {
-            if (s.pendingInstall) return;
             const c = getCheck(s.id);
-            const am = isTruthy(c.statusAM); const pm = isTruthy(c.statusPM);
+            const isPending = s.pendingInstall;
+            const isDeinstall = s.pendingDeinstall;
+            const am = isPending ? false : isTruthy(c.statusAM);
+            const pm = isPending ? false : isTruthy(c.statusPM);
             let st = am && pm ? '✅ Up' : !am && !pm ? '❌ Down' : am && !pm ? '⚡ Up / Down' : '⚡ Down / Up';
-            const ping = c.pingAM || c.pingPM ? ` (${c.pingAM || '-'}/${c.pingPM || '-'} ms)` : '';
+            const ping = am || pm ? (c.pingAM || c.pingPM ? ` (${c.pingAM || '-'}/${c.pingPM || '-'} ms)` : '') : '';
             const tags = [];
             if (s.inPort && s.inPortUntil) tags.push('⚓ IN PORT');
-            if (s.pendingDeinstall) tags.push('🔻 Deinstall');
+            if (isPending) tags.push('🔧 Pending Install');
+            if (isDeinstall) tags.push('🔻 Pending Deinstall');
             r += `  ${s.name.padEnd(10)} ${st}${ping}${tags.length ? ' ' + tags.join(' ') : ''}\n`;
         });
-        const pending = dashSorted.filter(s => s.pendingInstall);
-        if (pending.length > 0) { r += `\n🔧 PENDING INSTALLS\n`; pending.forEach(s => { r += `  ${s.name.padEnd(10)} ${s.type} • Est: ${s.installDate ? fmtDate(s.installDate) : 'TBD'}\n`; }); }
-        const total = dashSorted.filter(s => !s.pendingInstall).length;
+        const total = dashSorted.length;
         const online = dashSorted.filter(s => { if (s.pendingInstall) return false; const c = getCheck(s.id); return isTruthy(c.statusAM) || isTruthy(c.statusPM); }).length;
-        r += `\n${'─'.repeat(40)}\nOnline: ${online}/${total} • Pending: ${pending.length}\n`;
+        const pendingCount = dashSorted.filter(s => s.pendingInstall).length;
+        r += `\n${'─'.repeat(40)}\nOnline: ${online}/${total} • Pending: ${pendingCount}\n`;
         navigator.clipboard.writeText(r);
         logActivity(`Exported morning status report for ${date}`);
         toast('Morning report copied!', 'success');
@@ -5670,23 +5685,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                     {data.miniReap.length > 0 && (<>
                                         <tr><td colSpan={7} style={{...sec, background:'linear-gradient(90deg, #1e5a3a, #1e5a3a)'}}>Mini-Reap</td></tr>
                                         {renderRows(data.miniReap)}
-                                    </>)}
-                                    {data.pending.length > 0 && (<>
-                                        <tr><td colSpan={7} style={{...sec, background:'linear-gradient(90deg, #5a4a1e, #5a4a1e)'}}>Pending Installs</td></tr>
-                                        {data.pending.map((s, i) => {
-                                            const shipTrip = (installs || []).find(t => t.ship === s.name && (t.status === 'Scheduled' || t.status === 'In Progress'));
-                                            const noteLines = [];
-                                            noteLines.push(s.type + ' System');
-                                            noteLines.push('Install Date: ' + (s.installDate ? fmtDate(s.installDate) : 'TBD'));
-                                            noteLines.push('Location: ' + (s.location || 'TBD'));
-                                            if (shipTrip) noteLines.push('Trip: ' + fmtDate(shipTrip.start) + (shipTrip.end ? ' → '+fmtDate(shipTrip.end) : '') + ' @ ' + shipTrip.location + (shipTrip.techs ? ' ('+shipTrip.techs+')' : ''));
-                                            return (
-                                            <tr key={i} style={{background: i % 2 === 0 ? '#1a1a2e' : '#1e1e34'}}>
-                                                <td style={sn}>{s.name}</td>
-                                                <td colSpan={5} style={{...cs, textAlign:'center', color:'#f0ad4e', fontWeight:700, fontSize:'13px'}}>Pending Installation</td>
-                                                <td style={{...cs, whiteSpace:'pre-wrap', minWidth:'300px', fontSize:'12px', color:'#d4d4e0', lineHeight:'1.8'}}>{noteLines.join('\n')}</td>
-                                            </tr>);
-                                        })}
                                     </>)}
                                 </tbody>
                             </table>
