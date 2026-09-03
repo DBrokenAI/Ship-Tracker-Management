@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T040";
+    var APP_BUILD = "2026-02-27T042";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1529,7 +1529,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     </button>
                 </div>
                 {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers}/>}
-                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} toast={toast} logActivity={logActivity}/>}
+                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} issues={issues} emailHistory={emailHistory} toast={toast} logActivity={logActivity}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
                 {page === 4 && <Inventory ships={ships} setShips={setShips} dailyChecks={dailyChecks} toast={toast} logActivity={logActivity}/>}
                 {page === 5 && <Installs ships={ships} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
@@ -4939,12 +4939,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     );
 }
 
-function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logActivity }) {
+function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, emailHistory, toast, logActivity }) {
     const [date, setDate] = useState(toDateString(new Date()));
     const [bulkPasteModal, setBulkPasteModal] = useState(false);
     const [bulkPasteText, setBulkPasteText] = useState('');
     const [bulkPasteType, setBulkPasteType] = useState('am');
     const [viewMode, setViewMode] = useState('table');
+    const [showEndOfDay, setShowEndOfDay] = useState(false);
     const [saveStatus, setSaveStatus] = useState('');
     
     // Load dashboard ship order for report
@@ -5042,7 +5043,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logA
         handleDragEnd();
     };
 
-    const getCheck = (id, d = date) => checks.find(c => c.shipId === id && c.date === d) || { id: genId('DC'), shipId: id, date: d, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, notes: '' };
+    const getCheck = (id, d = date) => checks.find(c => c.shipId === id && c.date === d) || { id: genId('DC'), shipId: id, date: d, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diode: '', phone: '', notes: '' };
 
     // Get yesterday's check for comparison
     const getYesterdayCheck = (id) => {
@@ -5062,7 +5063,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logA
         setChecks(p => {
             const ex = p.find(c => c.shipId === id && c.date === date);
             if (ex) return p.map(c => (c.shipId === id && c.date === date) ? {...c, [field]: val} : c);
-            return [...p, { id: genId('DC'), shipId: id, date, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, notes: '', [field]: val }];
+            return [...p, { id: genId('DC'), shipId: id, date, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diode: '', phone: '', notes: '', [field]: val }];
         });
         setSaveStatus('saving');
         clearTimeout(saveTimer.current);
@@ -5130,83 +5131,57 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logA
         logActivity(`Copied ${copied} checks from ${ydStr}`);
         toast(`Copied ${copied} entries from yesterday`, 'success');
     };
-
-    const exportStatus = () => {
-        const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
-        
-        // Sort ships by dashboard order
+    const exportStatus = () => { setShowEndOfDay(true); };
+    
+    const getEndOfDayData = () => {
         const dashSorted = [...ships].sort((a, b) => {
-            if (dashOrder.length > 0) {
-                const aIdx = dashOrder.indexOf(a.id);
-                const bIdx = dashOrder.indexOf(b.id);
-                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-                if (aIdx !== -1) return -1;
-                if (bIdx !== -1) return 1;
-            }
+            if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
             return hullNum(a.name) - hullNum(b.name);
         });
+        const fullReap = dashSorted.filter(s => s.type === 'Full REAP' && !s.pendingInstall);
+        const miniReap = dashSorted.filter(s => s.type === 'Mini REAP' && !s.pendingInstall);
+        const pending = dashSorted.filter(s => s.pendingInstall);
         
-        let r = '';
-        r += `══════════════════════════════════════\n`;
-        r += `    REAP DAILY STATUS REPORT\n`;
-        r += `    ${dateLabel}\n`;
-        r += `══════════════════════════════════════\n\n`;
-        
-        // Ship statuses
-        r += `FLEET STATUS\n`;
-        r += `──────────────────────────────────────\n`;
-        dashSorted.forEach(s => {
-            if (s.pendingInstall) return;
+        const getShipRow = (s) => {
             const c = getCheck(s.id);
             const am = isTruthy(c.statusAM);
             const pm = isTruthy(c.statusPM);
-            let st;
-            if (am && pm) st = '✅ Up';
-            else if (!am && !pm) st = '❌ Down';
-            else if (am && !pm) st = '⚡ Up / Down';
-            else st = '⚡ Down / Up';
-            
-            const pingInfo = c.pingAM || c.pingPM ? ` (${c.pingAM || '-'}/${c.pingPM || '-'} ms)` : '';
-            const inPort = s.inPort && s.inPortUntil && parseLocalDate(s.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
-            const portTag = inPort ? ' ⚓ IN PORT' : '';
-            const deinstallTag = s.pendingDeinstall ? ' 🔻 Pending Deinstall' : '';
-            
-            r += `  ${s.name.padEnd(10)} ${st}${pingInfo}${portTag}${deinstallTag}\n`;
-        });
-        
-        // Pending installs
-        const pendingShips = dashSorted.filter(s => s.pendingInstall);
-        if (pendingShips.length > 0) {
-            r += `\n🔧 PENDING INSTALLS\n`;
-            r += `──────────────────────────────────────\n`;
-            pendingShips.forEach(s => {
-                r += `  ${s.name.padEnd(10)} Est: ${s.installDate ? fmtDate(s.installDate) : 'TBD'}\n`;
-            });
-        }
-        
-        // Upcoming trips/installs
-        const todayStr = toDateString(new Date());
-        const upcomingTrips = (installs || []).filter(t => t.status === 'Scheduled' && t.start >= todayStr).sort((a,b) => parseLocalDate(a.start) - parseLocalDate(b.start));
-        if (upcomingTrips.length > 0) {
-            r += `\n✈️ UPCOMING TRIPS\n`;
-            r += `──────────────────────────────────────\n`;
-            upcomingTrips.forEach(t => {
-                r += `  ${(t.ship || '').padEnd(10)} ${t.location || ''}\n`;
-                r += `  ${''.padEnd(10)} ${fmtDate(t.start)}${t.end ? ' → ' + fmtDate(t.end) : ''}${t.techs ? ' • ' + t.techs : ''}\n`;
-            });
-        }
-        
-        // Summary
-        const totalShips = dashSorted.filter(s => !s.pendingInstall).length;
-        const onlineCount = dashSorted.filter(s => { if (s.pendingInstall) return false; const c = getCheck(s.id); return isTruthy(c.statusAM) || isTruthy(c.statusPM); }).length;
-        r += `\n──────────────────────────────────────\n`;
-        r += `Online: ${onlineCount}/${totalShips} • Pending: ${pendingShips.length}`;
-        if (upcomingTrips.length > 0) r += ` • Trips: ${upcomingTrips.length}`;
-        r += `\n══════════════════════════════════════\n`;
-        
-        navigator.clipboard.writeText(r);
-        logActivity(`Exported daily status report for ${date}`);
-        toast('Status report copied!', 'success');
+            // Build notes from issues + emails
+            const shipIssues = (issues || []).filter(i => i.shipId === s.id && !i.resolved);
+            const emails = (emailHistory || []).filter(h => h.shipId === s.id).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const noteParts = [];
+            if (shipIssues.length > 0) shipIssues.forEach(iss => noteParts.push(iss.title || iss.details?.substring(0,60)));
+            if (emails.length > 0) {
+                const last = emails[0];
+                const sum = last.result?.emailSummary || '';
+                if (sum) noteParts.push(sum.substring(0,80));
+                if (last.timestamp) noteParts.push(fmtDate(last.timestamp));
+            }
+            if (s.lastSaid && noteParts.length === 0) noteParts.push(s.lastSaid.substring(0,80));
+            if (s.inPort && s.inPortUntil) noteParts.push('⚓ In Port until ' + fmtDate(s.inPortUntil));
+            if (s.pendingDeinstall) noteParts.push('🔻 Pending Deinstall');
+            return {
+                name: s.name, am: am ? (c.pingAM || 'Online') : 'Offline', pm: pm ? (c.pingPM || 'Online') : 'Offline',
+                files: c.hdSpace || '0', diode: c.diode || (am || pm ? 'Up' : 'N/A'), phone: c.phone || (am || pm ? 'Up' : 'Down'),
+                notes: noteParts.join('\n'), amUp: am, pmUp: pm
+            };
+        };
+        return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow), pending };
+    };
+    
+    const copyEndOfDay = () => {
+        const el = document.getElementById('eod-table-container');
+        if (!el) return;
+        // Copy as rich HTML for email paste
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('copy');
+        sel.removeAllRanges();
+        logActivity(`Exported end-of-day report for ${date}`);
+        toast('Report copied — paste into email!', 'success');
     };
 
     const exportForExcel = () => {
@@ -5397,7 +5372,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logA
                         <button className="btn btn-sm btn-secondary" onClick={() => setBulkPasteModal(true)}>📋 Bulk Paste</button>
                         <button className="btn btn-sm btn-warning" onClick={copyYesterday}>Copy Yesterday</button>
                         <button className="btn btn-sm btn-success" onClick={exportForExcel}>📊 Excel</button>
-                        <button className="btn btn-sm btn-secondary" onClick={exportStatus}>Report</button>
+                        <button className="btn btn-sm btn-secondary" onClick={exportStatus}>📧 End of Day</button>
                     </div>
                 </div>
 
@@ -5422,6 +5397,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logA
                         <span className="check-header tip" data-tip="Hard drive free space">HD Space</span>
                         <span className="check-header tip" data-tip="Primary connectivity status">Primary</span>
                         <span className="check-header tip" data-tip="Alternate connectivity status">Alternate</span>
+                        <span className="check-header tip" data-tip="Diode indicator status">Diode</span>
+                        <span className="check-header tip" data-tip="VOIP phone status">Phone</span>
                     </div>
                     <div>{sorted.map((s, idx) => {
                         const c = getCheck(s.id);
@@ -5482,6 +5459,12 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logA
                                 </div>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusAM} onChange={e => update(s.id, 'statusAM', e.target.checked)}/>Online</label>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusPM} onChange={e => update(s.id, 'statusPM', e.target.checked)}/>Online</label>
+                                <select style={{padding:'4px 6px',fontSize:'10px',borderRadius:'4px',border:'1px solid var(--border)',background:'var(--bg-input)',color: c.diode === 'Up' ? 'var(--green)' : c.diode === 'Down' || c.diode === 'Output-down' ? 'var(--red)' : 'var(--text-muted)',fontWeight:600,width:'70px'}} value={c.diode || ''} onChange={e => update(s.id, 'diode', e.target.value)}>
+                                    <option value="">—</option><option value="Up">Up</option><option value="Down">Down</option><option value="N/A">N/A</option><option value="Output-down">Out-Down</option>
+                                </select>
+                                <select style={{padding:'4px 6px',fontSize:'10px',borderRadius:'4px',border:'1px solid var(--border)',background:'var(--bg-input)',color: c.phone === 'Up' ? 'var(--green)' : c.phone === 'Down' ? 'var(--red)' : 'var(--text-muted)',fontWeight:600,width:'60px'}} value={c.phone || ''} onChange={e => update(s.id, 'phone', e.target.value)}>
+                                    <option value="">—</option><option value="Up">Up</option><option value="Down">Down</option>
+                                </select>
                                 </>)}
                             </div>
                         );
@@ -5574,6 +5557,81 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, toast, logA
                     </div>
                 </div>
             )}
+            {/* End of Day Report Modal */}
+            {showEndOfDay && (() => {
+                const data = getEndOfDayData();
+                const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+                const cellStyle = {padding:'8px 12px',border:'1px solid #444',fontSize:'12px',verticalAlign:'top'};
+                const headerStyle = {...cellStyle, fontWeight:700, background:'#2a2a3e',textAlign:'center',fontSize:'11px',color:'#ccc'};
+                const sectionStyle = {padding:'10px 12px',background:'#1e3a5f',textAlign:'center',fontWeight:700,fontSize:'13px',color:'#fff',border:'1px solid #444'};
+                const shipStyle = {...cellStyle, fontWeight:700, fontSize:'13px', minWidth:'60px'};
+                const offlineStyle = {color:'#ff6b6b'};
+                const onlineStyle = {color:'#51cf66'};
+                const renderRows = (rows) => rows.map((r, i) => (
+                    <tr key={i}>
+                        <td style={shipStyle}>{r.name}</td>
+                        <td style={{...cellStyle, textAlign:'center', ...(r.amUp ? onlineStyle : offlineStyle), fontWeight:600}}>{r.am}</td>
+                        <td style={{...cellStyle, textAlign:'center', ...(r.pmUp ? onlineStyle : offlineStyle), fontWeight:600}}>{r.pm}</td>
+                        <td style={{...cellStyle, textAlign:'center'}}>{r.files}</td>
+                        <td style={{...cellStyle, textAlign:'center', color: r.diode === 'Up' ? '#51cf66' : r.diode === 'Down' || r.diode === 'Output-down' ? '#ff6b6b' : '#888'}}>{r.diode}</td>
+                        <td style={{...cellStyle, textAlign:'center', color: r.phone === 'Up' ? '#51cf66' : '#ff6b6b'}}>{r.phone}</td>
+                        <td style={{...cellStyle, whiteSpace:'pre-wrap', maxWidth:'300px', lineHeight:'1.5', fontSize:'11px', color:'#ddd'}}>{r.notes}</td>
+                    </tr>
+                ));
+                return (
+                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={e => { if(e.target === e.currentTarget) setShowEndOfDay(false); }}>
+                    <div style={{background:'var(--bg-card)',borderRadius:'16px',width:'100%',maxWidth:'950px',maxHeight:'90vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+                        <div style={{padding:'16px 24px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'var(--bg-card)',zIndex:1,borderRadius:'16px 16px 0 0'}}>
+                            <div>
+                                <div style={{fontSize:'16px',fontWeight:700}}>📧 End of Day Report</div>
+                                <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>{dateLabel} • Copy and paste into email</div>
+                            </div>
+                            <div style={{display:'flex',gap:'8px'}}>
+                                <button className="btn btn-primary" style={{fontWeight:700}} onClick={copyEndOfDay}>📋 Copy Report</button>
+                                <button onClick={() => setShowEndOfDay(false)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'20px',cursor:'pointer'}}>✕</button>
+                            </div>
+                        </div>
+                        <div style={{padding:'16px 24px'}} id="eod-table-container">
+                            <table style={{width:'100%',borderCollapse:'collapse',background:'#1a1a2e',color:'#e0e0e0',fontFamily:'Arial, sans-serif'}}>
+                                <thead>
+                                    <tr>
+                                        <th style={headerStyle}></th>
+                                        <th style={headerStyle}>AM</th>
+                                        <th style={headerStyle}>PM</th>
+                                        <th style={headerStyle}>Files</th>
+                                        <th style={headerStyle}>Diode</th>
+                                        <th style={headerStyle}>Phone</th>
+                                        <th style={headerStyle}>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.fullReap.length > 0 && (<>
+                                        <tr><td colSpan={7} style={sectionStyle}>Full Reap</td></tr>
+                                        {renderRows(data.fullReap)}
+                                    </>)}
+                                    {data.miniReap.length > 0 && (<>
+                                        <tr><td colSpan={7} style={{...sectionStyle, background:'#1e5a3a'}}>Mini-Reap</td></tr>
+                                        {renderRows(data.miniReap)}
+                                    </>)}
+                                    {data.pending.length > 0 && (<>
+                                        <tr><td colSpan={7} style={{...sectionStyle, background:'#5a4a1e'}}>Pending Installs</td></tr>
+                                        {data.pending.map((s, i) => {
+                                            const shipTrip = (installs || []).find(t => t.ship === s.name && (t.status === 'Scheduled' || t.status === 'In Progress'));
+                                            return (
+                                            <tr key={i}>
+                                                <td style={shipStyle}>{s.name}</td>
+                                                <td colSpan={5} style={{...cellStyle, textAlign:'center', color:'#f0ad4e'}}>{s.type} • Install: {s.installDate ? fmtDate(s.installDate) : 'TBD'} • {s.location || 'Location TBD'}</td>
+                                                <td style={{...cellStyle, fontSize:'11px', color:'#ddd', whiteSpace:'pre-wrap'}}>{shipTrip ? `Trip: ${fmtDate(shipTrip.start)}${shipTrip.end ? ' → '+fmtDate(shipTrip.end) : ''}\n${shipTrip.location}${shipTrip.techs ? '\n'+shipTrip.techs : ''}` : ''}</td>
+                                            </tr>);
+                                        })}
+                                    </>)}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                );
+            })()}
         </div>
     );
 }
