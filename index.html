@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T036";
+    var APP_BUILD = "2026-02-27T037";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5750,48 +5750,116 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                 </div>
             </div>
             
-            {/* Trip list */}
-            <div>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
-                    <div className="btn-group">
-                        {[{k:'upcoming',l:'Upcoming',c:upcomingTrips.length},{k:'active',l:'Active',c:activeTrips.length},{k:'past',l:'Past',c:pastTrips.length},{k:'all',l:'All',c:installs.length}].map(f => (
-                            <button key={f.k} className={`btn btn-sm ${tripFilter===f.k ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTripFilter(f.k)}>{f.l} ({f.c})</button>
-                        ))}
-                    </div>
-                </div>
+            {/* Trip sections */}
+            <div style={{display:'flex',flexDirection:'column',gap:'24px'}}>
                 
-                {filteredTrips.length === 0 ? (
-                    <div className="card" style={{padding:'40px',textAlign:'center',color:'var(--text-muted)'}}>
-                        <div style={{fontSize:'28px',marginBottom:'8px'}}>✈️</div>
-                        <div style={{fontSize:'13px'}}>No {tripFilter} trips</div>
-                    </div>
-                ) : (
-                    <div className="card" style={{padding:0,overflow:'hidden'}}>
-                        {filteredTrips.map((trip, idx) => {
-                            const isActive = trip.status === 'In Progress';
-                            return (
-                                <div key={trip.id} style={{display:'flex',alignItems:'center',gap:'14px',padding:'12px 16px',borderBottom: idx < filteredTrips.length - 1 ? '1px solid var(--border)' : 'none',background: isActive ? 'rgba(59,130,246,0.05)' : 'transparent',borderLeft: `3px solid ${statusColor(trip.status)}`}}>
-                                    <div style={{minWidth:'70px'}}>
-                                        <div style={{fontSize:'13px',fontWeight:700,fontFamily:'JetBrains Mono'}}>{trip.ship}</div>
-                                    </div>
-                                    <div style={{flex:1,minWidth:0}}>
-                                        <div style={{fontSize:'12px',color:'var(--text-dim)',display:'flex',alignItems:'center',gap:'6px'}}>
-                                            <span>📍 {trip.location}</span>
-                                            {trip.purpose && <span style={{color:'var(--text-muted)'}}>• {trip.purpose}</span>}
+                {/* Active Now */}
+                {activeTrips.length > 0 && (
+                    <div>
+                        <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'10px'}}>
+                            <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'var(--blue)',boxShadow:'0 0 8px var(--blue)',animation:'pulse 2s infinite'}}></div>
+                            <span style={{fontSize:'13px',fontWeight:700,color:'var(--blue)',letterSpacing:'0.5px'}}>ACTIVE NOW</span>
+                            <div style={{flex:1,height:'1px',background:'var(--border)'}}></div>
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))',gap:'10px'}}>
+                            {activeTrips.map(trip => (
+                                <div key={trip.id} style={{padding:'16px 18px',background:'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.03))',border:'1.5px solid rgba(59,130,246,0.3)',borderRadius:'14px',position:'relative',overflow:'hidden'}}>
+                                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg, var(--blue), var(--primary))'}}></div>
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
+                                        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                                            <div style={{width:'40px',height:'40px',borderRadius:'10px',background:'var(--blue)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontWeight:800,color:'#fff',fontFamily:'JetBrains Mono'}}>{trip.ship?.replace(/[^0-9]/g,'').slice(-2) || '??'}</div>
+                                            <div>
+                                                <div style={{fontWeight:800,fontSize:'16px'}}>{trip.ship}</div>
+                                                <div style={{fontSize:'12px',color:'var(--blue)',fontWeight:600}}>📍 {trip.location}</div>
+                                            </div>
                                         </div>
-                                        <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px'}}>
-                                            {fmtDate(trip.start)}{trip.end ? ` → ${fmtDate(trip.end)}` : ''}
-                                            {trip.techs && <span> • 👤 {trip.techs}</span>}
+                                        <div style={{display:'flex',gap:'4px'}}>
+                                            <button className="btn btn-sm btn-secondary" style={{padding:'4px 8px',fontSize:'10px'}} onClick={() => { setForm({ship:trip.ship,location:trip.location,start:trip.start,end:trip.end||'',purpose:trip.purpose||'',status:trip.status,techs:trip.techs||'',notes:trip.notes||''}); setEditingTrip(trip.id); setShowTripForm(true); }}>✏️</button>
+                                            <button className="btn btn-sm" style={{padding:'4px 8px',fontSize:'10px',color:'var(--red)'}} onClick={() => del(trip.id)}>🗑️</button>
                                         </div>
                                     </div>
-                                    <span style={{padding:'3px 10px',borderRadius:'6px',fontSize:'10px',fontWeight:600,background: `${statusColor(trip.status)}22`,color:statusColor(trip.status),border:`1px solid ${statusColor(trip.status)}44`,whiteSpace:'nowrap'}}>{trip.status}</span>
-                                    <div style={{display:'flex',gap:'4px'}}>
-                                        <button className="btn btn-sm btn-secondary" style={{padding:'4px 8px',fontSize:'10px'}} onClick={() => { setForm({ship:trip.ship,location:trip.location,start:trip.start,end:trip.end||'',purpose:trip.purpose||'',status:trip.status,techs:trip.techs||'',notes:trip.notes||''}); setEditingTrip(trip.id); setShowTripForm(true); }}>✏️</button>
-                                        <button className="btn btn-sm" style={{padding:'4px 8px',fontSize:'10px',color:'var(--red)'}} onClick={() => del(trip.id)}>🗑️</button>
+                                    <div style={{display:'flex',gap:'16px',fontSize:'11px',color:'var(--text-dim)',flexWrap:'wrap'}}>
+                                        <span style={{display:'flex',alignItems:'center',gap:'4px'}}>📅 {fmtDate(trip.start)}{trip.end ? ` → ${fmtDate(trip.end)}` : ''}</span>
+                                        {trip.techs && <span style={{display:'flex',alignItems:'center',gap:'4px'}}>👤 {trip.techs}</span>}
+                                        {trip.purpose && <span style={{display:'flex',alignItems:'center',gap:'4px'}}>🎯 {trip.purpose}</span>}
                                     </div>
                                 </div>
-                            );
-                        })}
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                {/* Upcoming */}
+                {upcomingTrips.length > 0 && (
+                    <div>
+                        <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'10px'}}>
+                            <span style={{fontSize:'16px'}}>📅</span>
+                            <span style={{fontSize:'13px',fontWeight:700,color:'var(--text)',letterSpacing:'0.5px'}}>UPCOMING</span>
+                            <span style={{fontSize:'11px',color:'var(--text-muted)',background:'var(--bg-input)',padding:'2px 10px',borderRadius:'10px'}}>{upcomingTrips.length}</span>
+                            <div style={{flex:1,height:'1px',background:'var(--border)'}}></div>
+                        </div>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))',gap:'10px'}}>
+                            {upcomingTrips.map(trip => {
+                                const daysUntil = Math.ceil((parseLocalDate(trip.start) - new Date().setHours(0,0,0,0)) / 86400000);
+                                return (
+                                <div key={trip.id} style={{padding:'14px 16px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',transition:'all 0.15s'}} onMouseOver={e => e.currentTarget.style.borderColor='var(--primary)'} onMouseOut={e => e.currentTarget.style.borderColor='var(--border)'}>
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
+                                        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                                            <div style={{width:'36px',height:'36px',borderRadius:'8px',background:'var(--bg-input)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:800,color:'var(--text-dim)',fontFamily:'JetBrains Mono'}}>{trip.ship?.replace(/[^0-9]/g,'').slice(-2) || '??'}</div>
+                                            <div>
+                                                <div style={{fontWeight:700,fontSize:'14px'}}>{trip.ship}</div>
+                                                <div style={{fontSize:'11px',color:'var(--text-muted)'}}>📍 {trip.location}</div>
+                                            </div>
+                                        </div>
+                                        <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                            <span style={{padding:'3px 10px',borderRadius:'8px',fontSize:'10px',fontWeight:700,background: daysUntil <= 7 ? 'var(--amber-glow)' : 'var(--bg-input)',color: daysUntil <= 7 ? 'var(--amber)' : 'var(--text-muted)',border: daysUntil <= 7 ? '1px solid var(--amber)' : '1px solid var(--border)'}}>{daysUntil <= 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil}d away`}</span>
+                                            <button className="btn btn-sm btn-secondary" style={{padding:'4px 8px',fontSize:'10px'}} onClick={() => { setForm({ship:trip.ship,location:trip.location,start:trip.start,end:trip.end||'',purpose:trip.purpose||'',status:trip.status,techs:trip.techs||'',notes:trip.notes||''}); setEditingTrip(trip.id); setShowTripForm(true); }}>✏️</button>
+                                            <button className="btn btn-sm" style={{padding:'4px 8px',fontSize:'10px',color:'var(--red)'}} onClick={() => del(trip.id)}>🗑️</button>
+                                        </div>
+                                    </div>
+                                    <div style={{display:'flex',gap:'16px',fontSize:'11px',color:'var(--text-dim)',flexWrap:'wrap'}}>
+                                        <span>📅 {fmtDate(trip.start)}{trip.end ? ` → ${fmtDate(trip.end)}` : ''}</span>
+                                        {trip.techs && <span>👤 {trip.techs}</span>}
+                                        {trip.purpose && <span>🎯 {trip.purpose}</span>}
+                                    </div>
+                                </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+                
+                {/* No trips at all */}
+                {activeTrips.length === 0 && upcomingTrips.length === 0 && (
+                    <div style={{textAlign:'center',padding:'48px 20px',background:'var(--bg-card)',borderRadius:'16px',border:'1px dashed var(--border)'}}>
+                        <div style={{fontSize:'40px',marginBottom:'12px',opacity:0.4}}>✈️</div>
+                        <div style={{fontSize:'15px',fontWeight:600,color:'var(--text-dim)',marginBottom:'6px'}}>No trips scheduled</div>
+                        <div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'16px'}}>Click "+ New Trip" to schedule an installation or maintenance visit</div>
+                    </div>
+                )}
+                
+                {/* Past / Completed - collapsible */}
+                {pastTrips.length > 0 && (
+                    <div>
+                        <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'10px',cursor:'pointer',userSelect:'none'}} onClick={() => setTripFilter(tripFilter === 'past' ? 'upcoming' : 'past')}>
+                            <span style={{fontSize:'10px',color:'var(--text-muted)',transition:'transform 0.15s',transform: tripFilter === 'past' ? 'rotate(90deg)' : 'rotate(0deg)'}}>▶</span>
+                            <span style={{fontSize:'12px',fontWeight:600,color:'var(--text-muted)'}}>COMPLETED & PAST</span>
+                            <span style={{fontSize:'10px',color:'var(--text-muted)',background:'var(--bg-input)',padding:'2px 8px',borderRadius:'10px'}}>{pastTrips.length}</span>
+                            <div style={{flex:1,height:'1px',background:'var(--border)'}}></div>
+                        </div>
+                        {tripFilter === 'past' && (
+                            <div style={{display:'flex',flexDirection:'column',gap:'4px',opacity:0.6}}>
+                                {pastTrips.map(trip => (
+                                    <div key={trip.id} style={{display:'flex',alignItems:'center',gap:'12px',padding:'8px 14px',background:'var(--bg-input)',borderRadius:'8px',fontSize:'12px'}}>
+                                        <span style={{fontWeight:700,fontFamily:'JetBrains Mono',minWidth:'60px'}}>{trip.ship}</span>
+                                        <span style={{color:'var(--text-muted)',flex:1}}>📍 {trip.location}</span>
+                                        <span style={{color:'var(--text-muted)'}}>{fmtDate(trip.start)}</span>
+                                        <span style={{padding:'2px 8px',borderRadius:'4px',fontSize:'9px',fontWeight:600,background: trip.status === 'Completed' ? 'var(--green-glow)' : 'var(--red-glow)',color: trip.status === 'Completed' ? 'var(--green)' : 'var(--red)',border: `1px solid ${trip.status === 'Completed' ? 'var(--green)' : 'var(--red)'}44`}}>{trip.status}</span>
+                                        <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'10px',color:'var(--red)',opacity:0.5}} onClick={() => del(trip.id)}>🗑️</button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
