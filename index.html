@@ -5278,6 +5278,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 notes: noteText, amUp: am, pmUp: pm
             };
         };
+        return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow) };
     };
     
     const copyEndOfDay = () => {
