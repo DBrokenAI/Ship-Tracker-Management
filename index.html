@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T016";
+    var APP_BUILD = "2026-02-27T017";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2726,31 +2726,46 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             {/* EMAIL TAB */}
                             {detailTab === 'email' && (
                                 <div>
-                                    {/* Quick Actions Bar */}
-                                    <div style={{display:'flex',gap:'8px',marginBottom:'16px',flexWrap:'wrap',padding:'10px 12px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)',alignItems:'center'}}>
-                                        <button className="btn btn-success btn-sm" style={{borderRadius:'8px',fontWeight:700,padding:'7px 14px',fontSize:'12px'}} onClick={openContactModal}>✉️ Log New Email</button>
-                                        <div style={{display:'flex',gap:'6px',alignItems:'center',fontSize:'11px',flexWrap:'wrap',marginLeft:'auto'}}>
-                                            <span style={{color:'var(--text-muted)'}}>Last: <strong className="rel-time tip" data-tip={sel.lastContact ? fmtDate(sel.lastContact) : 'No contact recorded'} style={{color:'var(--text)'}}>{sel.lastContact ? relTime(sel.lastContact) : 'Never'}</strong></span>
-                                            {sel.poc && <span style={{color:'var(--text-muted)'}}>| 👤 <strong style={{color:'var(--text)'}}>{sel.poc}</strong></span>}
-                                            <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'3px 8px',fontSize:'9px'}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
-                                            {sel.waitingReply && <span className="badge badge-info" style={{padding:'3px 8px',fontSize:'9px'}}>⏳ Waiting</span>}
+                                    {/* Email status summary card */}
+                                    <div style={{display:'flex',gap:'12px',marginBottom:'16px',flexWrap:'wrap'}}>
+                                        <div style={{flex:'1 1 auto',padding:'12px 16px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)',display:'flex',alignItems:'center',gap:'14px'}}>
+                                            <div style={{display:'flex',flexDirection:'column',gap:'2px'}}>
+                                                <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600,letterSpacing:'0.5px'}}>LAST CONTACT</span>
+                                                <span className="rel-time tip" data-tip={sel.lastContact ? fmtDate(sel.lastContact) : 'Never'} style={{fontSize:'15px',fontWeight:700,color: sel.lastContact ? 'var(--text)' : 'var(--red)'}}>{sel.lastContact ? relTime(sel.lastContact) : 'Never'}</span>
+                                            </div>
+                                            {sel.poc && (<>
+                                                <div style={{width:'1px',height:'28px',background:'var(--border)'}}></div>
+                                                <div style={{display:'flex',flexDirection:'column',gap:'2px'}}>
+                                                    <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600,letterSpacing:'0.5px'}}>POC</span>
+                                                    <span style={{fontSize:'13px',fontWeight:600,color:'var(--text)'}}>{sel.poc}</span>
+                                                </div>
+                                            </>)}
+                                            <div style={{marginLeft:'auto',display:'flex',gap:'6px',alignItems:'center'}}>
+                                                <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'4px 10px',fontSize:'10px',fontWeight:700}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
+                                                {sel.waitingReply && <span className="badge badge-info" style={{padding:'4px 10px',fontSize:'10px',fontWeight:700}}>⏳ Waiting</span>}
+                                            </div>
                                         </div>
+                                        <button className="btn btn-success" style={{borderRadius:'10px',fontWeight:700,padding:'12px 20px',fontSize:'13px',whiteSpace:'nowrap'}} onClick={openContactModal}>✉️ Log Email</button>
                                     </div>
 
                                     {/* Email Conversation Log */}
                                     <div style={{marginBottom:'16px'}}>
-                                        <div style={{fontSize:'12px',fontWeight:700,color:'var(--text-muted)',marginBottom:'12px',letterSpacing:'0.5px'}}>
-                                            📧 CONVERSATION LOG ({emailHistory.filter(h => h.shipId === sel.id).length})
+                                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
+                                            <div style={{fontSize:'12px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'0.5px'}}>
+                                                📧 CONVERSATION LOG
+                                            </div>
+                                            <span style={{fontSize:'11px',color:'var(--text-muted)',background:'var(--bg-input)',padding:'3px 10px',borderRadius:'10px'}}>{emailHistory.filter(h => h.shipId === sel.id).length} entries</span>
                                         </div>
 
                                         {emailHistory.filter(h => h.shipId === sel.id).length === 0 ? (
                                             <div style={{padding:'48px 20px',textAlign:'center',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'12px',border:'1px dashed var(--border)'}}>
-                                                <div style={{fontSize:'32px',marginBottom:'10px',opacity:0.5}}>📭</div>
-                                                <div style={{fontWeight:600,marginBottom:'4px'}}>No emails logged yet</div>
-                                                <div style={{fontSize:'11px'}}>Click "Log New Email" to start tracking</div>
+                                                <div style={{fontSize:'36px',marginBottom:'12px',opacity:0.4}}>📭</div>
+                                                <div style={{fontWeight:600,marginBottom:'6px',color:'var(--text-dim)'}}>No emails logged yet</div>
+                                                <div style={{fontSize:'12px',marginBottom:'16px'}}>Start tracking communications with this ship's POC</div>
+                                                <button className="btn btn-primary btn-sm" onClick={openContactModal}>✉️ Log First Email</button>
                                             </div>
                                         ) : (
-                                            <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'500px',overflow:'auto',paddingRight:'4px'}}>
+                                            <div style={{display:'flex',flexDirection:'column',gap:'6px',maxHeight:'500px',overflow:'auto',paddingRight:'4px'}}>
                                                 {emailHistory.filter(h => h.shipId === sel.id).map((h, idx) => {
                                                     const isLatest = idx === 0;
                                                     const isIssue = h.result?.issue?.hasIssue;
@@ -2768,27 +2783,27 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     
                                                     return (
                                                     <div key={h.id} style={{
-                                                        borderRadius: isLatest ? '10px' : '8px',
-                                                        border: isLatest ? `2px solid ${accentColor}` : isExpanded ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                                        borderRadius:'10px',
+                                                        border: isLatest ? `2px solid ${accentColor}` : '1px solid var(--border)',
                                                         background: isLatest ? 'var(--bg-card)' : isExpanded ? 'var(--bg-card)' : 'transparent',
                                                         transition:'all 0.15s',
-                                                        boxShadow: isLatest ? '0 4px 16px rgba(0,0,0,0.1)' : 'none',
+                                                        boxShadow: isLatest ? `0 4px 16px rgba(0,0,0,0.1), 0 0 0 1px ${accentColor}22` : 'none',
                                                         cursor: isLatest ? 'default' : 'pointer'
                                                     }} onClick={() => { if (!isLatest) setExpandedEmails(prev => ({...prev, [h.id]: !prev[h.id]})); }}>
                                                         
                                                         {/* Collapsed Row - always visible */}
                                                         <div style={{
-                                                            display:'flex',alignItems:'center',gap:'8px',
-                                                            padding: isLatest ? '10px 12px' : '7px 10px',
+                                                            display:'flex',alignItems:'center',gap:'10px',
+                                                            padding: isLatest ? '12px 14px' : '8px 12px',
                                                             overflow:'hidden'
                                                         }}>
                                                             {/* Avatar */}
                                                             <div style={{
-                                                                width:'28px',height:'28px',borderRadius:'6px',flexShrink:0,
-                                                                background: isLatest ? `${accentColor}15` : 'var(--bg-input)',
+                                                                width: isLatest ? '34px' : '28px',height: isLatest ? '34px' : '28px',borderRadius:'8px',flexShrink:0,
+                                                                background: `${accentColor}15`,
                                                                 border: `2px solid ${accentColor}`,
                                                                 display:'flex',alignItems:'center',justifyContent:'center',
-                                                                fontSize:'10px',fontWeight:800,color:accentColor
+                                                                fontSize: isLatest ? '11px' : '10px',fontWeight:800,color:accentColor
                                                             }}>
                                                                 {initials}
                                                             </div>
@@ -2796,22 +2811,24 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                             {/* Middle: name + summary stacked */}
                                                             <div style={{flex:1,minWidth:0,overflow:'hidden'}}>
                                                                 <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                                                                    <span style={{fontSize:'12px',fontWeight:700,color:'var(--text)',whiteSpace:'nowrap'}}>
+                                                                    <span style={{fontSize: isLatest ? '13px' : '12px',fontWeight:700,color:'var(--text)',whiteSpace:'nowrap'}}>
                                                                         {senderName || <span style={{fontStyle:'italic',color:'var(--text-muted)',fontWeight:400,fontSize:'11px'}}>No name</span>}
                                                                     </span>
-                                                                    {isLatest && <span style={{fontSize:'8px',fontWeight:700,padding:'1px 5px',borderRadius:'3px',background:accentColor,color:'#fff'}}>LATEST</span>}
-                                                                    {isWaiting && <span style={{fontSize:'8px',fontWeight:600,padding:'1px 5px',borderRadius:'3px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳</span>}
-                                                                    {isIssue && <span style={{fontSize:'8px',fontWeight:600,padding:'1px 5px',borderRadius:'3px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}}>⚠️</span>}
-                                                                    <span style={{fontSize:'10px',color:'var(--text-muted)',marginLeft:'auto',whiteSpace:'nowrap',flexShrink:0}}>
-                                                                        {fmtDate(h.timestamp)}{age > 0 ? ` (${age}d)` : ''}
-                                                                    </span>
+                                                                    {isLatest && <span style={{fontSize:'8px',fontWeight:700,padding:'2px 6px',borderRadius:'4px',background:accentColor,color:'#fff',letterSpacing:'0.5px'}}>LATEST</span>}
+                                                                    {isWaiting && !isIssue && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'4px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳ WAITING</span>}
+                                                                    {isIssue && <span style={{fontSize:'8px',fontWeight:600,padding:'2px 6px',borderRadius:'4px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}}>⚠️ {h.result.issue.threat}</span>}
                                                                 </div>
                                                                 {!isExpanded && summary && (
-                                                                    <div style={{fontSize:'11px',color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginTop:'1px'}}>
+                                                                    <div style={{fontSize:'11px',color:'var(--text-muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginTop:'2px'}}>
                                                                         {summary}
                                                                     </div>
                                                                 )}
                                                             </div>
+                                                            
+                                                            {/* Date */}
+                                                            <span style={{fontSize:'10px',color:'var(--text-muted)',whiteSpace:'nowrap',flexShrink:0}}>
+                                                                {fmtDate(h.timestamp)}{age > 0 ? ` · ${age}d ago` : ' · today'}
+                                                            </span>
                                                             
                                                             {/* Expand chevron (not on latest) */}
                                                             {!isLatest && (
@@ -2825,15 +2842,15 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                                 
                                                                 {/* Issue callout */}
                                                                 {isIssue && h.result.issue.details && (
-                                                                    <div style={{padding:'8px 10px',marginTop:'10px',borderRadius:'6px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',border:`1px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`,fontSize:'12px',lineHeight:'1.5',display:'flex',gap:'6px',alignItems:'flex-start'}}>
-                                                                        <span style={{flexShrink:0}}>{h.result.issue.threat === 'Urgent' ? '🚨' : '⚠️'}</span>
-                                                                        <span>{h.result.issue.details}</span>
+                                                                    <div style={{padding:'10px 12px',marginTop:'12px',borderRadius:'8px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',border:`1px solid ${h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`,fontSize:'12px',lineHeight:'1.6',display:'flex',gap:'8px',alignItems:'flex-start'}}>
+                                                                        <span style={{flexShrink:0,fontSize:'14px'}}>{h.result.issue.threat === 'Urgent' ? '🚨' : '⚠️'}</span>
+                                                                        <span style={{fontWeight:500}}>{h.result.issue.details}</span>
                                                                     </div>
                                                                 )}
                                                                 
                                                                 {/* Summary */}
                                                                 {summary && (
-                                                                    <div style={{marginTop:'10px',fontSize:'13px',color:'var(--text)',lineHeight:'1.6'}}>
+                                                                    <div style={{marginTop:'12px',padding:'10px 12px',fontSize:'13px',color:'var(--text)',lineHeight:'1.7',background:'var(--bg-input)',borderRadius:'8px',borderLeft:'3px solid var(--primary)'}}>
                                                                         {summary}
                                                                     </div>
                                                                 )}
@@ -2854,9 +2871,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                                 )}
                                                                 
                                                                 {/* Action Buttons */}
-                                                                <div style={{display:'flex',gap:'6px',marginTop:'12px',paddingTop:'10px',borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
-                                                                    <button style={{padding:'6px 14px',fontSize:'11px',background:'var(--primary)',color:'#000',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:600,display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: currentUser.username, followupEmail: '', date: '' }); }}>📧 Add Update</button>
-                                                                    <button style={{padding:'6px 10px',fontSize:'11px',background:'var(--bg-input)',color:'var(--text-muted)',borderRadius:'6px',border:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation();
+                                                                <div style={{display:'flex',gap:'6px',marginTop:'14px',paddingTop:'12px',borderTop:'1px solid var(--border)',flexWrap:'wrap',alignItems:'center'}}>
+                                                                    <button style={{padding:'7px 14px',fontSize:'11px',background:'var(--primary)',color:'#000',borderRadius:'8px',border:'none',cursor:'pointer',fontWeight:700,display:'flex',alignItems:'center',gap:'5px'}} onClick={(e) => { e.stopPropagation(); setClearEmailWaitingModal(h); setClearEmailWaitingForm({ resolution: 'received', notes: '', name: currentUser.username, followupEmail: '', date: '' }); }}>📧 Add Update</button>
+                                                                    <button style={{padding:'7px 12px',fontSize:'11px',background:'var(--bg-input)',color:'var(--text-dim)',borderRadius:'8px',border:'1px solid var(--border)',cursor:'pointer',fontWeight:500,display:'flex',alignItems:'center',gap:'4px'}} onClick={(e) => { e.stopPropagation();
                                                                         const d = new Date(h.timestamp); 
                                                                         setEditEmailForm({ 
                                                                             date: toDateString(d), 
@@ -2879,12 +2896,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                         )}
                                     </div>
                                     {/* Current Notes (editable) */}
-                                    <div style={{padding:'12px',background:'var(--bg-input)',borderRadius:'8px',border:'1px solid var(--border)'}}>
-                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
-                                            <div style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600}}>CURRENT STATUS NOTES</div>
-                                            <button className="btn btn-sm btn-secondary" onClick={() => setModal(true)}>✏️ Edit</button>
+                                    <div style={{padding:'14px 16px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)'}}>
+                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
+                                            <div style={{fontSize:'11px',color:'var(--text-muted)',fontWeight:700,letterSpacing:'0.5px'}}>📝 CURRENT STATUS NOTES</div>
+                                            <button className="btn btn-sm btn-secondary" style={{fontSize:'10px'}} onClick={() => setModal(true)}>✏️ Edit</button>
                                         </div>
-                                        <div style={{fontSize:'12px',color: sel.lastSaid ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'pre-wrap'}}>{sel.lastSaid || 'No notes. Click Edit to add current status notes.'}</div>
+                                        <div style={{fontSize:'12px',color: sel.lastSaid ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'pre-wrap',lineHeight:'1.6',fontStyle: sel.lastSaid ? 'normal' : 'italic'}}>{sel.lastSaid || 'No notes yet — click Edit to add current status notes.'}</div>
                                     </div>
                                 </div>
                             )}
