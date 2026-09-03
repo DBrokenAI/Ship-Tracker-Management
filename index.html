@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T020";
+    var APP_BUILD = "2026-02-27T022";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2732,6 +2732,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 <div>
                                     {/* Summary strip */}
                                     <div style={{display:'flex',gap:'16px',marginBottom:'20px',alignItems:'stretch',flexWrap:'wrap'}}>
+                                        <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
                                         <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
                                             <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>LAST CONTACT</div>
                                             <div className="rel-time tip" data-tip={sel.lastContact ? fmtDate(sel.lastContact) : 'Never'} style={{fontSize:'16px',fontWeight:700,color: sel.lastContact ? 'var(--text)' : 'var(--red)'}}>{sel.lastContact ? relTime(sel.lastContact) : 'Never'}</div>
@@ -2747,7 +2748,6 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                 {sel.waitingReply && <span className="badge badge-info" style={{padding:'4px 10px',fontSize:'10px'}}>⏳</span>}
                                             </div>
                                         </div>
-                                        <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
                                     </div>
 
                                     {/* Timeline */}
@@ -2778,29 +2778,29 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     : isWaiting ? 'var(--blue)' : 'var(--green)';
                                                 
                                                 return (
-                                                <div key={h.id} style={{position:'relative',marginBottom: isLatest ? '16px' : idx < arr.length - 1 ? '2px' : '0',cursor: isLatest ? 'default' : 'pointer'}} onClick={() => { if (!isLatest) setExpandedEmails(prev => ({...prev, [h.id]: !prev[h.id]})); }}>
+                                                <div key={h.id} style={{position:'relative',marginBottom: isLatest ? '20px' : idx < arr.length - 1 ? '2px' : '0',cursor: isLatest ? 'default' : 'pointer'}} onClick={() => { if (!isLatest) setExpandedEmails(prev => ({...prev, [h.id]: !prev[h.id]})); }}>
                                                     
                                                     {/* Timeline dot */}
-                                                    <div style={{position:'absolute',left:'-24px',top: isLatest ? '20px' : '14px',width: isLatest ? '14px' : '8px',height: isLatest ? '14px' : '8px',borderRadius:'50%',background: dotColor,border: isLatest ? `3px solid var(--bg-main)` : `2px solid var(--bg-main)`,boxShadow: isLatest ? `0 0 0 3px ${dotColor}44, 0 0 12px ${dotColor}33` : 'none',zIndex:2,transition:'all 0.2s',marginLeft: isLatest ? '-3px' : '0'}}></div>
+                                                    <div style={{position:'absolute',left:'-24px',top: isLatest ? '22px' : '14px',width: isLatest ? '16px' : '8px',height: isLatest ? '16px' : '8px',borderRadius:'50%',background: dotColor,border: isLatest ? `3px solid var(--bg-main)` : `2px solid var(--bg-main)`,boxShadow: isLatest ? `0 0 0 4px ${dotColor}44, 0 0 16px ${dotColor}55` : 'none',zIndex:2,transition:'all 0.2s',marginLeft: isLatest ? '-4px' : '0'}}></div>
                                                     
                                                     {/* Separator label between latest and history */}
                                                     {idx === 1 && arr.length > 1 && (
-                                                        <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',padding:'8px 0 6px',marginLeft:'-4px'}}>PREVIOUS ({arr.length - 1})</div>
+                                                        <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1.5px',padding:'4px 0 8px',marginLeft:'-4px',borderTop:'1px solid var(--border)',marginTop:'4px',paddingTop:'10px'}}>▾ PREVIOUS ({arr.length - 1})</div>
                                                     )}
                                                     
                                                     {/* Entry card */}
-                                                    <div style={{padding: isLatest ? '18px 20px' : isExpanded ? '14px 16px' : '8px 16px',borderRadius: isLatest ? '14px' : '10px',background: isLatest ? 'var(--bg-card)' : isExpanded ? 'var(--bg-card)' : 'transparent',border: isLatest ? `1.5px solid ${dotColor}66` : isExpanded ? '1px solid var(--border)' : '1px solid transparent',transition:'all 0.15s',boxShadow: isLatest ? `0 4px 20px ${dotColor}12` : 'none'}}>
+                                                    <div style={{padding: isLatest ? '20px 22px' : isExpanded ? '14px 16px' : '8px 16px',borderRadius: isLatest ? '16px' : '10px',background: isLatest ? `linear-gradient(135deg, var(--bg-card), ${dotColor}08)` : isExpanded ? 'var(--bg-card)' : 'transparent',border: isLatest ? `2px solid ${dotColor}55` : isExpanded ? '1px solid var(--border)' : '1px solid transparent',transition:'all 0.15s',boxShadow: isLatest ? `0 4px 24px ${dotColor}18, 0 0 0 1px ${dotColor}15, inset 0 1px 0 rgba(255,255,255,0.03)` : 'none'}}>
                                                         
                                                         {/* Header row */}
                                                         <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
                                                             {/* Avatar for latest only */}
-                                                            {isLatest && <div style={{width:'36px',height:'36px',borderRadius:'10px',background:`${dotColor}18`,border:`2px solid ${dotColor}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:800,color:dotColor,flexShrink:0}}>{senderName ? senderName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase() : '—'}</div>}
+                                                            {isLatest && <div style={{width:'42px',height:'42px',borderRadius:'12px',background:`linear-gradient(135deg, ${dotColor}25, ${dotColor}10)`,border:`2px solid ${dotColor}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontWeight:800,color:dotColor,flexShrink:0}}>{senderName ? senderName.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase() : '—'}</div>}
                                                             
                                                             <div style={{flex:1,minWidth:0}}>
                                                                 <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                                                                    <span style={{fontSize: isLatest ? '15px' : '12px',fontWeight: isLatest ? 800 : 600,color:'var(--text)'}}>{senderName || <span style={{color:'var(--text-muted)',fontWeight:400,fontStyle:'italic'}}>Unknown</span>}</span>
+                                                                    <span style={{fontSize: isLatest ? '16px' : '12px',fontWeight: isLatest ? 800 : 600,color:'var(--text)'}}>{senderName || <span style={{color:'var(--text-muted)',fontWeight:400,fontStyle:'italic'}}>Unknown</span>}</span>
                                                                     
-                                                                    {isLatest && <span style={{fontSize:'9px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',background:dotColor,color:'#fff',letterSpacing:'0.3px'}}>LATEST</span>}
+                                                                    {isLatest && <span style={{fontSize:'9px',fontWeight:700,padding:'3px 10px',borderRadius:'10px',background:`linear-gradient(135deg, ${dotColor}, ${dotColor}cc)`,color:'#fff',letterSpacing:'0.5px',boxShadow:`0 2px 8px ${dotColor}33`}}>LATEST</span>}
                                                                     {isWaiting && <span style={{fontSize:'9px',fontWeight:600,padding:'2px 8px',borderRadius:'10px',background:'var(--blue-glow)',color:'var(--blue)',border:'1px solid var(--blue)'}}>⏳ Waiting</span>}
                                                                     {isIssue && <span style={{fontSize:'9px',fontWeight:600,padding:'2px 8px',borderRadius:'10px',background: h.result.issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',color: h.result.issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}}>{h.result.issue.threat === 'Urgent' ? '🚨 Urgent' : '⚠️ Issue'}</span>}
                                                                 </div>
