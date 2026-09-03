@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T055";
+    var APP_BUILD = "2026-02-27T056";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -4127,8 +4127,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                         lastContact: entryDate,
                                         ...(f.name ? { contactedBy: f.name } : {}),
                                         ...(f.resolution === 'second_email' ? { 
-                                            lastSaid: `Follow-up sent: ${f.followupEmail.substring(0, 200)}${f.followupEmail.length > 200 ? '...' : ''}`
-                                        } : f.notes ? { lastSaid: f.notes.substring(0, 200) } : {})
+                                            lastSaid: 'Follow-up sent: ' + f.followupEmail
+                                        } : f.notes ? { lastSaid: f.notes } : {})
                                     };
                                     setShips(p => p.map(s => s.id === item.shipId ? { ...s, ...shipUpdate } : s));
                                     if (sel && sel.id === item.shipId) setSel(prev => ({ ...prev, ...shipUpdate }));
@@ -4203,7 +4203,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     const shipUpdate = { 
                                         lastContact: ts,
                                         ...(editEmailForm.contactedBy ? { contactedBy: editEmailForm.contactedBy } : {}),
-                                        ...(editEmailForm.summary ? { lastSaid: editEmailForm.summary.substring(0, 200) } : {})
+                                        ...(editEmailForm.summary ? { lastSaid: editEmailForm.summary } : {})
                                     };
                                     setShips(p => p.map(s => s.id === editEmailEntry.shipId ? { ...s, ...shipUpdate } : s));
                                     if (sel && sel.id === editEmailEntry.shipId) setSel(prev => ({ ...prev, ...shipUpdate }));
@@ -4817,7 +4817,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     type: 'manual',
                                     emailText: manualLogForm.notes,
                                     result: {
-                                        emailSummary: manualLogForm.notes.substring(0, 200) + (manualLogForm.notes.length > 200 ? '...' : ''),
+                                        emailSummary: manualLogForm.notes,
                                         inPort: manualLogForm.inPort,
                                         inPortUntil: manualLogForm.inPortUntil,
                                         issue: manualLogForm.hasIssue ? { hasIssue: true, threat: manualLogForm.issueThreat, details: manualLogForm.issueDetails, responsibility: manualLogForm.issueResponsibility } : { hasIssue: false },
@@ -5207,31 +5207,41 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 const lastEmail = emails.length > 0 ? emails[0] : null;
                 const emailNotes = lastEmail ? (lastEmail.result ? (lastEmail.result.emailSummary || '') : '') : '';
                 const manualNotes = s.lastSaid || '';
+                const lastSender = lastEmail ? (lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null) : null;
+                const isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
+                
+                // LINE 1: Issue — what's wrong or what's happening
+                if (shipIssues.length > 0) {
+                    shipIssues.forEach(function(iss) {
+                        lines.push(iss.title || iss.details || 'Issue reported');
+                    });
+                }
+                
+                // LINE 2: Communication — what was said/done
                 if (manualNotes) {
                     const cleaned = cleanForReport(manualNotes);
                     if (cleaned) lines.push(cleaned);
                 } else if (emailNotes) {
                     const cleaned = cleanForReport(emailNotes);
                     if (cleaned) lines.push(cleaned);
-                } else if (shipIssues.length > 0) {
-                    shipIssues.forEach(function(iss) {
-                        lines.push(iss.title || iss.details || 'Issue reported');
-                    });
                 }
-                if (lastEmail) {
-                    const lastSender = lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null;
-                    const isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
-                    if (s.waitingReply) {
-                        lines.push('Contacted ship, awaiting response.');
-                    } else if (isFromShip && lines.length > 0) {
-                        lines.push('Ship has responded.');
-                    }
+                
+                // LINE 3: Status — where we stand
+                if (s.waitingReply) {
+                    lines.push('Awaiting response from ship.');
+                } else if (lastEmail && isFromShip) {
+                    lines.push('Ship has responded.');
+                } else if (lastEmail && !isFromShip && shipIssues.length > 0) {
+                    lines.push('Reached out to ship forces.');
                 }
+                
+                // LINE 4: Date — always last
                 if (lastEmail && lastEmail.timestamp) {
                     lines.push(fmtDate(lastEmail.timestamp));
                 } else if (s.lastContact) {
                     lines.push(fmtDate(s.lastContact));
                 }
+                
                 noteText = lines.join('\n');
             }
             
