@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T047";
+    var APP_BUILD = "2026-02-27T049";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5193,8 +5193,14 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             }
             
             return {
-                name: s.name, am: am ? (c.pingAM || 'Online') : 'Offline', pm: pm ? (c.pingPM || 'Online') : 'Offline',
-                files: c.hdSpace || '0', diode: c.diode || (am || pm ? 'Up' : 'N/A'), phone: c.phone || (am || pm ? 'Up' : 'Down'),
+                name: s.name, 
+                am: am ? 'Online' : 'Offline',
+                amPing: am && c.pingAM ? c.pingAM : '',
+                pm: pm ? 'Online' : 'Offline', 
+                pmPing: pm && c.pingPM ? c.pingPM : '',
+                files: c.hdSpace || '0', 
+                diode: c.diode || (am || pm ? 'Up' : 'N/A'), 
+                phone: c.phone || (am || pm ? 'Up' : 'Down'),
                 notes: noteParts.join('\n'), amUp: am, pmUp: pm
             };
         };
@@ -5620,8 +5626,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 const renderRows = (rows) => rows.map((r, i) => (
                     <tr key={i} style={{background: i % 2 === 0 ? '#1a1a2e' : '#1e1e34'}}>
                         <td style={sn}>{r.name}</td>
-                        <td style={{...cs, textAlign:'center', ...(r.amUp ? onC : offC), fontWeight:700, fontSize:'14px'}}>{r.am}</td>
-                        <td style={{...cs, textAlign:'center', ...(r.pmUp ? onC : offC), fontWeight:700, fontSize:'14px'}}>{r.pm}</td>
+                        <td style={{...cs, textAlign:'center', ...(r.amUp ? onC : offC), fontWeight:700, fontSize:'13px'}}>{r.am}{r.amPing && <div style={{fontSize:'12px',fontWeight:600,marginTop:'2px',color:'#aab'}}>{r.amPing}</div>}</td>
+                        <td style={{...cs, textAlign:'center', ...(r.pmUp ? onC : offC), fontWeight:700, fontSize:'13px'}}>{r.pm}{r.pmPing && <div style={{fontSize:'12px',fontWeight:600,marginTop:'2px',color:'#aab'}}>{r.pmPing}</div>}</td>
                         <td style={{...cs, textAlign:'center', color:'#aab'}}>{r.files}</td>
                         <td style={{...cs, textAlign:'center', fontWeight:600, color: r.diode === 'Up' ? '#51cf66' : r.diode === 'Down' || r.diode === 'Output-down' ? '#ff6b6b' : '#666'}}>{r.diode}</td>
                         <td style={{...cs, textAlign:'center', fontWeight:600, color: r.phone === 'Up' ? '#51cf66' : r.phone === 'Down' ? '#ff6b6b' : '#666'}}>{r.phone}</td>
