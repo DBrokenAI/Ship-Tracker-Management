@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T096";
+    var APP_BUILD = "2026-02-27T097";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -3274,7 +3274,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 <div className="chart-card">
                 {/* Green email notification banner — fixed to top */}
                 {pendingEmails.length > 0 && (
-                    <div style={{position:'fixed',top:0,left: sidebarCollapsed ? '60px' : '200px',right:0,zIndex:100,background:'var(--green-glow)',borderBottom:'1px solid var(--green)',padding:'10px 24px',display:'flex',alignItems:'center',gap:'10px',animation:'fadeIn 0.3s ease'}}>
+                    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:100,background:'var(--green-glow)',borderBottom:'1px solid var(--green)',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px'}}>
                         <span style={{fontSize:'16px'}}>📬</span>
                         <span style={{color:'var(--green)',fontWeight:700,fontSize:'14px'}}>There {pendingEmails.length === 1 ? 'is' : 'are'} {pendingEmails.length} new email{pendingEmails.length > 1 ? 's' : ''} to review</span>
                     </div>
