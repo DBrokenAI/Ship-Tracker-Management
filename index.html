@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T094";
+    var APP_BUILD = "2026-02-27T095";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -3564,6 +3564,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     <div style={{display:'flex',gap:'16px',marginBottom:'20px',alignItems:'stretch',flexWrap:'wrap'}}>
                                         <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
                                         <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={() => scanEmailHistory(sel.id, sel.name)}>🔍 Scan History</button>
+                                        <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--red)'}} onClick={() => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } }}>🗑️ Clear History</button>
                                         <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
                                             <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>LAST CONTACT</div>
                                             {(() => { var shipEmails = emailHistory.filter(function(h) { return h.shipId === sel.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); }); var lastDate = shipEmails.length > 0 ? shipEmails[0].timestamp : sel.lastContact; return React.createElement('div', {className:'rel-time tip', 'data-tip': lastDate ? fmtDate(lastDate) : 'Never', style:{fontSize:'16px',fontWeight:700,color: lastDate ? 'var(--text)' : 'var(--red)'}}, lastDate ? relTime(lastDate) : 'Never'); })()}
