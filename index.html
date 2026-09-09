@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T090";
+    var APP_BUILD = "2026-02-27T091";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -3265,7 +3265,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             </div>
                         ) : (
                             <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
-                                {pendingEmails.map(function(item, idx) {
+                                {pendingEmails.slice().sort(function(a,b) { return new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0); }).map(function(item, idx) {
                                     var dirColor = item._isOutgoing ? 'var(--blue)' : 'var(--amber)';
                                     var dirLabel = item._isOutgoing ? '→ Sent' : '← Reply';
                                     var shipList = ships.map(function(s) { return s.name; });
