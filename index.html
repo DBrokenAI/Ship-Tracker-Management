@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T095";
+    var APP_BUILD = "2026-02-27T096";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -3681,6 +3681,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     <div style={{display:'flex',gap:'4px',flexShrink:0}}>
                                                         <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details).substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
                                                         <button className="btn btn-sm btn-success" style={{padding:'3px 8px',fontSize:'9px'}} onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
+                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',color:'var(--red)'}} onClick={() => { if (confirm('Delete this issue?\n\n' + (issue.title || issue.details))) { setIssues(p => p.filter(x => x.id !== issue.id)); logActivity('Deleted issue from ' + (sel ? sel.name : 'ship') + ': ' + (issue.title || issue.details).substring(0,40)); toast('Issue deleted', 'info'); } }}>🗑️</button>
                                                     </div>
                                                 </div>
                                             ))}
