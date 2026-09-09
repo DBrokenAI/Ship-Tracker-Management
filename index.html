@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T089";
+    var APP_BUILD = "2026-02-27T090";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1502,13 +1502,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarCollapsed ? '▶' : '◀'}</button>
             </nav>
             
-            {pendingEmails.length > 0 && (
-                <div className="notif-banner" style={Object.assign({background:'var(--green-glow)',borderColor:'var(--green)'}, sidebarCollapsed ? {left:'60px'} : {})}>
-                    <span style={{color:'var(--green)',fontWeight:700,display:'flex',alignItems:'center',gap:'8px'}}>📬 There {pendingEmails.length === 1 ? 'is' : 'are'} {pendingEmails.length} new email{pendingEmails.length > 1 ? 's' : ''} to review</span>
-                </div>
-            )}
-            
-            <main className={`main ${pendingEmails.length > 0 ? 'has-banner' : ''}`} style={sidebarCollapsed ? {marginLeft:'60px'} : {}}>
+            <main className="main" style={sidebarCollapsed ? {marginLeft:'60px'} : {}}>
                 {isAdmin && new Date().getDay() === 5 && (
                     <div style={{background:'linear-gradient(135deg, var(--primary-glow) 0%, var(--bg-card) 100%)',border:'2px solid var(--primary)',borderRadius:'12px',padding:'16px 20px',marginBottom:'16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                         <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
@@ -3246,6 +3240,14 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             {/* Visual Charts Row */}
             <div className="charts-row">
                 <div className="chart-card">
+                {/* Green email notification banner */}
+                {pendingEmails.length > 0 && (
+                    <div style={{background:"var(--green-glow)",border:"1px solid var(--green)",borderRadius:"10px",padding:"12px 20px",marginBottom:"16px",display:"flex",alignItems:"center",gap:"10px"}}>
+                        <span style={{fontSize:"16px"}}>📬</span>
+                        <span style={{color:"var(--green)",fontWeight:700,fontSize:"14px"}}>There {pendingEmails.length === 1 ? "is" : "are"} {pendingEmails.length} new email{pendingEmails.length > 1 ? "s" : ""} to review</span>
+                    </div>
+                )}
+
                 {/* INCOMING EMAIL INBOX — Always visible */}
                 
                     <div className="card" style={{marginBottom:'16px',border: pendingEmails.length > 0 ? '1px solid var(--blue)' : '1px solid var(--border)'}}>
