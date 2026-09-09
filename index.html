@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T087";
+    var APP_BUILD = "2026-02-27T089";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1502,15 +1502,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarCollapsed ? '▶' : '◀'}</button>
             </nav>
             
-            {(urgentIssues > 0 || overdueShips > 0) && showBanner && (
-                <div className={`notif-banner ${urgentIssues > 0 ? '' : 'warning'}`} style={sidebarCollapsed ? {left:'60px'} : {}}>
-                    
-                    {overdueShips > 0 && <span className="notif-item warning" onClick={() => setPage(7)}>📧 {overdueShips} ship{overdueShips > 1 ? 's' : ''} overdue for contact</span>}
-                    <button className="notif-close" onClick={() => setShowBanner(false)}>×</button>
+            {pendingEmails.length > 0 && (
+                <div className="notif-banner" style={Object.assign({background:'var(--green-glow)',borderColor:'var(--green)'}, sidebarCollapsed ? {left:'60px'} : {})}>
+                    <span style={{color:'var(--green)',fontWeight:700,display:'flex',alignItems:'center',gap:'8px'}}>📬 There {pendingEmails.length === 1 ? 'is' : 'are'} {pendingEmails.length} new email{pendingEmails.length > 1 ? 's' : ''} to review</span>
                 </div>
             )}
             
-            <main className={`main ${(urgentIssues > 0 || overdueShips > 0) && showBanner ? 'has-banner' : ''}`} style={sidebarCollapsed ? {marginLeft:'60px'} : {}}>
+            <main className={`main ${pendingEmails.length > 0 ? 'has-banner' : ''}`} style={sidebarCollapsed ? {marginLeft:'60px'} : {}}>
                 {isAdmin && new Date().getDay() === 5 && (
                     <div style={{background:'linear-gradient(135deg, var(--primary-glow) 0%, var(--bg-card) 100%)',border:'2px solid var(--primary)',borderRadius:'12px',padding:'16px 20px',marginBottom:'16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                         <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
@@ -2026,7 +2024,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 data._cleanSubject = (data.subject || '').replace(/^(RE|FW|FWD):\s*/gi, '').replace(/^(RE|FW|FWD):\s*/gi, '').trim();
                 pending.push(data);
             });
-            // Deduplicate: same outlookEntryId or same subject+sender+time
+            // Deduplicate: by EntryID, subject+sender+time, and body content
             var seen = {};
             var existingHistory = [];
             try { existingHistory = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(ex) {}
@@ -2034,16 +2032,19 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 // Check by Outlook EntryID
                 var eid = item.outlookEntryId || '';
                 if (eid) {
-                    if (seen[eid]) return false;
-                    seen[eid] = true;
-                    // Check if already accepted in history
+                    if (seen['eid_' + eid]) return false;
+                    seen['eid_' + eid] = true;
                     if (existingHistory.some(function(h) { return h.id === 'AE_' + item._docId; })) return false;
                 }
-                // Check by subject + sender + timestamp combo
+                // Check by subject + sender + timestamp
                 var key = (item.subject || '') + '|' + (item.senderEmail || '') + '|' + (item.receivedAt || '');
-                if (seen[key]) return false;
-                seen[key] = true;
-                // Check if this exact email already exists in history
+                if (seen['key_' + key]) return false;
+                seen['key_' + key] = true;
+                // Check by body content (first 100 chars) + sender to catch same message uploaded multiple times
+                var bodyKey = (item.senderEmail || '') + '|' + ((item.body || '').substring(0, 100));
+                if (seen['body_' + bodyKey]) return false;
+                seen['body_' + bodyKey] = true;
+                // Check against existing history
                 if (existingHistory.some(function(h) {
                     return h.fromEmail === (item.senderEmail || '').toLowerCase() && 
                            h.timestamp === (item.receivedAt || item.timestamp);
@@ -3303,7 +3304,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 })}
                                 {pendingEmails.length > 1 && React.createElement('div', {style: {display:'flex',gap:'8px',marginTop:'4px'}},
                                     React.createElement('button', {className:'btn btn-sm btn-primary', style:{fontWeight:600}, onClick: function() { pendingEmails.filter(function(e){return e.matchedShip;}).forEach(function(e){acceptIncomingEmail(e);}); }}, '✓ Accept All (' + pendingEmails.filter(function(e){return e.matchedShip;}).length + ')'),
-                                    React.createElement('button', {className:'btn btn-sm', style:{color:'var(--red)'}, onClick: function() { pendingEmails.forEach(function(e){rejectIncomingEmail(e);}); }}, '✕ Dismiss All')
+                                    React.createElement('button', {className:'btn btn-sm', style:{color:'var(--red)'}, onClick: function() { pendingEmails.forEach(function(e){rejectIncomingEmail(e);}); }}, '\u2715 Dismiss All'),
+                                    React.createElement('button', {className:'btn btn-sm', style:{color:'var(--text-muted)',marginLeft:'8px'}, onClick: function() { if (confirm('Purge ALL incoming emails from Firebase? This clears the entire inbox permanently.')) { db.collection('incomingEmails').where('processed','==',false).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.update({processed:true,accepted:false}); }); toast('Purged ' + snap.size + ' emails from Firebase','info'); }); } }}, '\uD83D\uDDD1\uFE0F Purge Firebase')
                                 )}
                             </div>
                         )}
