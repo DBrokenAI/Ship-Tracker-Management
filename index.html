@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T092";
+    var APP_BUILD = "2026-02-27T093";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -3697,7 +3697,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     ) : (
                                         <div style={{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'600px',overflow:'auto',padding:'8px 0'}}>
                                             
-                                            {emailHistory.filter(h => h.shipId === sel.id).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((h, idx, arr) => {
+                                            {emailHistory.filter(h => h.shipId === sel.id).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map((h, idx, arr) => {
                                                 var rawName = h.result ? (h.result.sender ? h.result.sender.name : h.result.contactedBy) : null;
                                                 var isFromShip = rawName === '__SHIP__' || rawName === 'Ship' || (rawName && rawName.indexOf('Ship') === 0);
                                                 var isTeamSent = !isFromShip;
