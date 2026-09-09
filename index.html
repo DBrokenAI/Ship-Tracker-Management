@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T091";
+    var APP_BUILD = "2026-02-27T092";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1969,7 +1969,29 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         return unique;
     };
     const [emailHistory, setEmailHistory] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch { return []; }
+        try {
+            var raw = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
+            // Auto-dedup existing history on load
+            var seen = {};
+            var cleaned = raw.filter(function(h) {
+                // Dedup by: sender + first 80 chars of body + timestamp
+                var bodySnip = ((h.emailText || '') + (h.result && h.result.emailSummary ? h.result.emailSummary : '')).substring(0, 80);
+                var key = (h.fromEmail || '') + '|' + bodySnip + '|' + (h.timestamp || '');
+                if (seen[key]) return false;
+                seen[key] = true;
+                // Also dedup by id
+                if (h.id) {
+                    if (seen['id_' + h.id]) return false;
+                    seen['id_' + h.id] = true;
+                }
+                return true;
+            });
+            if (cleaned.length < raw.length) {
+                console.log('Dedup: removed ' + (raw.length - cleaned.length) + ' duplicate emails');
+                localStorage.setItem('emailParseHistory', JSON.stringify(cleaned));
+            }
+            return cleaned;
+        } catch(e) { return []; }
     });
     
     // ===== INCOMING EMAIL QUEUE =====
@@ -2183,7 +2205,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             snapshot.forEach(function(doc) { firebaseEmails.push(doc.data()); });
             if (firebaseEmails.length === 0) return;
             
-            // Merge with localStorage
+            // Merge with localStorage + dedup
             var local = [];
             try { local = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e2) {}
             var merged = local.slice();
@@ -2195,6 +2217,16 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 }
             });
             if (changed) {
+                // Dedup merged results
+                var mSeen = {};
+                merged = merged.filter(function(h) {
+                    var bodySnip = ((h.emailText || '') + (h.result && h.result.emailSummary ? h.result.emailSummary : '')).substring(0, 80);
+                    var key = (h.fromEmail || '') + '|' + bodySnip + '|' + (h.timestamp || '');
+                    if (mSeen[key]) return false;
+                    mSeen[key] = true;
+                    if (h.id) { if (mSeen['id_' + h.id]) return false; mSeen['id_' + h.id] = true; }
+                    return true;
+                });
                 merged.sort(function(a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
                 localStorage.setItem('emailParseHistory', JSON.stringify(merged));
                 setEmailHistory(merged);
