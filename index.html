@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T097";
+    var APP_BUILD = "2026-02-27T098";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1632,68 +1632,101 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         if (shipEmails.length === 0) { toast('No emails to scan', 'info'); return; }
         
         const patterns = [
-            { regex: /(?:router|cisco)[\s\S]{0,40}(?:down|offline|not responding|failed|issue|problem|error)/i, title: 'Router Issue', category: 'Network/Connectivity', threat: 'Urgent' },
-            { regex: /(?:no |lost |cannot |can't |unable to )(?:connect|connection|connectivity|comms|communicate)/i, title: 'Connection Lost', category: 'Network/Connectivity', threat: 'Urgent' },
-            { regex: /(?:network|connection)[\s\S]{0,30}(?:down|offline|dropped|lost)/i, title: 'Network Down', category: 'Network/Connectivity', threat: 'Urgent' },
-            { regex: /(?:drive|hdd|ssd|hard disk)[\s\S]{0,30}(?:fail|broken|error|bad|dead|clicking)/i, title: 'Drive Failure', category: 'Hardware', threat: 'Urgent' },
-            { regex: /(?:power supply|psu)[\s\S]{0,30}(?:fail|dead|blown|no power)/i, title: 'Power Supply Failure', category: 'Hardware', threat: 'Urgent' },
-            { regex: /(?:tape|lto)[\s\S]{0,30}(?:fail|error|broken|stuck|won't read)/i, title: 'Tape Drive Issue', category: 'Hardware', threat: 'Mild' },
-            { regex: /(?:crash|bsod|blue screen|freeze|frozen|locked up)/i, title: 'System Crash', category: 'Software', threat: 'Urgent' },
+            // NETWORK
+            { regex: /(?:router|cisco|switch)[\s\S]{0,50}(?:down|offline|not responding|failed|issue|problem|error|rebooting|hung|crashed)/i, title: 'Router/Switch Issue', category: 'Network', threat: 'Urgent' },
+            { regex: /(?:no |lost |cannot |can't |unable to |having trouble )(?:connect|connection|connectivity|comms|communicate|reach|access|ping)/i, title: 'Connection Lost', category: 'Network', threat: 'Urgent' },
+            { regex: /(?:network|connection|link|circuit)[\s\S]{0,40}(?:down|offline|dropped|lost|dead|broken)/i, title: 'Network Down', category: 'Network', threat: 'Urgent' },
+            { regex: /(?:intermittent|dropping|keeps disconnecting|unstable|flapping|sporadic)/i, title: 'Intermittent Connection', category: 'Network', threat: 'Mild' },
+            { regex: /(?:slow|latency|lag|bandwidth|throughput|speed)[\s\S]{0,30}(?:issue|problem|bad|poor|degraded|terrible)/i, title: 'Performance Degradation', category: 'Network', threat: 'Mild' },
+            { regex: /(?:dns|name resolution|cannot resolve|nslookup)/i, title: 'DNS Issue', category: 'Network', threat: 'Mild' },
+            { regex: /(?:dhcp|no ip|not getting ip|169\.254|apipa)/i, title: 'DHCP Issue', category: 'Network', threat: 'Mild' },
+            { regex: /(?:vlan|trunk|spanning tree)[\s\S]{0,30}(?:issue|problem|wrong|error|misconfigured)/i, title: 'VLAN/Switch Config', category: 'Network', threat: 'Mild' },
+            { regex: /(?:firewall|acl|access list)[\s\S]{0,30}(?:issue|blocking|deny|denied|reject)/i, title: 'Firewall/ACL Issue', category: 'Network', threat: 'Mild' },
+            { regex: /(?:vpn|tunnel|ipsec)[\s\S]{0,30}(?:down|fail|cannot connect|broken|dropped)/i, title: 'VPN/Tunnel Down', category: 'Network', threat: 'Urgent' },
+            { regex: /(?:ping|icmp)[\s\S]{0,20}(?:fail|timeout|no response|unreachable|100% loss)/i, title: 'Host Unreachable', category: 'Network', threat: 'Urgent' },
+            { regex: /(?:port|interface)[\s\S]{0,20}(?:down|err-disabled|error|no link)/i, title: 'Port/Interface Down', category: 'Network', threat: 'Mild' },
+            // COMMS
+            { regex: /(?:satcom|satellite|shf|ehf|uhf|fltsatcom)[\s\S]{0,40}(?:down|lost|no signal|fail|issue|degraded|outage)/i, title: 'SATCOM Issue', category: 'Communications', threat: 'Urgent' },
+            { regex: /(?:voip|phone|dial tone|telephone)[\s\S]{0,30}(?:down|not working|no dial|dead|issue|static)/i, title: 'VOIP/Phone Issue', category: 'Communications', threat: 'Mild' },
+            { regex: /(?:radio|hf |vhf|uhf comm)[\s\S]{0,30}(?:down|fail|not working|issue)/i, title: 'Radio Issue', category: 'Communications', threat: 'Urgent' },
+            { regex: /(?:email|smtp|exchange|outlook)[\s\S]{0,30}(?:down|not working|cannot send|bouncing|fail)/i, title: 'Email System Issue', category: 'Communications', threat: 'Mild' },
+            // HARDWARE
+            { regex: /(?:drive|hdd|ssd|hard disk|raid)[\s\S]{0,40}(?:fail|broken|error|bad|dead|clicking|degraded|rebuilding|smart)/i, title: 'Drive Failure', category: 'Hardware', threat: 'Urgent' },
+            { regex: /(?:power supply|psu|ups)[\s\S]{0,30}(?:fail|dead|blown|no power|beeping|alarm|tripped)/i, title: 'Power Supply Issue', category: 'Hardware', threat: 'Urgent' },
+            { regex: /(?:tape|lto|backup drive)[\s\S]{0,30}(?:fail|error|broken|stuck|jam|cannot read)/i, title: 'Tape/Backup Issue', category: 'Hardware', threat: 'Mild' },
+            { regex: /(?:monitor|display|screen|kvm)[\s\S]{0,30}(?:blank|no signal|dead|flickering|broken|black)/i, title: 'Display/KVM Issue', category: 'Hardware', threat: 'Mild' },
+            { regex: /(?:cable|connector|patch|fiber|sfp|gbic|rj45)[\s\S]{0,30}(?:broken|damaged|bad|loose|fail|no light)/i, title: 'Cable/Connector Issue', category: 'Hardware', threat: 'Mild' },
+            { regex: /(?:server|rack|chassis)[\s\S]{0,30}(?:down|fail|not responding|overheating|alarm)/i, title: 'Server Issue', category: 'Hardware', threat: 'Urgent' },
+            { regex: /(?:memory|ram|dimm)[\s\S]{0,30}(?:fail|error|ecc|bad|parity)/i, title: 'Memory Error', category: 'Hardware', threat: 'Urgent' },
+            { regex: /(?:fan|cooling|temperature|overheat|thermal)[\s\S]{0,30}(?:fail|alarm|hot|high|warning)/i, title: 'Thermal/Cooling Issue', category: 'Hardware', threat: 'Urgent' },
+            { regex: /(?:printer|print)[\s\S]{0,30}(?:down|broken|jam|error|not working|offline)/i, title: 'Printer Issue', category: 'Hardware', threat: 'Mild' },
+            // SOFTWARE
+            { regex: /(?:crash|bsod|blue screen|freeze|frozen|locked up|not responding|hung)/i, title: 'System Crash/Freeze', category: 'Software', threat: 'Urgent' },
             { regex: /(?:won't boot|no boot|boot fail|won't start|won't turn on)/i, title: 'Boot Failure', category: 'Software', threat: 'Urgent' },
-            { regex: /(?:satcom|satellite|shf|ehf)[\s\S]{0,30}(?:down|lost|no signal|fail)/i, title: 'SATCOM Issue', category: 'Communications', threat: 'Urgent' },
-            { regex: /(?:voip|phone)[\s\S]{0,30}(?:down|not working|no dial|dead)/i, title: 'VOIP Issue', category: 'Communications', threat: 'Mild' },
-            { regex: /(?:crypto|comsec|taclane|haipe)[\s\S]{0,30}(?:fail|issue|error|down|expired)/i, title: 'Crypto/COMSEC Issue', category: 'Security', threat: 'Urgent' },
-            { regex: /(?:intermittent|dropping|keeps disconnecting|unstable|flapping)/i, title: 'Intermittent Connection', category: 'Network/Connectivity', threat: 'Mild' },
-            { regex: /(?:slow|latency|lag)[\s\S]{0,20}(?:issue|problem|bad|poor|degraded)/i, title: 'Performance Issue', category: 'Network/Connectivity', threat: 'Mild' },
-            { regex: /(?:cable|connector)[\s\S]{0,30}(?:broken|damaged|bad|loose|fail)/i, title: 'Cable/Connector Issue', category: 'Hardware', threat: 'Mild' },
-            { regex: /(?:bcr|bcr not|bcr denied|waiting on bcr)/i, title: 'BCR Issue', category: 'Configuration', threat: 'Urgent' },
+            { regex: /(?:update|patch|hotfix)[\s\S]{0,30}(?:fail|broke|error|stuck|needs)/i, title: 'Update/Patch Issue', category: 'Software', threat: 'Mild' },
+            { regex: /(?:license|activation|expired software|product key)[\s\S]{0,30}(?:expired|fail|invalid|need)/i, title: 'License Issue', category: 'Software', threat: 'Mild' },
+            { regex: /(?:backup|restore|image|reimage)[\s\S]{0,30}(?:fail|error|corrupt|needed)/i, title: 'Backup/Imaging Issue', category: 'Software', threat: 'Mild' },
+            { regex: /(?:virus|malware|infected|trojan|ransomware|suspicious)/i, title: 'Security Threat', category: 'Software', threat: 'Urgent' },
+            { regex: /(?:corrupt|corrupted|damaged file|data loss|data lost)/i, title: 'Data Corruption', category: 'Software', threat: 'Urgent' },
+            // SECURITY
+            { regex: /(?:crypto|comsec|taclane|haipe|kg-|kiv)[\s\S]{0,40}(?:fail|issue|error|down|lost|expired|alarm|zeroize|rekey)/i, title: 'Crypto/COMSEC Issue', category: 'Security', threat: 'Urgent' },
+            { regex: /(?:sipr|classified|high side|secret)[\s\S]{0,30}(?:down|fail|cannot access|locked|issue)/i, title: 'SIPR Issue', category: 'Security', threat: 'Urgent' },
+            { regex: /(?:nipr|unclass|low side)[\s\S]{0,30}(?:down|fail|cannot access|issue)/i, title: 'NIPR Issue', category: 'Security', threat: 'Mild' },
+            { regex: /(?:cac|smart card|pki|certificate)[\s\S]{0,30}(?:fail|error|expired|not working|locked)/i, title: 'CAC/PKI Issue', category: 'Security', threat: 'Mild' },
+            // CONFIG
+            { regex: /(?:bcr|change request)[\s\S]{0,30}(?:denied|rejected|waiting|pending|needed|submit)/i, title: 'BCR Issue', category: 'Configuration', threat: 'Urgent' },
             { regex: /(?:atu|atu expired|expired atu)/i, title: 'ATU Expired', category: 'Configuration', threat: 'Urgent' },
-            { regex: /(?:monitor|display|screen)[\s\S]{0,30}(?:blank|no signal|dead|flickering)/i, title: 'Display Issue', category: 'Hardware', threat: 'Mild' },
-            { regex: /(?:dns|name resolution|cannot resolve)/i, title: 'DNS Issue', category: 'Network/Connectivity', threat: 'Mild' },
-            { regex: /(?:fiber|sfp|optical)[\s\S]{0,30}(?:fail|error|no light|bad)/i, title: 'Fiber/SFP Issue', category: 'Hardware', threat: 'High' },
+            { regex: /(?:noc|noc needs|waiting on noc|noc ticket)/i, title: 'Waiting on NOC', category: 'Configuration', threat: 'Mild' },
+            { regex: /(?:nmci|ngen)[\s\S]{0,30}(?:issue|problem|ticket|request|waiting|fail)/i, title: 'NMCI/NGEN Issue', category: 'Configuration', threat: 'Mild' },
+            { regex: /(?:configuration|config|misconfigured|settings)[\s\S]{0,30}(?:wrong|incorrect|issue|changed|lost)/i, title: 'Config Issue', category: 'Configuration', threat: 'Mild' },
+            // REAP
+            { regex: /(?:reap|reap system|reap equipment)[\s\S]{0,40}(?:down|offline|not working|issue|fail|error|needs)/i, title: 'REAP System Issue', category: 'REAP', threat: 'Urgent' },
+            { regex: /(?:diode|data diode)[\s\S]{0,30}(?:down|fail|error|not passing|issue|blocked)/i, title: 'Data Diode Issue', category: 'REAP', threat: 'Urgent' },
+            { regex: /(?:files|file transfer|file collection)[\s\S]{0,30}(?:not coming|stopped|fail|missing|zero|none)/i, title: 'File Collection Issue', category: 'REAP', threat: 'Mild' },
+            // LOGISTICS
+            { regex: /(?:ship(?:ment|ping)|equipment|gear|parts)[\s\S]{0,40}(?:delayed|lost|missing|damaged|wrong|backordered|hasn't arrived|not received)/i, title: 'Shipment Issue', category: 'Logistics', threat: 'Mild' },
+            { regex: /(?:install|deinstall|onboard visit)[\s\S]{0,30}(?:delayed|postponed|cancelled|rescheduled|issue)/i, title: 'Install Schedule Issue', category: 'Logistics', threat: 'Mild' },
+            { regex: /(?:access|escort|clearance|badge|base access)[\s\S]{0,30}(?:denied|issue|problem|cannot get|need)/i, title: 'Access/Escort Issue', category: 'Logistics', threat: 'Mild' },
+            // STATUS / PROBLEM LANGUAGE
+            { regex: /(?:still not working|still down|still broken|still offline|ongoing issue|unresolved|no fix yet|has not been fixed)/i, title: 'Ongoing Unresolved Issue', category: 'General', threat: 'Urgent' },
+            { regex: /(?:need help|need support|need assistance|requesting support|please advise|urgent request|asap|immediately)/i, title: 'Support Requested', category: 'General', threat: 'Mild' },
+            { regex: /(?:unable to|cannot|can't)[\s\S]{0,40}(?:complete|perform|accomplish|access|use|operate|get|work)/i, title: 'Capability Impacted', category: 'General', threat: 'Mild' },
+            { regex: /(?:workaround|temporary fix|band-aid|working around|manual process)/i, title: 'Running on Workaround', category: 'General', threat: 'Mild' },
+            { regex: /(?:been down|has been down|went down|going down)[\s\S]{0,20}(?:for|since|past|days|hours|weeks)/i, title: 'Extended Outage', category: 'General', threat: 'Urgent' },
+            { regex: /(?:no response|not responding|haven't heard|no reply|waiting for response|awaiting response)/i, title: 'Awaiting Response', category: 'General', threat: 'Mild' },
         ];
         
-        // Scan each email against all patterns
-        const findings = {};
-        shipEmails.forEach(email => {
-            const text = (email.emailText || '') + ' ' + (email.result?.emailSummary || '');
-            if (!text.trim()) return;
+        var findings = {};
+        shipEmails.forEach(function(email) {
+            var text = ((email.emailText || '') + ' ' + (email.result ? (email.result.emailSummary || '') : '')).toLowerCase();
+            if (!text || text.trim().length < 10) return;
+            if (/^(all good|everything is working|no issues|systems are up|operational|running fine|confirmed working)/i.test(text.trim())) return;
             
-            patterns.forEach(p => {
+            patterns.forEach(function(p) {
                 if (p.regex.test(text)) {
-                    if (!findings[p.title]) {
-                        findings[p.title] = { ...p, mentions: [], firstSeen: null, lastSeen: null };
-                    }
-                    const snippet = text.substring(0, 200).replace(/\n/g, ' ').trim();
-                    findings[p.title].mentions.push({
-                        emailId: email.id,
-                        date: email.timestamp,
-                        sender: email.result?.sender?.name || email.result?.contactedBy || 'Unknown',
-                        snippet: snippet,
-                        summary: email.result?.emailSummary || ''
-                    });
-                    if (!findings[p.title].firstSeen || new Date(email.timestamp) < new Date(findings[p.title].firstSeen)) {
-                        findings[p.title].firstSeen = email.timestamp;
-                    }
-                    if (!findings[p.title].lastSeen || new Date(email.timestamp) > new Date(findings[p.title].lastSeen)) {
-                        findings[p.title].lastSeen = email.timestamp;
-                    }
+                    var key = p.title;
+                    if (!findings[key]) findings[key] = { title: p.title, category: p.category, threat: p.threat, mentions: [], firstSeen: null, lastSeen: null };
+                    var snippet = (email.emailText || (email.result ? email.result.emailSummary : '') || '').substring(0, 200).replace(/\n/g, ' ').trim();
+                    var sender = email.result ? (email.result.sender ? email.result.sender.name : email.result.contactedBy) : 'Unknown';
+                    if (sender === '__SHIP__') sender = 'Ship';
+                    findings[key].mentions.push({ emailId: email.id, date: email.timestamp, sender: sender, snippet: snippet });
+                    if (!findings[key].firstSeen || new Date(email.timestamp) < new Date(findings[key].firstSeen)) findings[key].firstSeen = email.timestamp;
+                    if (!findings[key].lastSeen || new Date(email.timestamp) > new Date(findings[key].lastSeen)) findings[key].lastSeen = email.timestamp;
                 }
             });
         });
         
-        // Check which are already tracked as issues
-        const issueList = Object.values(findings).map(f => {
-            const alreadyTracked = issues.some(i => 
-                i.shipId === shipId && !i.resolved && 
-                (i.title?.toLowerCase().includes(f.title.toLowerCase()) || i.category === f.category)
-            );
-            return { ...f, alreadyTracked, mentionCount: f.mentions.length };
-        }).sort((a,b) => b.mentionCount - a.mentionCount);
+        var issueList = Object.values(findings).map(function(f) {
+            var alreadyTracked = issues.some(function(i) { return i.shipId === shipId && !i.resolved && (i.title && i.title.toLowerCase().indexOf(f.title.toLowerCase()) !== -1 || i.category === f.category); });
+            return Object.assign({}, f, { alreadyTracked: alreadyTracked, mentionCount: f.mentions.length });
+        }).sort(function(a,b) {
+            var to = { 'Urgent': 0, 'High': 1, 'Mild': 2 };
+            if ((to[a.threat]||2) !== (to[b.threat]||2)) return (to[a.threat]||2) - (to[b.threat]||2);
+            return b.mentionCount - a.mentionCount;
+        });
         
-        setHistoryScan({ shipId, shipName, totalEmails: shipEmails.length, findings: issueList });
+        setHistoryScan({ shipId: shipId, shipName: shipName, totalEmails: shipEmails.length, findings: issueList });
     };
-    
     // Auto-detect issues from email text — lightweight, no API
     const detectIssueFromText = (text, shipId, shipName) => {
         if (!text || text.length < 10) return;
