@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T098";
+    var APP_BUILD = "2026-02-27T100";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -919,9 +919,80 @@ function AdminPanel({ users, onClose }) {
                         {deactivated.map(u => (<div key={u.id} style={{background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',padding:'12px 16px',marginBottom:'6px',display:'flex',justifyContent:'space-between',alignItems:'center',opacity:0.6}}><div><div style={{fontWeight:600}}>{u.username}</div><div style={{fontSize:'10px',color:'var(--text-muted)'}}>Deactivated: {u.deactivatedAt ? new Date(u.deactivatedAt).toLocaleDateString() : '?'}</div></div><div style={{display:'flex',gap:'6px'}}><button onClick={() => approve(u)} style={{padding:'6px 14px',background:'var(--green-glow)',color:'var(--green)',border:'1px solid var(--green)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',fontWeight:600}}>↩ Reactivate</button><button onClick={() => del(u)} style={{padding:'6px 10px',background:'var(--red-glow)',color:'var(--red)',border:'1px solid var(--red)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>🗑</button></div></div>))}</div>}
                     {denied.length > 0 && <div><h3 style={{fontSize:'13px',color:'var(--red)',marginBottom:'12px'}}>✕ Denied ({denied.length})</h3>
                         {denied.map(u => (<div key={u.id} style={{background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',padding:'12px 16px',marginBottom:'6px',display:'flex',justifyContent:'space-between',alignItems:'center',opacity:0.5}}><div style={{fontWeight:600}}>{u.username}</div><div style={{display:'flex',gap:'6px'}}><button onClick={() => approve(u)} style={{padding:'6px 14px',background:'var(--green-glow)',color:'var(--green)',border:'1px solid var(--green)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',fontWeight:600}}>Approve</button><button onClick={() => del(u)} style={{padding:'6px 10px',background:'var(--red-glow)',color:'var(--red)',border:'1px solid var(--red)',borderRadius:'6px',fontSize:'11px',cursor:'pointer'}}>🗑</button></div></div>))}</div>}
+                    
+                    <VBAConfigPanel/>
                 </div>
             </div>
         </div>
+    );
+}
+
+function VBAConfigPanel() {
+    var [codeText, setCodeText] = React.useState('');
+    var [currentVersion, setCurrentVersion] = React.useState('');
+    var [newVersion, setNewVersion] = React.useState('');
+    var [saving, setSaving] = React.useState(false);
+    var [saved, setSaved] = React.useState(false);
+    
+    React.useEffect(function() {
+        db.collection('settings').doc('vbaConfig').get().then(function(doc) {
+            if (doc.exists) {
+                setCurrentVersion(doc.data().version || '?');
+                var v = (doc.data().version || '2.0').split('.');
+                setNewVersion(v[0] + '.' + (parseInt(v[1] || '0') + 1));
+            }
+        });
+        db.collection('settings').doc('vbaCode').get().then(function(doc) {
+            if (doc.exists && doc.data().code) {
+                setCodeText(doc.data().code);
+            }
+        });
+    }, []);
+    
+    var pushUpdate = function() {
+        if (!codeText || codeText.length < 500) { alert('Code is too short. Paste the full .bas file.'); return; }
+        if (!newVersion) { alert('Enter a version number.'); return; }
+        if (!confirm('Push VBA v' + newVersion + ' to all coworkers?\n\nNext time they open Outlook, they will be prompted to update.')) return;
+        
+        setSaving(true);
+        
+        // Save code to Firebase
+        var codeToSave = codeText.replace(/\r\n/g, '\n');
+        db.collection('settings').doc('vbaCode').set({ code: codeToSave, pushedAt: new Date().toISOString(), pushedBy: 'admin' }).then(function() {
+            // Update version
+            return db.collection('settings').doc('vbaConfig').set({ version: newVersion }, { merge: true });
+        }).then(function() {
+            setSaving(false);
+            setSaved(true);
+            setCurrentVersion(newVersion);
+            var v = newVersion.split('.');
+            setNewVersion(v[0] + '.' + (parseInt(v[1] || '0') + 1));
+            setTimeout(function() { setSaved(false); }, 3000);
+        });
+    };
+    
+    return React.createElement('div', {style: {marginTop:'24px',borderTop:'1px solid var(--border)',paddingTop:'20px'}},
+        React.createElement('h3', {style: {fontSize:'14px',fontWeight:700,marginBottom:'4px'}}, '\uD83D\uDD27 Push VBA Update'),
+        React.createElement('div', {style: {fontSize:'11px',color:'var(--text-muted)',marginBottom:'16px'}}, 'Paste new .bas code here \u2192 click Push \u2192 all coworkers auto-update on next Outlook restart'),
+        
+        React.createElement('div', {style: {display:'flex',gap:'12px',alignItems:'center',marginBottom:'12px'}},
+            React.createElement('span', {style: {fontSize:'11px',color:'var(--text-muted)'}}, 'Current: v' + currentVersion),
+            React.createElement('span', {style: {fontSize:'11px',color:'var(--text-muted)'}}, '\u2192'),
+            React.createElement('span', {style: {fontSize:'10px',fontWeight:700,color:'var(--text-muted)'}}, 'New version:'),
+            React.createElement('input', {style: {width:'60px',padding:'4px 8px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)',fontSize:'12px',fontWeight:700}, value: newVersion, onChange: function(e) { setNewVersion(e.target.value); }})
+        ),
+        
+        React.createElement('textarea', {
+            style: {width:'100%',minHeight:'200px',padding:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'10px',fontFamily:'monospace',resize:'vertical',lineHeight:'1.4'},
+            placeholder: 'Paste the entire .bas file contents here...',
+            value: codeText,
+            onChange: function(e) { setCodeText(e.target.value); }
+        }),
+        
+        React.createElement('div', {style: {display:'flex',alignItems:'center',gap:'12px',marginTop:'10px'}},
+            React.createElement('button', {onClick: pushUpdate, disabled: saving, style: {padding:'10px 20px',background: saved ? 'var(--green)' : 'var(--primary)',color:'#fff',border:'none',borderRadius:'8px',fontWeight:700,fontSize:'13px',cursor:'pointer'}}, saving ? 'Pushing...' : saved ? '\u2705 Pushed!' : '\uD83D\uDE80 Push Update to All'),
+            codeText.length > 0 ? React.createElement('span', {style: {fontSize:'10px',color:'var(--text-muted)'}}, codeText.length.toLocaleString() + ' chars') : null
+        )
     );
 }
 
