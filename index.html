@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T101";
+    var APP_BUILD = "2026-02-27T102";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2144,31 +2144,42 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 data._cleanSubject = (data.subject || '').replace(/^(RE|FW|FWD):\s*/gi, '').replace(/^(RE|FW|FWD):\s*/gi, '').trim();
                 pending.push(data);
             });
-            // Deduplicate: by EntryID, subject+sender+time, and body content
+            // Deduplicate: aggressive cross-user dedup
             var seen = {};
             var existingHistory = [];
             try { existingHistory = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(ex) {}
             var deduped = pending.filter(function(item) {
-                // Check by Outlook EntryID
+                // Key 1: subject + sender email + date (catches same email from different coworkers)
+                var subjectClean = (item.subject || '').replace(/^(RE|FW|FWD):\s*/gi, '').trim().toLowerCase();
+                var senderClean = (item.senderEmail || '').toLowerCase();
+                var dateClean = (item.receivedAt || '').substring(0, 16);
+                var crossUserKey = subjectClean + '|' + senderClean + '|' + dateClean;
+                if (seen['cu_' + crossUserKey]) return false;
+                seen['cu_' + crossUserKey] = true;
+                
+                // Key 2: body first 80 chars + sender (catches same content regardless of subject differences)
+                var bodySnip = ((item.body || '').substring(0, 80)).toLowerCase().replace(/\s+/g, ' ').trim();
+                if (bodySnip.length > 10) {
+                    var bodyKey = senderClean + '|' + bodySnip;
+                    if (seen['bk_' + bodyKey]) return false;
+                    seen['bk_' + bodyKey] = true;
+                }
+                
+                // Key 3: Outlook EntryID (catches same user clicking button twice)
                 var eid = item.outlookEntryId || '';
                 if (eid) {
                     if (seen['eid_' + eid]) return false;
                     seen['eid_' + eid] = true;
-                    if (existingHistory.some(function(h) { return h.id === 'AE_' + item._docId; })) return false;
                 }
-                // Check by subject + sender + timestamp
-                var key = (item.subject || '') + '|' + (item.senderEmail || '') + '|' + (item.receivedAt || '');
-                if (seen['key_' + key]) return false;
-                seen['key_' + key] = true;
-                // Check by body content (first 100 chars) + sender to catch same message uploaded multiple times
-                var bodyKey = (item.senderEmail || '') + '|' + ((item.body || '').substring(0, 100));
-                if (seen['body_' + bodyKey]) return false;
-                seen['body_' + bodyKey] = true;
-                // Check against existing history
+                
+                // Key 4: already accepted in history
                 if (existingHistory.some(function(h) {
-                    return h.fromEmail === (item.senderEmail || '').toLowerCase() && 
-                           h.timestamp === (item.receivedAt || item.timestamp);
+                    var hSubj = (h.result && h.result.emailSummary ? h.result.emailSummary : '').toLowerCase().trim();
+                    var hFrom = (h.fromEmail || '').toLowerCase();
+                    var hDate = (h.timestamp || '').substring(0, 16);
+                    return hFrom === senderClean && hDate === dateClean;
                 })) return false;
+                
                 return true;
             });
             // Group by threadGroup — threads show as one card
@@ -3400,7 +3411,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 <div style={{fontSize:'13px'}}>No pending emails — all caught up!</div>
                             </div>
                         ) : (
-                            <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                            <div style={{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'350px',overflowY:'auto',paddingRight:'4px'}}>
                                 {pendingEmails.slice().sort(function(a,b) { return new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0); }).map(function(item, idx) {
                                     var dirColor = item._isOutgoing ? 'var(--blue)' : 'var(--amber)';
                                     var dirLabel = item._isOutgoing ? '→ Sent' : '← Reply';
