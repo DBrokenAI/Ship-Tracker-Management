@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T100";
+    var APP_BUILD = "2026-02-27T101";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -943,8 +943,8 @@ function VBAConfigPanel() {
             }
         });
         db.collection('settings').doc('vbaCode').get().then(function(doc) {
-            if (doc.exists && doc.data().code) {
-                setCodeText(doc.data().code);
+            if (doc.exists && doc.data().sourceCode) {
+                setCodeText(doc.data().sourceCode);
             }
         });
     }, []);
@@ -958,7 +958,7 @@ function VBAConfigPanel() {
         
         // Save code to Firebase
         var codeToSave = codeText.replace(/\r\n/g, '\n');
-        db.collection('settings').doc('vbaCode').set({ code: codeToSave, pushedAt: new Date().toISOString(), pushedBy: 'admin' }).then(function() {
+        db.collection('settings').doc('vbaCode').set({ sourceCode: codeToSave, pushedAt: new Date().toISOString(), pushedBy: 'admin' }).then(function() {
             // Update version
             return db.collection('settings').doc('vbaConfig').set({ version: newVersion }, { merge: true });
         }).then(function() {
