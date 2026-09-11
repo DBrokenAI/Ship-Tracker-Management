@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T105";
+    var APP_BUILD = "2026-02-27T106";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -591,14 +591,21 @@ const useFirestore = (collectionName, initialData = []) => {
                 setData(items);
                 dataRef.current = items;
                 localStorage.setItem('fb_' + collectionName, JSON.stringify(items));
+                // Mark this collection as initialized so we never overwrite with defaults
+                localStorage.setItem('fb_init_' + collectionName, 'true');
             } else if (initialData.length > 0 && !initialized.current) {
-                initialized.current = true;
-                const batch = db.batch();
-                initialData.forEach(item => {
-                    const ref = db.collection(collectionName).doc(item.id);
-                    batch.set(ref, item);
-                });
-                batch.commit();
+                // ONLY use defaults if we've NEVER had data before
+                var everInitialized = localStorage.getItem('fb_init_' + collectionName);
+                if (!everInitialized) {
+                    initialized.current = true;
+                    const batch = db.batch();
+                    initialData.forEach(item => {
+                        const ref = db.collection(collectionName).doc(item.id);
+                        batch.set(ref, item);
+                    });
+                    batch.commit();
+                }
+                // If we HAD data before but Firebase returned empty, keep localStorage data
             }
             setLoading(false);
         }, (error) => {
