@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T108";
+    var APP_BUILD = "2026-02-27T110";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1544,11 +1544,11 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         { id: 2, label: 'Add Ship', icon: 'add' },
         { id: 4, label: 'Inventory', icon: 'inventory' }, { id: 5, label: 'Trips', icon: 'installs' },
         { id: 6, label: 'Parts', icon: 'parts' }, { id: 9, label: 'Contacts', icon: 'email' },
-        { id: 8, label: 'Data / Import', icon: 'settings' },
+        
         { id: 11, label: 'Activity Log', icon: 'activity' },
         ...(isAdmin ? [{ id: 10, label: 'Suggestions', icon: 'issues', badge: suggestions.filter(s => s.status === 'new').length }] : []),
     ];
-    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2] }, { title: 'Equipment', items: [4, 5, 6] }, { title: 'Comms', items: [9] }, { title: 'System', items: isAdmin ? [8, 11, 10] : [8, 11] }];
+    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2] }, { title: 'Equipment', items: [4, 5, 6] }, { title: 'Comms', items: [9] }, { title: 'System', items: isAdmin ? [11, 10] : [11] }];
 
     return (
         <div className="app">
@@ -1676,7 +1676,6 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 {page === 5 && <Installs ships={ships} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
                 {page === 6 && <Parts parts={parts} setParts={setParts} toast={toast} logActivity={logActivity}/>}
                 {page === 7 && <EmailStatus ships={ships} setShips={setShips} issues={issues} toast={toast} logActivity={logActivity} currentUser={currentUser} allUsers={allUsers}/>}
-                {page === 8 && <DataSettings ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} setDailyChecks={setDailyChecks} installs={installs} setInstalls={setInstalls} parts={parts} setParts={setParts} activityLog={activityLog} setActivityLog={setActivityLog} toast={toast} backupSettings={backupSettings} setBackupSettings={setBackupSettings} downloadBackup={downloadBackup}/>}
                 {page === 9 && <POCDirectory ships={ships} toast={toast}/>}
                 {page === 10 && isAdmin && <Suggestions suggestions={suggestions} setSuggestions={setSuggestions} toast={toast}/>}
                 {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser}/>}
@@ -8562,271 +8561,255 @@ function Suggestions({ suggestions, setSuggestions, toast }) {
 function POCDirectory({ ships, toast }) {
     var [search, setSearch] = React.useState('');
     var [filterShip, setFilterShip] = React.useState('all');
+    var [addModal, setAddModal] = React.useState(false);
+    var [editContact, setEditContact] = React.useState(null);
+    var [contacts, setContacts] = React.useState([]);
+    var [form, setForm] = React.useState({ name: '', rank: '', role: '', email: '', phone: '', ship: '', notes: '' });
+    var [jumpLetter, setJumpLetter] = React.useState('');
     
-    // Build contacts from ships
-    var contacts = [];
-    var seen = {};
-    
-    // From ship POC data
-    ships.forEach(function(s) {
-        if (s.email && s.email.indexOf('@') !== -1) {
-            var key = s.email.toLowerCase();
-            if (!seen[key]) {
-                seen[key] = true;
-                contacts.push({ name: s.poc || '', email: s.email, ship: s.name, shipId: s.id, source: 'ship', phone: '' });
-            }
-        }
-    });
-    
-    // Also check localStorage for accepted emails
-    try {
-        var history = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
-        history.forEach(function(h) {
-            if (h.fromEmail && h.fromEmail.indexOf('@') !== -1 && h.fromEmail.indexOf('navy.mil') !== -1) {
-                var key = h.fromEmail.toLowerCase();
-                if (!seen[key] && key.indexOf('niwc') === -1 && key.indexOf('sonar') === -1 && key.indexOf('spawar') === -1) {
-                    seen[key] = true;
-                    var senderName = h.fromName || (h.result && h.result.sender ? h.result.sender.name : '') || '';
-                    if (senderName === '__SHIP__') senderName = '';
-                    contacts.push({ name: senderName, email: h.fromEmail, ship: h.shipName || '', shipId: h.shipId || '', source: 'email', phone: '' });
-                }
+    React.useEffect(function() {
+        var unsub = db.collection('pocContacts').onSnapshot(function(snap) {
+            var list = [];
+            snap.forEach(function(doc) { list.push(Object.assign({ id: doc.id }, doc.data())); });
+            setContacts(list);
+        });
+        ships.forEach(function(s) {
+            if (s.email && s.email.indexOf('@') !== -1) {
+                db.collection('pocContacts').doc('auto_' + s.id).set({
+                    name: s.poc || '', email: s.email, ship: s.name, shipId: s.id,
+                    rank: '', role: 'Ship POC', phone: '', notes: '', source: 'auto'
+                }, { merge: true });
             }
         });
-    } catch(e) {}
+        try {
+            var history = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
+            var seen = {};
+            history.forEach(function(h) {
+                if (h.fromEmail && h.fromEmail.indexOf('@') !== -1) {
+                    var key = h.fromEmail.toLowerCase();
+                    if (!seen[key] && key.indexOf('niwc') === -1 && key.indexOf('sonar') === -1 && key.indexOf('spawar') === -1 && key.indexOf('corona') === -1) {
+                        seen[key] = true;
+                        var senderName = h.fromName || '';
+                        if (senderName === '__SHIP__') senderName = '';
+                        if (senderName && h.shipId) {
+                            db.collection('pocContacts').doc('em_' + key.replace(/[^a-z0-9]/g,'')).set({
+                                name: senderName, email: h.fromEmail, ship: h.shipName || '', shipId: h.shipId || '',
+                                rank: '', role: '', phone: '', notes: '', source: 'email'
+                            }, { merge: true });
+                        }
+                    }
+                }
+            });
+        } catch(e) {}
+        return function() { unsub(); };
+    }, []);
+    
+    // Get last communication date per contact email
+    var emailHistory = [];
+    try { emailHistory = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e) {}
+    
+    var getLastComm = function(email) {
+        if (!email) return null;
+        var emailLower = email.toLowerCase();
+        var match = null;
+        emailHistory.forEach(function(h) {
+            if ((h.fromEmail || '').toLowerCase() === emailLower || (h.toEmail || '').toLowerCase() === emailLower) {
+                if (!match || new Date(h.timestamp) > new Date(match.timestamp)) match = h;
+            }
+        });
+        return match;
+    };
+    
+    var saveContact = function() {
+        var id = editContact ? editContact.id : 'poc_' + Date.now();
+        db.collection('pocContacts').doc(id).set(Object.assign({}, form, { source: 'manual', updatedAt: new Date().toISOString() }));
+        toast(editContact ? 'Contact updated' : 'Contact added', 'success');
+        setAddModal(false); setEditContact(null);
+        setForm({ name: '', rank: '', role: '', email: '', phone: '', ship: '', notes: '' });
+    };
+    
+    var deleteContact = function(c) {
+        if (confirm('Delete ' + (c.name || c.email) + '?')) {
+            db.collection('pocContacts').doc(c.id).delete();
+            toast('Contact deleted', 'info');
+        }
+    };
     
     // Filter
     var filtered = contacts.filter(function(c) {
         if (filterShip !== 'all' && c.ship !== filterShip) return false;
         if (search) {
             var s = search.toLowerCase();
-            return (c.name || '').toLowerCase().indexOf(s) !== -1 || (c.email || '').toLowerCase().indexOf(s) !== -1 || (c.ship || '').toLowerCase().indexOf(s) !== -1;
+            return (c.name||'').toLowerCase().indexOf(s) !== -1 || (c.email||'').toLowerCase().indexOf(s) !== -1 || (c.ship||'').toLowerCase().indexOf(s) !== -1 || (c.rank||'').toLowerCase().indexOf(s) !== -1 || (c.role||'').toLowerCase().indexOf(s) !== -1;
         }
         return true;
-    }).sort(function(a, b) { return (a.ship || '').localeCompare(b.ship || '') || (a.name || '').localeCompare(b.name || ''); });
+    });
     
-    return React.createElement('div', null,
-        React.createElement('div', {className:'flex-between mb-lg'},
-            React.createElement('h2', {style:{fontSize:'20px',fontWeight:800}}, '\uD83D\uDCCB POC Directory — ' + contacts.length + ' contacts'),
-            null
-        ),
-        React.createElement('div', {style:{display:'flex',gap:'10px',marginBottom:'16px'}},
-            React.createElement('input', {style:{flex:1,padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, placeholder:'Search name, email, or ship...', value:search, onChange:function(e){setSearch(e.target.value);}}),
-            React.createElement('select', {style:{padding:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, value:filterShip, onChange:function(e){setFilterShip(e.target.value);}},
-                React.createElement('option', {value:'all'}, 'All Ships'),
-                ships.map(function(s) { return React.createElement('option', {key:s.id, value:s.name}, s.name); })
+    // Recently contacted — top 5 contacts with most recent communication
+    var recentlyContacted = contacts.filter(function(c) {
+        return c.email && getLastComm(c.email);
+    }).sort(function(a, b) {
+        var aComm = getLastComm(a.email);
+        var bComm = getLastComm(b.email);
+        return new Date(bComm.timestamp) - new Date(aComm.timestamp);
+    }).slice(0, 5);
+    
+    // Group by ship for main list
+    var grouped = {};
+    filtered.sort(function(a,b) { return (a.name||'').localeCompare(b.name||''); }).forEach(function(c) {
+        var key = c.ship || 'Unassigned';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(c);
+    });
+    
+    // Alphabet for sidebar
+    var alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    var usedLetters = {};
+    contacts.forEach(function(c) { if (c.name) usedLetters[c.name.charAt(0).toUpperCase()] = true; });
+    
+    var relTime = function(date) {
+        if (!date) return '';
+        var mins = Math.floor((new Date() - new Date(date)) / 60000);
+        if (mins < 60) return mins + 'm ago';
+        var hours = Math.floor(mins / 60);
+        if (hours < 24) return hours + 'h ago';
+        var days = Math.floor(hours / 24);
+        if (days < 30) return days + 'd ago';
+        return Math.floor(days / 30) + 'mo ago';
+    };
+
+    // Contact card renderer
+    var renderCard = function(c, showShip) {
+        var lastComm = getLastComm(c.email);
+        return React.createElement('div', {key: c.id, id: 'contact_' + (c.name||'').charAt(0).toUpperCase(), style: {padding:'14px 16px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',display:'flex',gap:'12px',alignItems:'flex-start',transition:'border-color 0.15s'}, onMouseOver:function(e){e.currentTarget.style.borderColor='var(--primary)';}, onMouseOut:function(e){e.currentTarget.style.borderColor='var(--border)';}},
+            React.createElement('div', {style:{width:'44px',height:'44px',borderRadius:'12px',background:'var(--primary-glow)',border:'1.5px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'15px',fontWeight:800,color:'var(--primary)',flexShrink:0}}, (c.name||'?').substring(0,2).toUpperCase()),
+            React.createElement('div', {style:{flex:1,minWidth:0}},
+                React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'2px'}},
+                    React.createElement('span', {style:{fontWeight:700,fontSize:'14px',color:'var(--text)'}}, c.name || 'Unknown'),
+                    c.rank ? React.createElement('span', {style:{fontSize:'10px',padding:'2px 6px',background:'var(--bg-input)',borderRadius:'4px',color:'var(--text-muted)',fontWeight:600}}, c.rank) : null
+                ),
+                c.role ? React.createElement('div', {style:{fontSize:'11px',color:'var(--blue)',fontWeight:500,marginBottom:'4px'}}, c.role) : null,
+                showShip && c.ship ? React.createElement('div', {style:{fontSize:'10px',color:'var(--text-muted)',fontWeight:600,marginBottom:'4px'}}, '\uD83D\uDEA2 ' + c.ship) : null,
+                React.createElement('div', {style:{display:'flex',gap:'12px',flexWrap:'wrap',marginTop:'6px'}},
+                    c.email ? React.createElement('span', {style:{fontSize:'11px',color:'var(--primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}, onClick:function(){ navigator.clipboard.writeText(c.email); toast('Email copied!','success'); }, title:'Click to copy'}, '\uD83D\uDCE7 ' + c.email) : null,
+                    c.phone ? React.createElement('span', {style:{fontSize:'11px',color:'var(--text-dim)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}, onClick:function(){ navigator.clipboard.writeText(c.phone); toast('Phone copied!','success'); }, title:'Click to copy'}, '\uD83D\uDCDE ' + c.phone) : null
+                ),
+                c.notes ? React.createElement('div', {style:{fontSize:'10px',color:'var(--amber)',marginTop:'6px',fontStyle:'italic',background:'rgba(245,158,11,0.08)',padding:'4px 8px',borderRadius:'4px'}}, '\uD83D\uDCDD ' + c.notes) : null,
+                lastComm ? React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',marginTop:'6px',display:'flex',alignItems:'center',gap:'6px'}},
+                    React.createElement('span', {style:{width:'6px',height:'6px',borderRadius:'50%',background: (new Date() - new Date(lastComm.timestamp)) < 604800000 ? 'var(--green)' : 'var(--amber)',display:'inline-block'}}),
+                    'Last contact: ' + relTime(lastComm.timestamp)
+                ) : null
+            ),
+            React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:'6px',flexShrink:0}},
+                c.email ? React.createElement('a', {href:'mailto:' + c.email, style:{fontSize:'10px',padding:'4px 8px',background:'var(--primary-glow)',border:'1px solid var(--primary)',borderRadius:'6px',color:'var(--primary)',textDecoration:'none',fontWeight:600,textAlign:'center'}, title:'Send email'}, '\u2709\uFE0F Email') : null,
+                React.createElement('button', {onClick:function(){ setForm({name:c.name||'',rank:c.rank||'',role:c.role||'',email:c.email||'',phone:c.phone||'',ship:c.ship||'',notes:c.notes||''}); setEditContact(c); setAddModal(true); }, style:{fontSize:'10px',padding:'4px 8px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',cursor:'pointer'}}, '\u270F\uFE0F Edit'),
+                React.createElement('button', {onClick:function(){ deleteContact(c); }, style:{fontSize:'10px',padding:'4px 8px',background:'none',border:'1px solid transparent',borderRadius:'6px',color:'var(--red)',cursor:'pointer'}}, '\uD83D\uDDD1\uFE0F')
             )
+        );
+    };
+
+    return React.createElement('div', {style:{display:'flex',gap:'0'}},
+        
+        // Alphabet sidebar
+        React.createElement('div', {style:{position:'sticky',top:'20px',display:'flex',flexDirection:'column',alignItems:'center',gap:'1px',padding:'4px 8px',marginRight:'12px',alignSelf:'flex-start'}},
+            alphabet.map(function(letter) {
+                var hasContacts = usedLetters[letter];
+                return React.createElement('div', {key:letter, onClick:function() {
+                    if (!hasContacts) return;
+                    setSearch(letter);
+                    setJumpLetter(letter);
+                }, style:{fontSize:'10px',fontWeight:700,color: hasContacts ? 'var(--primary)' : 'var(--text-muted)',cursor: hasContacts ? 'pointer' : 'default',padding:'2px 4px',borderRadius:'3px',opacity: hasContacts ? 1 : 0.3,transition:'all 0.1s'}, onMouseOver:function(e){ if(hasContacts) e.currentTarget.style.background='var(--primary-glow)'; }, onMouseOut:function(e){ e.currentTarget.style.background='transparent'; }}, letter);
+            }),
+            React.createElement('div', {onClick:function(){setSearch('');setJumpLetter('');}, style:{fontSize:'10px',fontWeight:600,color:'var(--text-muted)',cursor:'pointer',padding:'4px',marginTop:'4px'}}, '\u2715')
         ),
-        React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:'6px'}},
-            filtered.length === 0 ? React.createElement('div', {style:{textAlign:'center',padding:'40px',color:'var(--text-muted)'}}, 'No contacts found') :
-            filtered.map(function(c, i) {
-                return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',padding:'12px 16px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',gap:'16px'}},
-                    React.createElement('div', {style:{width:'36px',height:'36px',borderRadius:'10px',background:'var(--primary-glow)',border:'1px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:800,color:'var(--primary)',flexShrink:0}}, (c.name || '?').substring(0,2).toUpperCase()),
-                    React.createElement('div', {style:{flex:1,minWidth:0}},
-                        React.createElement('div', {style:{fontWeight:700,fontSize:'13px',color:'var(--text)'}}, c.name || 'Unknown'),
-                        React.createElement('div', {style:{fontSize:'11px',color:'var(--primary)',cursor:'pointer'}, onClick:function(){ navigator.clipboard.writeText(c.email); toast('Email copied!','success'); }}, c.email)
+        
+        // Main content
+        React.createElement('div', {style:{flex:1}},
+            
+            // Header
+            React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}},
+                React.createElement('h2', {style:{fontSize:'22px',fontWeight:800,margin:0}}, '\uD83D\uDCCB Ship Contacts'),
+                React.createElement('div', {style:{display:'flex',gap:'8px',alignItems:'center'}},
+                    React.createElement('span', {style:{fontSize:'12px',color:'var(--text-muted)'}}, contacts.length + ' contacts'),
+                    React.createElement('button', {className:'btn btn-primary', style:{borderRadius:'10px',fontWeight:700,padding:'10px 18px'}, onClick:function(){ setForm({name:'',rank:'',role:'',email:'',phone:'',ship:'',notes:''}); setEditContact(null); setAddModal(true); }}, '+ Add Contact')
+                )
+            ),
+            
+            // Search bar
+            React.createElement('div', {style:{display:'flex',gap:'10px',marginBottom:'24px'}},
+                React.createElement('input', {style:{flex:1,padding:'12px 16px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',color:'var(--text)',fontSize:'14px'}, placeholder:'\uD83D\uDD0D Search by name, email, rank, role, or ship...', value:search, onChange:function(e){setSearch(e.target.value);setJumpLetter('');}}),
+                React.createElement('select', {style:{padding:'12px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',color:'var(--text)',fontSize:'13px',minWidth:'140px'}, value:filterShip, onChange:function(e){setFilterShip(e.target.value);}},
+                    React.createElement('option', {value:'all'}, 'All Ships'),
+                    ships.map(function(s) { return React.createElement('option', {key:s.id, value:s.name}, s.name); })
+                )
+            ),
+            
+            // Recently Contacted
+            recentlyContacted.length > 0 && !search && filterShip === 'all' ? React.createElement('div', {style:{marginBottom:'28px'}},
+                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',textTransform:'uppercase'}}, '\u23F1\uFE0F Recently Contacted'),
+                React.createElement('div', {style:{display:'flex',gap:'10px',overflowX:'auto',paddingBottom:'6px'}},
+                    recentlyContacted.map(function(c) {
+                        var lastComm = getLastComm(c.email);
+                        return React.createElement('div', {key:'rc_'+c.id, style:{minWidth:'160px',padding:'12px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',cursor:'pointer',flexShrink:0,transition:'border-color 0.15s'}, onMouseOver:function(e){e.currentTarget.style.borderColor='var(--primary)';}, onMouseOut:function(e){e.currentTarget.style.borderColor='var(--border)';}},
+                            React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}},
+                                React.createElement('div', {style:{width:'28px',height:'28px',borderRadius:'8px',background:'var(--primary-glow)',border:'1px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:800,color:'var(--primary)'}}, (c.name||'?').substring(0,2).toUpperCase()),
+                                React.createElement('div', null,
+                                    React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--text)'}}, (c.name||'Unknown').split(' ')[0]),
+                                    React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)'}}, c.ship || '')
+                                )
+                            ),
+                            React.createElement('div', {style:{fontSize:'9px',color:'var(--green)',display:'flex',alignItems:'center',gap:'4px'}},
+                                React.createElement('span', {style:{width:'5px',height:'5px',borderRadius:'50%',background:'var(--green)',display:'inline-block'}}),
+                                lastComm ? relTime(lastComm.timestamp) : ''
+                            )
+                        );
+                    })
+                )
+            ) : null,
+            
+            // Grouped contacts
+            Object.keys(grouped).length === 0 ? React.createElement('div', {style:{textAlign:'center',padding:'60px',color:'var(--text-muted)'}}, React.createElement('div', {style:{fontSize:'40px',marginBottom:'12px'}}, '\uD83D\uDCCB'), React.createElement('div', {style:{fontSize:'14px'}}, 'No contacts found')) :
+            Object.keys(grouped).sort().map(function(shipName) {
+                return React.createElement('div', {key:shipName, style:{marginBottom:'24px'}},
+                    React.createElement('div', {style:{fontSize:'13px',fontWeight:800,color:'var(--primary)',marginBottom:'10px',paddingBottom:'8px',borderBottom:'2px solid var(--border)',display:'flex',alignItems:'center',gap:'8px'}},
+                        '\uD83D\uDEA2 ' + shipName,
+                        React.createElement('span', {style:{fontSize:'10px',color:'var(--text-muted)',fontWeight:500,background:'var(--bg-input)',padding:'2px 8px',borderRadius:'10px'}}, grouped[shipName].length)
                     ),
-                    React.createElement('div', {style:{fontSize:'12px',color:'var(--text-muted)',fontWeight:600,background:'var(--bg-input)',padding:'4px 10px',borderRadius:'6px'}}, c.ship || '—'),
-                    React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px'}}, c.source)
+                    React.createElement('div', {style:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))',gap:'10px'}},
+                        grouped[shipName].map(function(c) { return renderCard(c, false); })
+                    )
                 );
             })
-        )
-    );
-}
-
-function DataSettings({ ships, setShips, issues, setIssues, dailyChecks, setDailyChecks, installs, setInstalls, parts, setParts, activityLog, setActivityLog, toast, backupSettings, setBackupSettings, downloadBackup }) {
-    const [importText, setImportText] = useState('');
-    const [importType, setImportType] = useState('ships');
-    const [dragActive, setDragActive] = useState(false);
-    const dropRef = useRef(null);
-
-    // Drag and drop handlers
-    const handleDrag = (e) => { e.preventDefault(); e.stopPropagation(); if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true); else if (e.type === 'dragleave') setDragActive(false); };
-    const handleDrop = (e) => {
-        e.preventDefault(); e.stopPropagation(); setDragActive(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const file = e.dataTransfer.files[0];
-            if (file.type === 'application/json' || file.name.endsWith('.json')) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const data = JSON.parse(ev.target.result);
-                        if (data.ships) setShips(data.ships);
-                        if (data.issues) setIssues(data.issues);
-                        if (data.dailyChecks) setDailyChecks(data.dailyChecks.map((c, i) => ({ ...c, id: c.id || genId('DC') })));
-                        if (data.installs) setInstalls(data.installs);
-                        if (data.parts) setParts(data.parts);
-                        if (data.activityLog) setActivityLog(data.activityLog.map((a, i) => ({ ...a, id: a.id || genId('A') })));
-                        toast('Backup restored successfully!', 'success');
-                    } catch (err) { toast('Invalid backup file', 'error'); }
-                };
-                reader.readAsText(file);
-            } else { toast('Please drop a JSON backup file', 'error'); }
-        }
-    };
-
-    const importAll = () => { try { const data = JSON.parse(importText); if (data.ships) setShips(data.ships); if (data.issues) setIssues(data.issues); if (data.dailyChecks) setDailyChecks(data.dailyChecks.map((c, i) => ({ ...c, id: c.id || genId('DC') }))); if (data.installs) setInstalls(data.installs); if (data.parts) setParts(data.parts); if (data.activityLog) setActivityLog(data.activityLog.map((a, i) => ({ ...a, id: a.id || genId('A') }))); setImportText(''); toast('Data imported!', 'success'); } catch (e) { toast('Invalid JSON', 'error'); } };
-
-    const importCSV = () => {
-        try {
-            const lines = importText.trim().split('\n'); if (lines.length < 2) { toast('No data rows', 'error'); return; }
-            const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-            const parseCSVLine = (line) => { const result = []; let current = '', inQuotes = false; for (let i = 0; i < line.length; i++) { const char = line[i]; if (char === '"') inQuotes = !inQuotes; else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; } else current += char; } result.push(current.trim()); return result; };
-            const getVal = (vals, headers, names) => { for (const name of names) { const idx = headers.indexOf(name); if (idx !== -1 && vals[idx]) return vals[idx]; } return ''; };
-            const parseDate = (str) => { if (!str) return null; try { const d = new Date(str); return isNaN(d.getTime()) ? null : d.toISOString(); } catch { return null; } };
-
-            if (importType === 'ships') {
-                const newShips = [];
-                for (let i = 1; i < lines.length; i++) { const vals = parseCSVLine(lines[i]); if (vals.length < 2) continue; const ship = { id: genId('S'), name: getVal(vals, headers, ['name', 'hull', 'hullnumber', 'shipname']) || vals[0] || '', type: getVal(vals, headers, ['type', 'shiptype']) || vals[1] || 'Full REAP', poc: getVal(vals, headers, ['poc', 'pointofcontact', 'contact']) || '', email: getVal(vals, headers, ['email', 'emailaddress']) || '', threat: 'NoIssue', lastContact: parseDate(getVal(vals, headers, ['lastcontact', 'contacted'])), nextCheck: parseDate(getVal(vals, headers, ['nextcheck', 'checkin'])), lastSaid: getVal(vals, headers, ['lastsaid', 'notes']) || '', ciscoRouter: getVal(vals, headers, ['ciscorouter', 'cisco', 'router']) || '', hdd: getVal(vals, headers, ['hdd', 'harddrive']) || '', crna1: getVal(vals, headers, ['crna1', 'starcrna', 'crna']) || '', crna2: getVal(vals, headers, ['crna2', 'datacrna']) || '', notes: getVal(vals, headers, ['notes', 'shipnotes']) || '', contactedBy: getVal(vals, headers, ['contactedby', 'by']) || '', tags: [] }; if (ship.name) newShips.push(ship); }
-                if (newShips.length > 0) { setShips(prev => { const existingNames = prev.map(s => s.name.toLowerCase()); const toAdd = newShips.filter(s => !existingNames.includes(s.name.toLowerCase())); const toUpdate = newShips.filter(s => existingNames.includes(s.name.toLowerCase())); let updated = prev.map(existing => { const match = toUpdate.find(s => s.name.toLowerCase() === existing.name.toLowerCase()); if (match) return { ...existing, ...match, id: existing.id }; return existing; }); return [...updated, ...toAdd]; }); toast(`Imported ${newShips.length} ships!`, 'success'); }
-            } else if (importType === 'dailychecks') {
-                const newChecks = [];
-                for (let i = 1; i < lines.length; i++) { const vals = parseCSVLine(lines[i]); if (vals.length < 4) continue; const shipName = getVal(vals, headers, ['shipname', 'ship', 'hull']) || vals[1] || ''; const matchShip = ships.find(s => s.name.toLowerCase() === shipName.toLowerCase()); const shipId = getVal(vals, headers, ['shipid', 'id']) || (matchShip ? matchShip.id : genId('S')); let dateStr = getVal(vals, headers, ['checkdate', 'date']) || vals[3] || ''; let formattedDate = ''; if (dateStr) { const parts = dateStr.split('/'); if (parts.length === 3) { formattedDate = `${parts[2].length === 2 ? '20' + parts[2] : parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`; } else formattedDate = dateStr; } const check = { id: genId('DC'), shipId, date: formattedDate, pingAM: getVal(vals, headers, ['pingam', 'am']) || vals[4] || '', pingPM: getVal(vals, headers, ['pingpm', 'pm']) || vals[5] || '', hdSpace: getVal(vals, headers, ['hdspace', 'hd', 'space']) || vals[6] || '', statusAM: ['true', '1', 'yes', 'online'].includes((getVal(vals, headers, ['statusam']) || vals[7] || 'true').toLowerCase()), statusPM: ['true', '1', 'yes', 'online'].includes((getVal(vals, headers, ['statuspm']) || vals[8] || 'true').toLowerCase()) }; if (check.date) newChecks.push(check); }
-                if (newChecks.length > 0) { setDailyChecks(prev => { const newKeys = newChecks.map(c => `${c.shipId}-${c.date}`); const filtered = prev.filter(c => !newKeys.includes(`${c.shipId}-${c.date}`)); return [...filtered, ...newChecks]; }); toast(`Imported ${newChecks.length} daily checks!`, 'success'); }
-            } else if (importType === 'issues') {
-                const newIssues = [];
-                for (let i = 1; i < lines.length; i++) { const vals = parseCSVLine(lines[i]); if (vals.length < 2) continue; const issue = { id: genId('I'), shipId: '', shipName: getVal(vals, headers, ['shipname', 'ship', 'hull']) || vals[0] || '', threat: getVal(vals, headers, ['threat', 'level']) || vals[1] || 'Mild', responsibility: getVal(vals, headers, ['responsibility', 'assignedto', 'assigned']) || 'Ship', lastSaid: getVal(vals, headers, ['lastsaid']) || '', created: new Date().toISOString(), due: getVal(vals, headers, ['due', 'duedate']) || '', details: getVal(vals, headers, ['details', 'description', 'issue']) || vals[2] || '', resolved: false }; const matchShip = ships.find(s => s.name.toLowerCase() === issue.shipName.toLowerCase()); if (matchShip) issue.shipId = matchShip.id; if (issue.details) newIssues.push(issue); }
-                if (newIssues.length > 0) { setIssues(prev => [...prev, ...newIssues]); toast(`Imported ${newIssues.length} issues!`, 'success'); }
-            }
-            setImportText('');
-        } catch (e) { toast('Error parsing CSV: ' + e.message, 'error'); }
-    };
-
-    const clearAllData = () => { if (confirm('DELETE ALL DATA?')) { if (confirm('Really delete everything?')) { logActivity('RESET ALL DATA - cleared everything'); setShips(defaultShips); setIssues([]); setDailyChecks([]); setInstalls([]); setParts([]); setActivityLog([]); toast('All data reset', 'info'); } } };
-
-    // Power BI Export function
-    const exportPowerBI = () => {
-        const today = toDateString(new Date());
-        const esc = (s) => {
-            if (s === null || s === undefined || s === '') return '';
-            const str = String(s).replace(/"/g, '""');
-            return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
-        };
-        const fmtD = (d) => d ? new Date(d).toLocaleDateString('en-US') : '';
-        const getStatus = (ship) => {
-            const latest = dailyChecks.filter(c => c.shipId === ship.id).sort((a,b) => b.date.localeCompare(a.date))[0];
-            if (!latest) return 'Offline';
-            if (latest.statusAM || latest.statusPM) return 'Up';
-            return 'Offline';
-        };
-        const headers = ['ShipHull#','ShipType','Location','Status','Priority','IssueTitle','IssueCategory','IssueDetails','IssueOpenedDate','DateResolved','LastResponseDate','LastShipResponse','ResolutionSummary','Notes','AssignedTo'];
-        let rows = [headers.join(',')];
-        const buildSummary = (ship, status, openIssue, allOpen) => {
-            const parts = [];
-            const isInPort = ship.inPort && ship.inPortUntil && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
-            if (isInPort) parts.push(`In port until ${fmtD(ship.inPortUntil)}`);
-            if (openIssue) {
-                const prefix = openIssue.threat === 'Urgent' ? 'URGENT: ' : '';
-                parts.push(`${prefix}${openIssue.title || openIssue.details}`.substring(0, 80));
-                if (allOpen.length > 1) parts.push(`+${allOpen.length - 1} more issue${allOpen.length > 2 ? 's' : ''}`);
-            }
-            if (ship.waitingReply) parts.push('Awaiting ship reply');
-            if (parts.length === 0) {
-                if (status === 'Up') return 'Up - No issues';
-                if (status === 'Offline') return 'Offline - No contact';
-                return status;
-            }
-            return parts.join(' | ');
-        };
-        ships.forEach(ship => {
-            const status = getStatus(ship);
-            const openIssues = issues.filter(i => i.shipId === ship.id && !i.resolved).sort((a,b) => new Date(b.created) - new Date(a.created));
-            const resolvedIssues = issues.filter(i => i.shipId === ship.id && i.resolved).sort((a,b) => new Date(b.resolvedDate || b.created) - new Date(a.resolvedDate || a.created));
-            const open = openIssues[0] || null;
-            const resolved = resolvedIssues[0] || null;
-            const summary = buildSummary(ship, status, open, openIssues);
-            const isInPort = ship.inPort && ship.inPortUntil && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
-            
-            if (open) {
-                rows.push([
-                    ship.name, ship.name.startsWith('CG') ? 'Cruiser' : 'Destroyer', ship.location||'', status,
-                    open.threat||'', esc(open.title||''), esc(open.category||''), esc(open.details||''),
-                    fmtD(open.created), '',
-                    fmtD(ship.lastContact), esc(summary),
-                    '',
-                    esc(ship.notes||''), isInPort ? 'Ship' : (open.responsibility||'Ship')
-                ].join(','));
-            } else if (isInPort) {
-                rows.push([
-                    ship.name, ship.name.startsWith('CG') ? 'Cruiser' : 'Destroyer', ship.location||'', status,
-                    '', 'In Port', '', `In port until ${fmtD(ship.inPortUntil)}`,
-                    '', '',
-                    fmtD(ship.lastContact), esc(summary),
-                    '',
-                    esc(ship.notes||''), 'Ship'
-                ].join(','));
-            } else if (resolved) {
-                rows.push([
-                    ship.name, ship.name.startsWith('CG') ? 'Cruiser' : 'Destroyer', ship.location||'', status,
-                    '', '', '', '',
-                    '', fmtD(resolved.resolvedDate),
-                    fmtD(ship.lastContact), esc(summary),
-                    esc(resolved.resolveNotes||''),
-                    esc(ship.notes||''), ''
-                ].join(','));
-            } else {
-                rows.push([
-                    ship.name, ship.name.startsWith('CG') ? 'Cruiser' : 'Destroyer', ship.location||'', status,
-                    '', '', '', '',
-                    '', '',
-                    fmtD(ship.lastContact), esc(summary),
-                    '',
-                    esc(ship.notes||''), ''
-                ].join(','));
-            }
-        });
-        const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `PowerBI_REAP_Export_${today}.csv`;
-        a.click();
-        logActivity('Exported Power BI data', { rows: rows.length - 1 });
-        toast(`Power BI export downloaded! (${rows.length - 1} rows)`, 'success');
-    };
-
-    const daysSinceBackup = backupSettings.lastBackup ? Math.floor((new Date() - new Date(backupSettings.lastBackup)) / (1000*60*60*24)) : null;
-
-    return (
-        <div className="page active">
-            <div className="page-header"><div className="page-header-left"><h1 className="page-title">Data / Import</h1><p className="page-sub">Backup, restore, and manage your data</p></div></div>
-            <div className="grid-2">
-                <div>
-                    <div className="card">
-                        <span className="card-title">Backup & Export</span>
-                        <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'16px',padding:'12px',background: daysSinceBackup === null || daysSinceBackup >= backupSettings.reminderDays ? 'var(--red-glow)' : 'var(--green-glow)',borderRadius:'8px',border: `1px solid ${daysSinceBackup === null || daysSinceBackup >= backupSettings.reminderDays ? 'var(--red)' : 'var(--green)'}`}}>
-                            <div style={{flex:1}}><div style={{fontSize:'11px',color:'var(--text-muted)'}}>LAST BACKUP</div><div style={{fontSize:'16px',fontWeight:600,fontFamily:'JetBrains Mono'}}>{backupSettings.lastBackup ? new Date(backupSettings.lastBackup).toLocaleDateString() : 'Never'}</div>{daysSinceBackup !== null && <div style={{fontSize:'11px',color:'var(--text-dim)'}}>{daysSinceBackup} days ago</div>}</div>
-                            <button className="btn btn-primary" onClick={() => downloadBackup()}>Download Backup</button>
-                        </div>
-                        <div className="card-title" style={{marginTop:'16px'}}>Auto-Backup Settings</div>
-                        <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'12px'}}><label className="checkbox"><input type="checkbox" checked={backupSettings.autoBackupEnabled} onChange={e => setBackupSettings(prev => ({...prev, autoBackupEnabled: e.target.checked}))}/><span>Auto-download backup on startup</span></label></div>
-                        <div className="form-group"><label className="form-label">Backup every</label><select className="form-select" value={backupSettings.reminderDays} onChange={e => setBackupSettings(prev => ({...prev, reminderDays: parseInt(e.target.value)}))}><option value="1">1 day</option><option value="3">3 days</option><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option></select></div>
-                    </div>
-                    
-                    <div className="card" style={{background:'var(--primary-glow)',borderColor:'var(--primary)'}}>
-                        <span className="card-title" style={{color:'var(--primary)'}}>📊 Power BI Export</span>
-                        <p style={{fontSize:'13px',color:'var(--text-dim)',marginBottom:'16px'}}>Export data in your coworker's Power BI format. Includes ship status, issues, and contact info.</p>
-                        <button className="btn btn-primary" onClick={exportPowerBI}>Download Power BI CSV</button>
-                    </div>
-                    
-                    <div className="card" ref={dropRef} onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}>
-                        <span className="card-title">Quick Restore</span>
-                        <div className={`drop-zone ${dragActive ? 'active' : ''}`}>
-                            <p style={{fontSize:'14px',marginBottom:'8px'}}>📁 Drag & Drop Backup File Here</p>
-                            <p style={{fontSize:'12px'}}>Drop a .json backup file to restore</p>
-                        </div>
-                    </div>
-                    
-                    <div className="card"><span className="card-title">Current Data</span><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginTop:'12px'}}><div style={{padding:'12px',background:'var(--bg-input)',borderRadius:'6px'}}><div style={{fontSize:'24px',fontWeight:700,fontFamily:'JetBrains Mono'}}>{ships.length}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>Ships</div></div><div style={{padding:'12px',background:'var(--bg-input)',borderRadius:'6px'}}><div style={{fontSize:'24px',fontWeight:700,fontFamily:'JetBrains Mono'}}>{issues.length}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>Issues</div></div><div style={{padding:'12px',background:'var(--bg-input)',borderRadius:'6px'}}><div style={{fontSize:'24px',fontWeight:700,fontFamily:'JetBrains Mono'}}>{dailyChecks.length}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>Daily Checks</div></div><div style={{padding:'12px',background:'var(--bg-input)',borderRadius:'6px'}}><div style={{fontSize:'24px',fontWeight:700,fontFamily:'JetBrains Mono'}}>{installs.length}</div><div style={{fontSize:'11px',color:'var(--text-muted)'}}>Installs</div></div></div></div>
-                    
-                    <div className="card"><span className="card-title">Activity Log</span><div className="activity-log" style={{maxHeight:'200px'}}>{activityLog.slice(0, 20).map(a => <div key={a.id} className="activity-item" style={{flexDirection:'column',gap:'4px'}}><div style={{display:'flex',gap:'12px'}}><span className="activity-time">{fmtTime(a.time)}</span><span className="activity-text">{a.text}</span></div>{a.details && <div style={{marginLeft:'70px',padding:'6px 8px',background:'var(--bg-card)',borderRadius:'4px',fontSize:'11px',color:'var(--text-dim)'}}>{a.details.resolution && <div>↳ Resolution: {a.details.resolution.substring(0, 50)}...</div>}{a.details.reply && <div>↳ Reply: "{a.details.reply.substring(0, 50)}..."</div>}{a.details.details && <div>↳ Issue: {a.details.details.substring(0, 50)}...</div>}{a.details.threat && <span>↳ Threat: {a.details.threat} </span>}{a.details.notes && <div>↳ Notes: {a.details.notes.substring(0, 50)}...</div>}{a.details.contactedBy && <span>↳ By: {a.details.contactedBy} </span>}</div>}</div>)}{activityLog.length === 0 && <div className="empty">No activity yet</div>}</div></div>
-                    
-                    <div className="card"><span className="card-title" style={{color:'var(--red)'}}>Danger Zone</span><p style={{fontSize:'13px',color:'var(--text-dim)',marginBottom:'16px'}}>Reset all data back to defaults.</p><button className="btn btn-danger" onClick={clearAllData}>Reset All Data</button></div>
-                </div>
-                <div>
-                    <div className="card"><span className="card-title">Import Data</span><p style={{fontSize:'13px',color:'var(--text-dim)',marginBottom:'16px'}}>Paste JSON backup OR CSV data from Excel.</p><div className="form-group"><label className="form-label">Import Type</label><select className="form-select" value={importType} onChange={e => setImportType(e.target.value)}><option value="ships">Ships (CSV)</option><option value="dailychecks">Daily Checks (CSV)</option><option value="issues">Issues (CSV)</option><option value="json">Full Backup (JSON)</option></select></div><div className="form-group"><label className="form-label">Paste Data Here</label><textarea className="form-textarea" style={{minHeight:'200px',fontFamily:'JetBrains Mono',fontSize:'11px'}} placeholder="Paste data here..." value={importText} onChange={e => setImportText(e.target.value)}/></div><div className="btn-group">{importType === 'json' ? (<button className="btn btn-primary" onClick={importAll}>Import JSON</button>) : (<button className="btn btn-primary" onClick={importCSV}>Import CSV</button>)}<button className="btn btn-secondary" onClick={() => setImportText('')}>Clear</button></div></div>
-                    <div className="card"><span className="card-title">CSV Format Guide</span><div style={{background:'var(--bg-input)',padding:'12px',borderRadius:'6px',fontSize:'11px',fontFamily:'JetBrains Mono'}}><strong style={{color:'var(--primary)'}}>Ships:</strong> Name, Type, POC, Email, CiscoRouter, HDD, CRNA1, CRNA2<br/><br/><strong style={{color:'var(--primary)'}}>Daily Checks:</strong> ShipID, ShipName, ShipType, CheckDate, PingAM, PingPM, HDSpace, StatusAM, StatusPM<br/><br/><strong style={{color:'var(--primary)'}}>Issues:</strong> ShipName, Threat, Owner, Details, Due</div></div>
-                    <div className="card"><span className="card-title">Keyboard Shortcuts</span><div style={{fontSize:'12px',lineHeight:'2'}}><kbd style={{background:'var(--bg-input)',padding:'2px 8px',borderRadius:'4px',marginRight:'8px'}}>/</kbd> Focus search<br/><kbd style={{background:'var(--bg-input)',padding:'2px 8px',borderRadius:'4px',marginRight:'8px'}}>Ctrl+S</kbd> Save reminder<br/><kbd style={{background:'var(--bg-input)',padding:'2px 8px',borderRadius:'4px',marginRight:'8px'}}>Esc</kbd> Close modals</div></div>
-                </div>
-            </div>
-        </div>
+        ),
+        
+        // Add/Edit Modal
+        addModal ? React.createElement('div', {style:{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}, onClick:function(e){if(e.target===e.currentTarget){setAddModal(false);setEditContact(null);}}},
+            React.createElement('div', {style:{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width:'440px',maxHeight:'80vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}},
+                React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}},
+                    React.createElement('h3', {style:{fontSize:'18px',fontWeight:800,margin:0}}, editContact ? '\u270F\uFE0F Edit Contact' : '+ New Contact'),
+                    React.createElement('button', {onClick:function(){setAddModal(false);setEditContact(null);}, style:{background:'none',border:'none',color:'var(--text-muted)',fontSize:'20px',cursor:'pointer'}}, '\u2715')
+                ),
+                ['name','rank','role','email','phone'].map(function(field) {
+                    var placeholders = { name:'Full name', rank:'e.g. IT1, LCDR, ENS, CIV', role:'e.g. STO, CSO, FCO, Ship POC', email:'name@ship.navy.mil', phone:'e.g. 951-393-4856' };
+                    return React.createElement('div', {key:field, style:{marginBottom:'14px'}},
+                        React.createElement('label', {style:{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px',display:'block',marginBottom:'4px'}}, field),
+                        React.createElement('input', {style:{width:'100%',padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, placeholder: placeholders[field] || '', value:form[field], onChange:function(e){ var u = {}; u[field] = e.target.value; setForm(Object.assign({}, form, u)); }})
+                    );
+                }),
+                React.createElement('div', {style:{marginBottom:'14px'}},
+                    React.createElement('label', {style:{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px',display:'block',marginBottom:'4px'}}, 'SHIP'),
+                    React.createElement('select', {style:{width:'100%',padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, value:form.ship, onChange:function(e){setForm(Object.assign({},form,{ship:e.target.value}));}},
+                        React.createElement('option', {value:''}, '-- Select Ship --'),
+                        ships.map(function(s) { return React.createElement('option', {key:s.id, value:s.name}, s.name); })
+                    )
+                ),
+                React.createElement('div', {style:{marginBottom:'20px'}},
+                    React.createElement('label', {style:{fontSize:'11px',fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px',display:'block',marginBottom:'4px'}}, 'NOTES'),
+                    React.createElement('textarea', {style:{width:'100%',padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px',minHeight:'60px',resize:'vertical'}, placeholder:'Any notes about this contact...', value:form.notes, onChange:function(e){setForm(Object.assign({},form,{notes:e.target.value}));}})
+                ),
+                React.createElement('button', {className:'btn btn-primary', style:{width:'100%',padding:'12px',fontWeight:700,fontSize:'14px',borderRadius:'10px'}, onClick:saveContact}, editContact ? 'Save Changes' : 'Add Contact')
+            )
+        ) : null
     );
 }
 
