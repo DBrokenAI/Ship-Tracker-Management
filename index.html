@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T110";
+    var APP_BUILD = "2026-02-27T111";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1599,16 +1599,16 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
-                    <div className="version">v3.5.0 Firebase</div>
+                    <div className="version">v3.7.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T108'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T111'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
                                     var el = document.getElementById('changelogDrop');
                                     if (el) { el.style.display = el.style.display === 'block' ? 'none' : 'block'; }
-                                    localStorage.setItem('lastSeenBuild', 'T108');
+                                    localStorage.setItem('lastSeenBuild', 'T111');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '🔶 New Updates Available' : '✅ Up to Date — View Changes'),
@@ -1618,6 +1618,16 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement('span', {onClick:function(){document.getElementById('changelogDrop').style.display='none';},style:{cursor:'pointer',fontSize:'14px',color:'var(--text-muted)'}}, '\u2715')
                                 ),
                                 
+                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026 — Build T111'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
+                                    '\u2022 Suggest Improvement button above Dashboard title\n\u2022 Suggestion modal saves to Firebase\n\u2022 Logged in activity feed when submitted'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026 — Build T110'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
+                                    '\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5 most recent)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card (green/amber dot)\n\u2022 Quick actions: Email, Edit, Delete, Copy on each card\n\u2022 Notes shown on cards in amber highlight\n\u2022 Rank badges next to names\n\u2022 Data/Import page removed'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026 — Build T108'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
                                     '\u2022 Auto-scans emails for issues on accept\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship\n\u2022 \uD83D\uDCCB POC Directory page (auto-populated)\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase won\'t overwrite data on network hiccup\n\u2022 Changelog viewer added'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
@@ -1625,7 +1635,12 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026 — Build T102'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Green "new emails" banner at top\n\u2022 Incoming emails inbox always visible\n\u2022 Thread import from email body\n\u2022 Email dedup by body content\n\u2022 Purge Firebase button'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Green "new emails" banner at top\n\u2022 Incoming emails inbox always visible\n\u2022 Inbox scrollable (max 350px, no more stretching)\n\u2022 Thread import from email body\n\u2022 Email dedup by body content\n\u2022 Purge Firebase button'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026 — Build T098'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
+                                    '\u2022 Scan History upgraded: 19 \u2192 55 patterns\n\u2022 9 categories: Network, Comms, Hardware, Software, Security, Config, REAP, Logistics, General\n\u2022 Sorted by severity (Urgent first)\n\u2022 Skips positive emails ("all good", "confirmed working")\n\u2022 Detects workarounds, extended outages, awaiting responses'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 8, 2026 — Build T095'),
@@ -1717,6 +1732,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [quickIssue, setQuickIssue] = useState({ threat: 'Mild', details: '', responsibility: 'Ship' });
     const [typeFilter, setTypeFilter] = useState('all');
     const [dashReorder, setDashReorder] = useState(false);
+    const [suggestModal, setSuggestModal] = useState(false);
+    const [suggestText, setSuggestText] = useState('');
     const [dashDragShip, setDashDragShip] = useState(null);
     const [dashDragOver, setDashDragOver] = useState(null);
     const [dashShipOrder, setDashShipOrder] = useState(() => {
@@ -3503,6 +3520,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
 
     return (
         <div className="page active">
+            <button onClick={() => setSuggestModal(true)} style={{display:'flex',alignItems:'center',gap:'6px',padding:'8px 14px',background:'var(--primary-glow)',border:'1px solid var(--primary)',borderRadius:'8px',color:'var(--primary)',fontSize:'11px',fontWeight:600,cursor:'pointer',marginBottom:'10px'}}>💡 Suggest Improvement</button>
             <div className="page-header">
                 <div className="page-header-left"><h1 className="page-title">Dashboard</h1><p className="page-sub">Fleet overview • {today}</p></div>
                 <div className="flex gap-md">
@@ -4344,6 +4362,20 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             </Modal>
             
             {/* All Activity Modal */}
+            <Modal open={suggestModal} onClose={() => { setSuggestModal(false); setSuggestText(''); }} title="💡 Suggest an Improvement">
+                <div style={{marginBottom:'16px'}}>
+                    <p style={{fontSize:'13px',color:'var(--text-dim)',marginBottom:'12px'}}>What would make Ship Tracker better? Bug reports, feature ideas, or anything else.</p>
+                    <textarea style={{width:'100%',minHeight:'120px',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px',resize:'vertical'}} placeholder="Describe your suggestion..." value={suggestText} onChange={e => setSuggestText(e.target.value)}/>
+                </div>
+                <button className="btn btn-primary" style={{width:'100%',padding:'12px',fontWeight:700,borderRadius:'10px'}} onClick={() => {
+                    if (!suggestText.trim()) { toast('Enter a suggestion first', 'error'); return; }
+                    db.collection('suggestions').add({ text: suggestText.trim(), user: currentUser ? currentUser.username : 'Unknown', date: new Date().toISOString(), status: 'new' });
+                    toast('Suggestion submitted! 🎉', 'success');
+                    logActivity('Submitted suggestion: ' + suggestText.trim().substring(0, 40));
+                    setSuggestModal(false); setSuggestText('');
+                }}>Submit Suggestion</button>
+            </Modal>
+
             <Modal open={showAllActivity} onClose={() => setShowAllActivity(false)} title="All Recent Activity">
                 <div style={{maxHeight:'60vh',overflow:'auto'}}>
                     {activityLog.length === 0 ? (
