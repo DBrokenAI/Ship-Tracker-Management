@@ -432,25 +432,25 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T111";
+    var APP_BUILD = "2026-02-27T112";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
-        fetch(window.location.href.split('?')[0] + '?_nocache=' + Date.now(), { cache: 'no-store' })
+        var url = window.location.origin + window.location.pathname;
+        if (url.indexOf('index.html') === -1) url = url.replace(/\/?$/, '/index.html');
+        fetch(url + '?v=' + Date.now(), { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
             .then(function(r) { return r.text(); })
             .then(function(html) {
                 var match = html.match(/APP_BUILD\s*=\s*"([^"]+)"/);
                 if (match && match[1] && match[1] !== APP_BUILD) {
                     console.log('New version detected:', match[1], '(current:', APP_BUILD + ')');
-                    // Show update banner
                     var banner = document.getElementById('update-banner');
                     if (!banner) {
                         banner = document.createElement('div');
                         banner.id = 'update-banner';
-                        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;padding:10px 20px;text-align:center;font-family:Inter,sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,0.3);';
-                        banner.innerHTML = '🔄 A new version is available! <button onclick="location.reload(true)" style="background:#000;color:#f59e0b;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px;">Update Now</button> <span style="font-size:11px;opacity:0.7;margin-left:8px;">(auto-updating in <span id="update-countdown">10</span>s)</span>';
+                        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;padding:12px 20px;text-align:center;font-family:Inter,sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3);';
+                        banner.innerHTML = '🔄 New update available! <button onclick="location.reload(true)" style="background:#000;color:#f59e0b;border:none;padding:8px 20px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">Update Now</button> <span style="font-size:11px;opacity:0.7;margin-left:8px;">(auto-updating in <span id="update-countdown">10</span>s)</span>';
                         document.body.appendChild(banner);
-                        // Auto-reload countdown
                         var seconds = 10;
                         var countdown = setInterval(function() {
                             seconds--;
@@ -464,11 +464,11 @@ const hashPassword = (password) => {
                     }
                 }
             })
-            .catch(function() { /* network error, skip */ });
+            .catch(function(err) { console.log('Update check failed:', err); });
     }
     
-    // Check every 60 seconds
-    setInterval(checkForUpdate, 60000);
+    // Check every 30 seconds
+    setInterval(checkForUpdate, 30000);
     // Also check 5 seconds after load
     setTimeout(checkForUpdate, 5000);
 })();
@@ -1599,10 +1599,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
-                    <div className="version">v3.7.0 Firebase</div>
+                    <div className="version">v3.8.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T111'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T112'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1613,7 +1613,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T111');
+                                    localStorage.setItem('lastSeenBuild', 'T112');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1626,7 +1626,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Contacts: deduplicates same email across sources\n\u2022 Contacts: filters out REAP team members\n\u2022 Recently Contacted excludes team (only ship POCs)\n\u2022 Update banner checks every 30s with better cache busting\n\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026'),
@@ -8627,10 +8627,12 @@ function POCDirectory({ ships, toast }) {
         try {
             var history = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
             var seen = {};
+            var teamEmails = ['daniel.k.brown', 'dbrown', 'clyde.a.grant', 'cgrant', 'uriel.pena', 'up_reap', 'kaazim.j.hanif', 'jayreap', 'damian.j.pierman', 'eryk.kedzierski', 'steven.m.spellman', 'mohammed.cardenas'];
             history.forEach(function(h) {
                 if (h.fromEmail && h.fromEmail.indexOf('@') !== -1) {
                     var key = h.fromEmail.toLowerCase();
-                    if (!seen[key] && key.indexOf('niwc') === -1 && key.indexOf('sonar') === -1 && key.indexOf('spawar') === -1 && key.indexOf('corona') === -1) {
+                    var isTeam = teamEmails.some(function(t) { return key.indexOf(t) !== -1; });
+                    if (!seen[key] && !isTeam && key.indexOf('niwc') === -1 && key.indexOf('sonar') === -1 && key.indexOf('spawar') === -1 && key.indexOf('corona') === -1) {
                         seen[key] = true;
                         var senderName = h.fromName || '';
                         if (senderName === '__SHIP__') senderName = '';
@@ -8679,7 +8681,7 @@ function POCDirectory({ ships, toast }) {
     };
     
     // Filter
-    var filtered = contacts.filter(function(c) {
+    var filtered = dedupedContacts.filter(function(c) {
         if (filterShip !== 'all' && c.ship !== filterShip) return false;
         if (search) {
             var s = search.toLowerCase();
@@ -8689,7 +8691,37 @@ function POCDirectory({ ships, toast }) {
     });
     
     // Recently contacted — top 5 contacts with most recent communication
-    var recentlyContacted = contacts.filter(function(c) {
+    // Team members to exclude from contacts
+    var teamEmailPatterns = ['daniel.k.brown', 'dbrown', 'clyde.a.grant', 'cgrant', 'uriel.pena', 'up_reap', 'kaazim.j.hanif', 'jayreap', 'damian.j.pierman', 'eryk.kedzierski', 'steven.m.spellman', 'mohammed.cardenas'];
+    var isTeamContact = function(email) {
+        if (!email) return false;
+        var e = email.toLowerCase();
+        return teamEmailPatterns.some(function(t) { return e.indexOf(t) !== -1; });
+    };
+    
+    // Filter out team members and deduplicate by email
+    var dedupedContacts = [];
+    var seenEmails = {};
+    contacts.forEach(function(c) {
+        if (isTeamContact(c.email)) return;
+        var key = (c.email || '').toLowerCase();
+        if (key && seenEmails[key]) {
+            // Merge: keep the one with more data
+            var existing = dedupedContacts.find(function(d) { return (d.email || '').toLowerCase() === key; });
+            if (existing) {
+                if (!existing.name && c.name) existing.name = c.name;
+                if (!existing.rank && c.rank) existing.rank = c.rank;
+                if (!existing.role && c.role) existing.role = c.role;
+                if (!existing.phone && c.phone) existing.phone = c.phone;
+                if (!existing.notes && c.notes) existing.notes = c.notes;
+            }
+            return;
+        }
+        if (key) seenEmails[key] = true;
+        dedupedContacts.push(c);
+    });
+    
+    var recentlyContacted = dedupedContacts.filter(function(c) {
         return c.email && getLastComm(c.email);
     }).sort(function(a, b) {
         var aComm = getLastComm(a.email);
@@ -8708,7 +8740,7 @@ function POCDirectory({ ships, toast }) {
     // Alphabet for sidebar
     var alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     var usedLetters = {};
-    contacts.forEach(function(c) { if (c.name) usedLetters[c.name.charAt(0).toUpperCase()] = true; });
+    dedupedContacts.forEach(function(c) { if (c.name) usedLetters[c.name.charAt(0).toUpperCase()] = true; });
     
     var relTime = function(date) {
         if (!date) return '';
@@ -8773,7 +8805,7 @@ function POCDirectory({ ships, toast }) {
             React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}},
                 React.createElement('h2', {style:{fontSize:'22px',fontWeight:800,margin:0}}, '\uD83D\uDCCB Ship Contacts'),
                 React.createElement('div', {style:{display:'flex',gap:'8px',alignItems:'center'}},
-                    React.createElement('span', {style:{fontSize:'12px',color:'var(--text-muted)'}}, contacts.length + ' contacts'),
+                    React.createElement('span', {style:{fontSize:'12px',color:'var(--text-muted)'}}, dedupedContacts.length + ' contacts'),
                     React.createElement('button', {className:'btn btn-primary', style:{borderRadius:'10px',fontWeight:700,padding:'10px 18px'}, onClick:function(){ setForm({name:'',rank:'',role:'',email:'',phone:'',ship:'',notes:''}); setEditContact(null); setAddModal(true); }}, '+ Add Contact')
                 )
             ),
