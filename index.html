@@ -1618,44 +1618,24 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement('span', {onClick:function(){document.getElementById('changelogDrop').style.display='none';},style:{cursor:'pointer',fontSize:'14px',color:'var(--text-muted)'}}, '\u2715')
                                 ),
                                 
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026 — Build T111'),
+                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Suggest Improvement button above Dashboard title\n\u2022 Suggestion modal saves to Firebase\n\u2022 Logged in activity feed when submitted'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5 most recent)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card (green/amber dot)\n\u2022 Quick actions: Email, Edit, Delete, Copy on each card\n\u2022 Suggest Improvement button above Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded, synced)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently (localStorage + Firebase)\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase won\'t overwrite data on network hiccup\n\u2022 Changelog viewer added\n\u2022 Data/Import page removed'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026 — Build T110'),
+                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5 most recent)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card (green/amber dot)\n\u2022 Quick actions: Email, Edit, Delete, Copy on each card\n\u2022 Notes shown on cards in amber highlight\n\u2022 Rank badges next to names\n\u2022 Data/Import page removed'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Scan History upgraded: 19 \u2192 55 detection patterns\n\u2022 9 categories: Network, Comms, Hardware, Software, Security, Config, REAP, Logistics, General\n\u2022 Sorted by severity (Urgent first)\n\u2022 Skips positive emails ("all good", "confirmed working")\n\u2022 Green "new emails" banner at top of screen\n\u2022 Incoming emails inbox always visible & scrollable\n\u2022 Thread import from email body\n\u2022 Email dedup by body content\n\u2022 Purge Firebase button'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026 — Build T108'),
+                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 8, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Auto-scans emails for issues on accept\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship\n\u2022 \uD83D\uDCCB POC Directory page (auto-populated)\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase won\'t overwrite data on network hiccup\n\u2022 Changelog viewer added'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Chat-style email timeline (sent right, received left)\n\u2022 Sender name above each bubble\n\u2022 Last Contact from actual email history\n\u2022 Email body shows directly (no "View full" click)\n\u2022 Clear Email History per ship\n\u2022 Delete button on issues\n\u2022 Outlook VBA auto-capture (incoming + sent)\n\u2022 Team name mapping (dbrown \u2192 Daniel Brown)\n\u2022 CG ship detection (CG52-CG73)\n\u2022 Signature stripping from email bodies\n\u2022 Incoming email inbox with accept/dismiss\n\u2022 Real-time Firebase sync between all users'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026 — Build T102'),
+                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 3, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Green "new emails" banner at top\n\u2022 Incoming emails inbox always visible\n\u2022 Inbox scrollable (max 350px, no more stretching)\n\u2022 Thread import from email body\n\u2022 Email dedup by body content\n\u2022 Purge Firebase button'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
-                                ),
-                                
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026 — Build T098'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Scan History upgraded: 19 \u2192 55 patterns\n\u2022 9 categories: Network, Comms, Hardware, Software, Security, Config, REAP, Logistics, General\n\u2022 Sorted by severity (Urgent first)\n\u2022 Skips positive emails ("all good", "confirmed working")\n\u2022 Detects workarounds, extended outages, awaiting responses'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
-                                ),
-                                
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 8, 2026 — Build T095'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Chat-style email timeline\n\u2022 Sender name above each bubble\n\u2022 Last Contact from email history\n\u2022 Email body shows directly\n\u2022 Clear Email History per ship\n\u2022 Delete button on issues'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
-                                ),
-                                
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 8, 2026 — Build T086'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Outlook VBA auto-capture\n\u2022 Team name mapping\n\u2022 CG ship detection (CG52-CG73)\n\u2022 Signature stripping\n\u2022 Incoming email inbox\n\u2022 Real-time sync between users'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
-                                ),
-                                
-                                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 3, 2026 — Build T037'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Trips page redesign\n\u2022 End of Day HTML report\n\u2022 Morning report\n\u2022 Auto issue detection (15 rules)\n\u2022 Fleet status pie chart'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Trips page redesign with base selector\n\u2022 End of Day HTML report\n\u2022 Morning report\n\u2022 Auto issue detection (15 rules)\n\u2022 Daily checks order persistence\n\u2022 Fleet status pie chart'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
                                 React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',textAlign:'center',marginTop:'8px',borderTop:'1px solid var(--border)',paddingTop:'8px'}}, 'Ship Tracker Pro — NSWC Corona PA22 REAP Team')
