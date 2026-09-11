@@ -1677,7 +1677,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 {page === 6 && <Parts parts={parts} setParts={setParts} toast={toast} logActivity={logActivity}/>}
                 {page === 7 && <EmailStatus ships={ships} setShips={setShips} issues={issues} toast={toast} logActivity={logActivity} currentUser={currentUser} allUsers={allUsers}/>}
                 {page === 8 && <DataSettings ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} setDailyChecks={setDailyChecks} installs={installs} setInstalls={setInstalls} parts={parts} setParts={setParts} activityLog={activityLog} setActivityLog={setActivityLog} toast={toast} backupSettings={backupSettings} setBackupSettings={setBackupSettings} downloadBackup={downloadBackup}/>}
-                {page === 9 && <POCDirectory ships={ships} emailHistory={emailHistory} toast={toast}/>}
+                {page === 9 && <POCDirectory ships={ships} toast={toast}/>}
                 {page === 10 && isAdmin && <Suggestions suggestions={suggestions} setSuggestions={setSuggestions} toast={toast}/>}
                 {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser}/>}
             </main>
@@ -8559,11 +8559,11 @@ function Suggestions({ suggestions, setSuggestions, toast }) {
 }
 
 
-function POCDirectory({ ships, emailHistory, toast }) {
+function POCDirectory({ ships, toast }) {
     var [search, setSearch] = React.useState('');
     var [filterShip, setFilterShip] = React.useState('all');
     
-    // Build contacts from ships and email history
+    // Build contacts from ships
     var contacts = [];
     var seen = {};
     
@@ -8578,18 +8578,21 @@ function POCDirectory({ ships, emailHistory, toast }) {
         }
     });
     
-    // From email history
-    emailHistory.forEach(function(h) {
-        if (h.fromEmail && h.fromEmail.indexOf('@') !== -1 && h.fromEmail.indexOf('navy.mil') !== -1) {
-            var key = h.fromEmail.toLowerCase();
-            if (!seen[key] && key.indexOf('niwc') === -1 && key.indexOf('sonar') === -1 && key.indexOf('spawar') === -1) {
-                seen[key] = true;
-                var senderName = h.fromName || (h.result && h.result.sender ? h.result.sender.name : '') || '';
-                if (senderName === '__SHIP__') senderName = '';
-                contacts.push({ name: senderName, email: h.fromEmail, ship: h.shipName || '', shipId: h.shipId || '', source: 'email', phone: '' });
+    // Also check localStorage for accepted emails
+    try {
+        var history = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
+        history.forEach(function(h) {
+            if (h.fromEmail && h.fromEmail.indexOf('@') !== -1 && h.fromEmail.indexOf('navy.mil') !== -1) {
+                var key = h.fromEmail.toLowerCase();
+                if (!seen[key] && key.indexOf('niwc') === -1 && key.indexOf('sonar') === -1 && key.indexOf('spawar') === -1) {
+                    seen[key] = true;
+                    var senderName = h.fromName || (h.result && h.result.sender ? h.result.sender.name : '') || '';
+                    if (senderName === '__SHIP__') senderName = '';
+                    contacts.push({ name: senderName, email: h.fromEmail, ship: h.shipName || '', shipId: h.shipId || '', source: 'email', phone: '' });
+                }
             }
-        }
-    });
+        });
+    } catch(e) {}
     
     // Filter
     var filtered = contacts.filter(function(c) {
