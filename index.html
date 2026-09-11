@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T112";
+    var APP_BUILD = "2026-02-27T113";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1535,7 +1535,6 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     useEffect(() => { document.body.classList.toggle('light-mode', !darkMode); }, [darkMode]);
 
     const urgentIssues = useMemo(() => issues.filter(i => i.threat === 'Urgent' && !i.resolved).length, [issues]);
-    const overdueShips = useMemo(() => ships.filter(s => getEmailStatus(s, issues).status === 'OVERDUE').length, [ships, issues]);
     const dailyChecksToday = useMemo(() => dailyChecks.filter(c => c.date === toDateString(new Date())), [dailyChecks]);
     const checksUnfilled = useMemo(() => ships.filter(s => !s.pendingInstall && !dailyChecksToday.find(c => c.shipId === s.id && (c.statusAM || c.statusPM))).length, [ships, dailyChecksToday]);
 
@@ -1599,10 +1598,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
-                    <div className="version">v3.8.0 Firebase</div>
+                    <div className="version">v3.9.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T112'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T113'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1613,7 +1612,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T112');
+                                    localStorage.setItem('lastSeenBuild', 'T113');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1626,7 +1625,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Contacts: deduplicates same email across sources\n\u2022 Contacts: filters out REAP team members\n\u2022 Recently Contacted excludes team (only ship POCs)\n\u2022 Update banner checks every 30s with better cache busting\n\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Email Templates: 7 pre-built templates with copy & mailto\n\u2022 Search Everything: finds ships by issues, emails, notes, POC\n\u2022 Activity Log: ship name filter added\n\u2022 Dead code cleanup: removed 130+ lines of unused code\n\u2022 Contacts: deduplicates same email across sources\n\u2022 Contacts: filters out REAP team members\n\u2022 Recently Contacted excludes team (only ship POCs)\n\u2022 Update banner checks every 30s with better cache busting\n\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026'),
@@ -1701,7 +1700,6 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 {page === 4 && <Inventory ships={ships} setShips={setShips} dailyChecks={dailyChecks} toast={toast} logActivity={logActivity}/>}
                 {page === 5 && <Installs ships={ships} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
                 {page === 6 && <Parts parts={parts} setParts={setParts} toast={toast} logActivity={logActivity}/>}
-                {page === 7 && <EmailStatus ships={ships} setShips={setShips} issues={issues} toast={toast} logActivity={logActivity} currentUser={currentUser} allUsers={allUsers}/>}
                 {page === 9 && <POCDirectory ships={ships} toast={toast}/>}
                 {page === 10 && isAdmin && <Suggestions suggestions={suggestions} setSuggestions={setSuggestions} toast={toast}/>}
                 {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser}/>}
@@ -1745,6 +1743,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [dashReorder, setDashReorder] = useState(false);
     const [suggestModal, setSuggestModal] = useState(false);
     const [suggestText, setSuggestText] = useState('');
+    const [templateModal, setTemplateModal] = useState(null);
     const [dashDragShip, setDashDragShip] = useState(null);
     const [dashDragOver, setDashDragOver] = useState(null);
     const [dashShipOrder, setDashShipOrder] = useState(() => {
@@ -2956,7 +2955,21 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         let result = [...ships];
         if (globalSearch) {
             const search = globalSearch.toLowerCase();
-            result = result.filter(s => s.name.toLowerCase().includes(search) || s.type.toLowerCase().includes(search) || s.location?.toLowerCase().includes(search) || s.tags?.some(t => t.toLowerCase().includes(search)));
+            result = result.filter(s => {
+                // Search ship name, type, location
+                if (s.name.toLowerCase().includes(search) || s.type.toLowerCase().includes(search) || (s.location || '').toLowerCase().includes(search)) return true;
+                // Search ship POC and email
+                if ((s.poc || '').toLowerCase().includes(search) || (s.email || '').toLowerCase().includes(search)) return true;
+                // Search open issues for this ship
+                var shipIssues = issues.filter(i => i.shipId === s.id && !i.resolved);
+                if (shipIssues.some(i => (i.title || '').toLowerCase().includes(search) || (i.details || '').toLowerCase().includes(search))) return true;
+                // Search email history for this ship
+                var shipEmails = emailHistory.filter(h => h.shipId === s.id);
+                if (shipEmails.some(h => (h.emailText || '').toLowerCase().includes(search) || (h.result && h.result.emailSummary || '').toLowerCase().includes(search))) return true;
+                // Search quick notes for this ship
+                if (quickNotes && quickNotes.some(n => n.shipId === s.id && (n.text || '').toLowerCase().includes(search))) return true;
+                return false;
+            });
         }
         if (typeFilter === 'updated') {
             result = result.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today);
@@ -3537,7 +3550,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 <div className="flex gap-md">
                     <div className="search-box">
                         <Icon name="search"/>
-                        <input ref={searchRef} placeholder="Search ships..." value={globalSearch} onChange={e => setGlobalSearch(e.target.value)}/>
+                        <input ref={searchRef} placeholder="Search ships, issues, emails, notes..." value={globalSearch} onChange={e => setGlobalSearch(e.target.value)}/>
                         <span className="shortcut">/</span>
                     </div>
                     <button className="btn btn-primary" onClick={copyReport}>📋 Weekly Report</button>
@@ -3843,6 +3856,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     <div style={{display:'flex',gap:'16px',marginBottom:'20px',alignItems:'stretch',flexWrap:'wrap'}}>
                                         <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
                                         <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={() => scanEmailHistory(sel.id, sel.name)}>🔍 Scan History</button>
+                                        <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--blue)'}} onClick={() => setTemplateModal(sel)}>📝 Email Templates</button>
                                         <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--red)'}} onClick={() => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } }}>🗑️ Clear History</button>
                                         <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
                                             <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>LAST CONTACT</div>
@@ -4373,6 +4387,43 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             </Modal>
             
             {/* All Activity Modal */}
+            {/* EMAIL TEMPLATES MODAL */}
+            {templateModal && (() => {
+                var ship = templateModal;
+                var pocName = ship.poc || 'Sir/Ma\'am';
+                var myName = currentUser ? currentUser.username : 'REAP Team';
+                var templates = [
+                    { name: 'Initial Contact', subject: 'REAP Program Introduction — ' + ship.name, body: 'Good morning ' + pocName + ',\n\nMy name is ' + myName + ' from the REAP team at NSWC Corona. I am reaching out regarding the REAP system aboard ' + ship.name + '.\n\nWe would like to schedule a time to discuss the current status of your REAP equipment and address any questions or concerns your team may have.\n\nPlease let us know your availability and the best way to reach you.\n\nVery Respectfully,\n' + myName + '\nREAP Team, NSWC Corona' },
+                    { name: 'Follow-Up', subject: 'RE: REAP Follow-Up — ' + ship.name, body: 'Good morning ' + pocName + ',\n\nI wanted to follow up on our previous communication regarding ' + ship.name + '. Please let us know if there are any updates or if you need any support from our end.\n\nWe remain available to assist with any REAP-related concerns.\n\nVery Respectfully,\n' + myName + '\nREAP Team, NSWC Corona' },
+                    { name: 'Troubleshooting Request', subject: 'REAP Troubleshooting Request — ' + ship.name, body: 'Good morning ' + pocName + ',\n\nWe have been notified of a potential issue with the REAP system aboard ' + ship.name + '. To assist with troubleshooting, could you please provide the following:\n\n1. Description of the issue\n2. When the issue started\n3. Any error messages displayed\n4. Steps already taken to resolve\n\nWe will work to get this resolved as quickly as possible.\n\nVery Respectfully,\n' + myName + '\nREAP Team, NSWC Corona' },
+                    { name: 'Install Scheduling', subject: 'REAP Install Scheduling — ' + ship.name, body: 'Good morning ' + pocName + ',\n\nWe are coordinating the REAP installation aboard ' + ship.name + '. To proceed, we need to confirm:\n\n1. Ship schedule and availability window\n2. Port location during install\n3. POC for base access/escort\n4. Any special requirements or restrictions\n\nPlease advise on your preferred dates and we will coordinate accordingly.\n\nVery Respectfully,\n' + myName + '\nREAP Team, NSWC Corona' },
+                    { name: 'Equipment Shipment', subject: 'REAP Equipment Shipment — ' + ship.name, body: 'Good morning ' + pocName + ',\n\nThis is to notify you that REAP equipment for ' + ship.name + ' has been shipped and is en route to your location.\n\nTracking Number: [INSERT TRACKING]\nEstimated Arrival: [INSERT DATE]\nContents: [INSERT DESCRIPTION]\n\nPlease confirm receipt upon delivery.\n\nVery Respectfully,\n' + myName + '\nREAP Team, NSWC Corona' },
+                    { name: 'Status Check-In', subject: 'REAP Status Check — ' + ship.name, body: 'Good morning ' + pocName + ',\n\nThis is a routine check-in regarding the REAP system aboard ' + ship.name + '. Could you please provide a brief status update on the following:\n\n1. System operational status\n2. Any issues or concerns\n3. Upcoming schedule changes (deployments, port visits, maintenance)\n\nThank you for your time.\n\nVery Respectfully,\n' + myName + '\nREAP Team, NSWC Corona' },
+                    { name: 'Deinstall Notice', subject: 'REAP Deinstall Notification — ' + ship.name, body: 'Good morning ' + pocName + ',\n\nThis is to inform you that the REAP system aboard ' + ship.name + ' is scheduled for deinstallation.\n\nProposed Date: [INSERT DATE]\nLocation: [INSERT PORT]\n\nOur team will need access to the ship for approximately [X] hours. Please confirm the schedule works and provide escort/access arrangements.\n\nVery Respectfully,\n' + myName + '\nREAP Team, NSWC Corona' },
+                ];
+                return React.createElement('div', {style:{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}, onClick:function(e){if(e.target===e.currentTarget) setTemplateModal(null);}},
+                    React.createElement('div', {style:{background:'var(--bg-card)',borderRadius:'14px',padding:'24px',width:'600px',maxHeight:'80vh',overflow:'auto',border:'1px solid var(--border)'}},
+                        React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}},
+                            React.createElement('h3', {style:{fontSize:'16px',fontWeight:800,margin:0}}, '\uD83D\uDCDD Email Templates — ' + ship.name),
+                            React.createElement('button', {onClick:function(){setTemplateModal(null);}, style:{background:'none',border:'none',color:'var(--text-muted)',fontSize:'18px',cursor:'pointer'}}, '\u2715')
+                        ),
+                        templates.map(function(t, i) {
+                            return React.createElement('div', {key:i, style:{marginBottom:'12px',padding:'14px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)'}},
+                                React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}},
+                                    React.createElement('span', {style:{fontWeight:700,fontSize:'13px',color:'var(--text)'}}, t.name),
+                                    React.createElement('div', {style:{display:'flex',gap:'6px'}},
+                                        React.createElement('button', {onClick:function(){ navigator.clipboard.writeText('Subject: ' + t.subject + '\n\n' + t.body); toast('Template copied!', 'success'); }, style:{padding:'4px 10px',background:'var(--primary)',color:'#fff',border:'none',borderRadius:'6px',fontSize:'10px',fontWeight:600,cursor:'pointer'}}, '\uD83D\uDCCB Copy'),
+                                        React.createElement('a', {href:'mailto:' + (ship.email || '') + '?subject=' + encodeURIComponent(t.subject) + '&body=' + encodeURIComponent(t.body), style:{padding:'4px 10px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'6px',fontSize:'10px',fontWeight:600,cursor:'pointer',textDecoration:'none'}}, '\u2709\uFE0F Open in Mail')
+                                    )
+                                ),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-muted)',marginBottom:'4px'}}, 'Subject: ' + t.subject),
+                                React.createElement('pre', {style:{fontSize:'10px',color:'var(--text-dim)',whiteSpace:'pre-wrap',margin:0,lineHeight:'1.5',maxHeight:'100px',overflow:'hidden'}}, t.body.substring(0, 200) + '...')
+                            );
+                        })
+                    )
+                );
+            })()}
+
             <Modal open={suggestModal} onClose={() => { setSuggestModal(false); setSuggestText(''); }} title="💡 Suggest an Improvement">
                 <div style={{marginBottom:'16px'}}>
                     <p style={{fontSize:'13px',color:'var(--text-dim)',marginBottom:'12px'}}>What would make Ship Tracker better? Bug reports, feature ideas, or anything else.</p>
@@ -8169,143 +8220,12 @@ function Parts({ parts, setParts, toast, logActivity }) {
     );
 }
 
-function EmailStatus({ ships, setShips, issues, toast, logActivity, currentUser, allUsers }) {
-    const [contactModal, setContactModal] = useState(false);
-    const [selectedShip, setSelectedShip] = useState(null);
-    const [contactForm, setContactForm] = useState({ name: '', date: toDateString(new Date()), notes: '', waitingReply: false });
-    const [filter, setFilter] = useState('all');
-    
-    const sorted = useMemo(() => {
-        let result = [...ships].map(s => { 
-            const es = getEmailStatus(s, issues); 
-            const si = issues.filter(i => i.shipId === s.id && !i.resolved); 
-            const urg = si.some(i => i.threat === 'Urgent') ? 2 : si.some(i => i.threat === 'Mild') ? 1 : 0; 
-            return { ...s, emailStatus: es, urgency: urg }; 
-        });
-        
-        // Apply filter
-        if (filter === 'waiting') result = result.filter(s => s.waitingReply);
-        else if (filter === 'overdue') result = result.filter(s => s.emailStatus.status === 'OVERDUE');
-        else if (filter === 'due') result = result.filter(s => s.emailStatus.status === 'DUE');
-        
-        return result.sort((a, b) => { 
-            // Waiting ships first, then by overdue days
-            if (a.waitingReply && !b.waitingReply) return -1;
-            if (!a.waitingReply && b.waitingReply) return 1;
-            if (b.emailStatus.days !== a.emailStatus.days) return b.emailStatus.days - a.emailStatus.days; 
-            if (b.urgency !== a.urgency) return b.urgency - a.urgency; 
-            return hullNum(a.name) - hullNum(b.name); 
-        });
-    }, [ships, issues, filter]);
-    
-    const waitingCount = ships.filter(s => s.waitingReply).length;
-    const overdueCount = ships.filter(s => getEmailStatus(s, issues).status === 'OVERDUE').length;
-    const dueCount = ships.filter(s => getEmailStatus(s, issues).status === 'DUE').length;
-    
-    const openContactModal = (s) => {
-        setSelectedShip(s);
-        setContactForm({ name: currentUser.username, date: toDateString(new Date()), notes: '', waitingReply: s.waitingReply || false });
-        setContactModal(true);
-    };
-    
-    const submitContact = () => {
-        if (!selectedShip || !contactForm.name.trim()) { toast('Enter your name', 'error'); return; }
-        // Use local noon to avoid UTC timezone shift issues
-        const contactDate = contactForm.date + 'T12:00:00';
-        setShips(p => p.map(x => x.id === selectedShip.id ? { ...x, lastContact: contactDate, contactedBy: contactForm.name, lastSaid: contactForm.notes || x.lastSaid, waitingReply: contactForm.waitingReply } : x));
-        
-        // Add to email history in localStorage
-        const historyEntry = {
-            id: genId('EH'),
-            type: 'manual',
-            shipId: selectedShip.id,
-            shipName: selectedShip.name,
-            timestamp: contactDate,
-            emailText: contactForm.notes || 'Marked as contacted',
-            result: {
-                inPort: false,
-                issue: { hasIssue: false },
-                emailSummary: contactForm.notes || `Contacted by ${contactForm.name}`,
-                waitingReply: contactForm.waitingReply,
-                sender: { name: contactForm.name },
-                contactedBy: contactForm.name
-            },
-            changes: [contactForm.waitingReply ? 'Waiting on reply' : 'Marked as emailed', `By: ${contactForm.name}`]
-        };
-        try {
-            const existing = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
-            const newHistory = [historyEntry, ...existing].slice(0, 100);
-            localStorage.setItem('emailParseHistory', JSON.stringify(newHistory));
-        } catch (e) { console.error('Failed to save email history', e); }
-        
-        logActivity(`${contactForm.name} marked ${selectedShip.name} as ${contactForm.waitingReply ? 'waiting on reply' : 'emailed'} on ${fmtDate(contactDate)}`);
-        toast(`${selectedShip.name} marked as ${contactForm.waitingReply ? 'waiting on reply' : 'emailed'}`, 'success');
-        setContactModal(false);
-        setSelectedShip(null);
-    };
-    
-    const clearWaiting = (s) => {
-        setShips(p => p.map(x => x.id === s.id ? { ...x, waitingReply: false } : x));
-        logActivity(`Cleared waiting status for ${s.name}`);
-        toast(`${s.name} waiting status cleared`, 'info');
-    };
-
-    return (
-        <div className="page active">
-            <div className="page-header"><div className="page-header-left"><h1 className="page-title">Email Status</h1><p className="page-sub">Track ship contact schedules</p></div><button className="btn btn-secondary" onClick={() => window.print()}><Icon name="print"/> Print</button></div>
-            <div className="card"><span className="card-title">Contact Schedule</span><div className="flex gap-md mt-md mb-md" style={{fontSize:'12px'}}><span style={{color:'var(--red)'}}>● URGENT: Daily</span><span style={{color:'var(--amber)'}}>● MILD: Every 3 days</span><span style={{color:'var(--green)'}}>● NONE: Every 2 weeks</span><span style={{color:'var(--blue)'}}>● WAITING: Pending reply</span></div></div>
-            
-            <div className="filters">
-                <button className={`filter-btn ${filter==='all'?'active':''}`} onClick={() => setFilter('all')}>All Ships ({ships.length})</button>
-                <button className={`filter-btn ${filter==='waiting'?'active':''}`} onClick={() => setFilter('waiting')}>⏳ Waiting ({waitingCount})</button>
-                <button className={`filter-btn ${filter==='overdue'?'active':''}`} onClick={() => setFilter('overdue')}>Overdue ({overdueCount})</button>
-                <button className={`filter-btn ${filter==='due'?'active':''}`} onClick={() => setFilter('due')}>Due Today ({dueCount})</button>
-            </div>
-            
-            <div className="card"><span className="card-title">Ships Needing Contact <span style={{fontWeight:'normal',color:'var(--text-muted)',marginLeft:'8px'}}>({sorted.length} shown)</span></span><table className="table mt-md"><thead><tr><th>Status</th><th>Ship</th><th>Level</th><th>Last Contact</th><th>Contacted By</th><th>Time Left</th><th>Actions</th></tr></thead><tbody>{sorted.map(s => (<tr key={s.id} style={{background: s.waitingReply ? 'var(--blue-glow)' : s.emailStatus.status === 'IN PORT' ? 'var(--blue-glow)' : 'transparent'}}><td>{s.waitingReply ? <span className="badge badge-info">WAITING</span> : s.emailStatus.status === 'IN PORT' ? <span className="badge badge-info">⚓ IN PORT</span> : <span className={`badge badge-${s.emailStatus.status.toLowerCase()}`}>{s.emailStatus.status}</span>}</td><td style={{fontWeight:600,fontFamily:'JetBrains Mono'}}>{s.name}</td><td><span className={`badge ${s.urgency===2?'badge-urgent':s.urgency===1?'badge-mild':'badge-ok'}`}>{s.urgency===2?'URGENT':s.urgency===1?'MILD':'NONE'}</span></td><td>{s.lastContact ? fmtDate(s.lastContact) : 'Never'}</td><td>{s.contactedBy || '—'}</td><td>{s.emailStatus.status === 'IN PORT' ? `Back ${fmtDate(s.inPortUntil)}` : s.emailStatus.days === 999 ? 'N/A' : s.emailStatus.days > 0 ? `${s.emailStatus.days}d overdue` : s.emailStatus.days === 0 ? 'Today' : `In ${Math.abs(s.emailStatus.days)}d`}</td><td><div className="btn-group">{s.waitingReply && <button className="btn btn-sm btn-success" onClick={() => clearWaiting(s)}>✓ Got Reply</button>}<button className="btn btn-sm btn-primary" onClick={() => openContactModal(s)}>✉️ Email</button></div></td></tr>))}</tbody></table></div>
-            
-            <Modal open={contactModal} onClose={() => setContactModal(false)} title="✉️ Mark Ship as Emailed">
-                {selectedShip && <>
-                    <p style={{color:'var(--text-dim)',fontSize:'13px',marginBottom:'16px'}}>Record email contact for <strong style={{color:'var(--primary)'}}>{selectedShip.name}</strong></p>
-                    <div className="form-group">
-                        <label className="form-label">Logged By *</label>
-                        <select className="form-select" value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})}>
-                            {[...new Map((allUsers || []).filter(u => u.status === 'approved').map(u => [u.username, u])).values()].map(u => (
-                                <option key={u.username} value={u.username}>{u.username}{u.username === currentUser.username ? ' (you)' : ''}</option>
-                            ))}
-                            <option value="__SHIP__">🚢 Ship (Reply)</option>
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Date of Contact</label>
-                        <input type="date" className="form-input" value={contactForm.date} onChange={e => setContactForm({...contactForm, date: e.target.value})}/>
-                    </div>
-                    <div className="form-group">
-                        <label className="checkbox" style={{padding:'12px',background:'var(--bg-input)',borderRadius:'8px',border:'1px solid var(--border)'}}>
-                            <input type="checkbox" checked={contactForm.waitingReply || false} onChange={e => setContactForm({...contactForm, waitingReply: e.target.checked})}/>
-                            <span style={{fontSize:'13px'}}>⏳ Waiting on Reply</span>
-                        </label>
-                        <p style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>Check this if you sent an email and are waiting for their response</p>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Notes / Email Summary (Optional)</label>
-                        <textarea className="form-textarea" placeholder="What was discussed? Any follow-up needed?" value={contactForm.notes} onChange={e => setContactForm({...contactForm, notes: e.target.value})}/>
-                    </div>
-                    <div className="btn-group mt-md">
-                        <button className="btn btn-primary" onClick={submitContact}>✓ Save Contact</button>
-                        <button className="btn btn-secondary" onClick={() => setContactModal(false)}>Cancel</button>
-                    </div>
-                </>}
-            </Modal>
-        </div>
-    );
-}
-
 function ActivityLog({ activityLog, allUsers, currentUser }) {
     const [userFilter, setUserFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
     const [search, setSearch] = useState('');
+    const [shipFilter, setShipFilter] = useState('all');
     
     const users = useMemo(() => {
         const names = new Set();
@@ -8343,6 +8263,7 @@ function ActivityLog({ activityLog, allUsers, currentUser }) {
             const monthAgo = Date.now() - 30 * 86400000;
             result = result.filter(a => a.time && new Date(a.time).getTime() > monthAgo);
         }
+        if (shipFilter !== 'all') result = result.filter(a => a.text.includes(shipFilter));
         if (search.trim()) {
             const s = search.toLowerCase();
             result = result.filter(a => a.text.toLowerCase().includes(s) || a.user?.toLowerCase().includes(s));
@@ -8447,6 +8368,8 @@ function ActivityLog({ activityLog, allUsers, currentUser }) {
                         <button key={f.k} className={`btn btn-sm ${dateFilter===f.k ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setDateFilter(f.k)}>{f.l}</button>
                     ))}
                 </div>
+                
+                <input style={{padding:'6px 10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)',fontSize:'11px',minWidth:'140px'}} placeholder="Filter by ship name..." value={shipFilter === 'all' ? '' : shipFilter} onChange={e => setShipFilter(e.target.value || 'all')}/>
                 
                 <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
                     {actionTypes.map(t => {
