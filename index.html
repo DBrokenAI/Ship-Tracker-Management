@@ -8680,17 +8680,6 @@ function POCDirectory({ ships, toast }) {
         }
     };
     
-    // Filter
-    var filtered = dedupedContacts.filter(function(c) {
-        if (filterShip !== 'all' && c.ship !== filterShip) return false;
-        if (search) {
-            var s = search.toLowerCase();
-            return (c.name||'').toLowerCase().indexOf(s) !== -1 || (c.email||'').toLowerCase().indexOf(s) !== -1 || (c.ship||'').toLowerCase().indexOf(s) !== -1 || (c.rank||'').toLowerCase().indexOf(s) !== -1 || (c.role||'').toLowerCase().indexOf(s) !== -1;
-        }
-        return true;
-    });
-    
-    // Recently contacted — top 5 contacts with most recent communication
     // Team members to exclude from contacts
     var teamEmailPatterns = ['daniel.k.brown', 'dbrown', 'clyde.a.grant', 'cgrant', 'uriel.pena', 'up_reap', 'kaazim.j.hanif', 'jayreap', 'damian.j.pierman', 'eryk.kedzierski', 'steven.m.spellman', 'mohammed.cardenas'];
     var isTeamContact = function(email) {
@@ -8706,7 +8695,6 @@ function POCDirectory({ ships, toast }) {
         if (isTeamContact(c.email)) return;
         var key = (c.email || '').toLowerCase();
         if (key && seenEmails[key]) {
-            // Merge: keep the one with more data
             var existing = dedupedContacts.find(function(d) { return (d.email || '').toLowerCase() === key; });
             if (existing) {
                 if (!existing.name && c.name) existing.name = c.name;
@@ -8721,6 +8709,17 @@ function POCDirectory({ ships, toast }) {
         dedupedContacts.push(c);
     });
     
+    // Filter
+    var filtered = dedupedContacts.filter(function(c) {
+        if (filterShip !== 'all' && c.ship !== filterShip) return false;
+        if (search) {
+            var s = search.toLowerCase();
+            return (c.name||'').toLowerCase().indexOf(s) !== -1 || (c.email||'').toLowerCase().indexOf(s) !== -1 || (c.ship||'').toLowerCase().indexOf(s) !== -1 || (c.rank||'').toLowerCase().indexOf(s) !== -1 || (c.role||'').toLowerCase().indexOf(s) !== -1;
+        }
+        return true;
+    });
+    
+    // Recently contacted
     var recentlyContacted = dedupedContacts.filter(function(c) {
         return c.email && getLastComm(c.email);
     }).sort(function(a, b) {
