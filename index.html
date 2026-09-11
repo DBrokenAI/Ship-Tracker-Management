@@ -1599,63 +1599,54 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
-                    <div className="version" style={{position:'relative',cursor:'pointer'}} onMouseEnter={() => document.getElementById('changelogPopup') && (document.getElementById('changelogPopup').style.display='block')} onMouseLeave={() => document.getElementById('changelogPopup') && (document.getElementById('changelogPopup').style.display='none')}>
-                        v3.5.0 Firebase — <span style={{color:'var(--primary)',fontSize:'9px',textDecoration:'underline'}}>Recent Improvements</span>
-                        <div id="changelogPopup" style={{display:'none',position:'absolute',bottom:'100%',left:'0',right:'0',marginBottom:'8px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',padding:'14px',boxShadow:'0 8px 30px rgba(0,0,0,0.4)',zIndex:200,maxHeight:'400px',overflowY:'auto',minWidth:'280px',width:'300px'}}>
-                            <div style={{fontSize:'13px',fontWeight:800,marginBottom:'10px',color:'var(--primary)'}}>📋 Recent Improvements</div>
-                            
-                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 11, 2026 — Build T107</div>
-                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
-                                • Auto-scans emails for issues on accept<br/>
-                                • 📌 Quick Notes tab on each ship<br/>
-                                • 📋 POC Directory page (auto-populated)<br/>
-                                • Dashboard order persists permanently<br/>
-                                • Stronger cross-user email dedup<br/>
-                                • Firebase won't overwrite data on network hiccup
-                            </div>
-                            
-                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 10, 2026 — Build T102</div>
-                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
-                                • Green "new emails" banner at top of screen<br/>
-                                • Incoming emails inbox always visible<br/>
-                                • Thread import from email body (13+ messages)<br/>
-                                • Email dedup by body content<br/>
-                                • Purge Firebase button for inbox cleanup
-                            </div>
-                            
-                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 8, 2026 — Build T095</div>
-                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
-                                • Chat-style email timeline (sent right, received left)<br/>
-                                • Sender name always above their bubble<br/>
-                                • Last Contact pulls from actual email history<br/>
-                                • Email body shows directly (no "View full" click)<br/>
-                                • Clear Email History button per ship<br/>
-                                • Delete button on issues
-                            </div>
-                            
-                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 8, 2026 — Build T086</div>
-                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
-                                • Outlook VBA auto-capture (incoming + sent)<br/>
-                                • Team name mapping (dbrown → Daniel Brown)<br/>
-                                • CG ship detection (CG52-CG73)<br/>
-                                • Signature stripping from email bodies<br/>
-                                • Incoming email inbox with accept/dismiss<br/>
-                                • Real-time sync between all users
-                            </div>
-                            
-                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 3, 2026 — Build T037</div>
-                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
-                                • Trips page redesign with base selector<br/>
-                                • End of Day HTML report<br/>
-                                • Morning report<br/>
-                                • Auto issue detection (15 rules)<br/>
-                                • Daily checks order persistence<br/>
-                                • Fleet status pie chart
-                            </div>
-                            
-                            <div style={{fontSize:'9px',color:'var(--text-muted)',marginTop:'6px',textAlign:'center'}}>Ship Tracker Pro — NSWC Corona PA22 REAP Team</div>
-                        </div>
-                    </div>
+                    <div className="version">v3.5.0 Firebase</div>
+                    {(() => {
+                        var hasNewUpdate = false;
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T108'; } catch(e2) {}
+                        return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
+                            React.createElement('button', {
+                                onClick: function() { 
+                                    var el = document.getElementById('changelogDrop');
+                                    if (el) { el.style.display = el.style.display === 'block' ? 'none' : 'block'; }
+                                    localStorage.setItem('lastSeenBuild', 'T108');
+                                },
+                                style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
+                            }, hasNewUpdate ? '🔶 New Updates Available' : '✅ Up to Date — View Changes'),
+                            React.createElement('div', {id:'changelogDrop', style:{display:'none',position:'absolute',bottom:'100%',left:'0',marginBottom:'8px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',padding:'14px',boxShadow:'0 8px 30px rgba(0,0,0,0.4)',zIndex:200,maxHeight:'400px',overflowY:'auto',width:'300px'}},
+                                React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}},
+                                    React.createElement('span', {style:{fontSize:'13px',fontWeight:800,color:'var(--primary)'}}, '\uD83D\uDCCB Recent Improvements'),
+                                    React.createElement('span', {onClick:function(){document.getElementById('changelogDrop').style.display='none';},style:{cursor:'pointer',fontSize:'14px',color:'var(--text-muted)'}}, '\u2715')
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}, 'Sep 11, 2026 — Build T108'),
+                                React.createElement('div', {style:{fontSize:'10px',color:'var(--text-dim)',marginBottom:'10px',lineHeight:'1.6'}}, 
+                                    '\u2022 Auto-scans emails for issues on accept\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship\n\u2022 \uD83D\uDCCB POC Directory page (auto-populated)\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase won\'t overwrite data on network hiccup\n\u2022 Changelog viewer added'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}, 'Sep 10, 2026 — Build T102'),
+                                React.createElement('div', {style:{fontSize:'10px',color:'var(--text-dim)',marginBottom:'10px',lineHeight:'1.6'}}, 
+                                    '\u2022 Green "new emails" banner at top\n\u2022 Incoming emails inbox always visible\n\u2022 Thread import from email body\n\u2022 Email dedup by body content\n\u2022 Purge Firebase button'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}, 'Sep 8, 2026 — Build T095'),
+                                React.createElement('div', {style:{fontSize:'10px',color:'var(--text-dim)',marginBottom:'10px',lineHeight:'1.6'}}, 
+                                    '\u2022 Chat-style email timeline\n\u2022 Sender name above each bubble\n\u2022 Last Contact from email history\n\u2022 Email body shows directly\n\u2022 Clear Email History per ship\n\u2022 Delete button on issues'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}, 'Sep 8, 2026 — Build T086'),
+                                React.createElement('div', {style:{fontSize:'10px',color:'var(--text-dim)',marginBottom:'10px',lineHeight:'1.6'}}, 
+                                    '\u2022 Outlook VBA auto-capture\n\u2022 Team name mapping\n\u2022 CG ship detection (CG52-CG73)\n\u2022 Signature stripping\n\u2022 Incoming email inbox\n\u2022 Real-time sync between users'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}, 'Sep 3, 2026 — Build T037'),
+                                React.createElement('div', {style:{fontSize:'10px',color:'var(--text-dim)',marginBottom:'10px',lineHeight:'1.6'}}, 
+                                    '\u2022 Trips page redesign\n\u2022 End of Day HTML report\n\u2022 Morning report\n\u2022 Auto issue detection (15 rules)\n\u2022 Fleet status pie chart'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+                                
+                                React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',textAlign:'center',marginTop:'8px',borderTop:'1px solid var(--border)',paddingTop:'8px'}}, 'Ship Tracker Pro — NSWC Corona PA22 REAP Team')
+                            )
+                        );
+                    })()}
                 </div>
                 <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarCollapsed ? '▶' : '◀'}</button>
             </nav>
