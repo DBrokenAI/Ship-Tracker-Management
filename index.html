@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T107";
+    var APP_BUILD = "2026-02-27T108";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1297,15 +1297,6 @@ const Toast = ({ toasts, remove, alerts, dismissAlert }) => (
                 <span>{t.message}</span>
             </div>
         ))}
-        {alerts && alerts.map(a => (
-            <div key={a.id} style={{background: a.type === 'urgent' ? 'rgba(239,68,68,0.95)' : a.type === 'warning' ? 'rgba(245,158,11,0.95)' : 'rgba(59,130,246,0.95)', color:'#fff',padding:'12px 16px',borderRadius:'10px',marginTop:'8px',minWidth:'280px',display:'flex',flexDirection:'column',gap:'4px',boxShadow:'0 4px 20px rgba(0,0,0,0.3)',animation:'fadeIn 0.3s ease',cursor:'pointer'}} onClick={() => dismissAlert(a.id)}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <span style={{fontWeight:700,fontSize:'13px'}}>{a.icon} {a.ship}</span>
-                    <span style={{fontSize:'10px',opacity:0.8,cursor:'pointer'}}>✕</span>
-                </div>
-                <span style={{fontSize:'11px',opacity:0.95}}>{a.message}</span>
-            </div>
-        ))}
     </div>
 );
 
@@ -1608,7 +1599,63 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
-                    <div className="version">v3.4.0 Firebase</div>
+                    <div className="version" style={{position:'relative',cursor:'pointer'}} onMouseEnter={() => document.getElementById('changelogPopup') && (document.getElementById('changelogPopup').style.display='block')} onMouseLeave={() => document.getElementById('changelogPopup') && (document.getElementById('changelogPopup').style.display='none')}>
+                        v3.5.0 Firebase — <span style={{color:'var(--primary)',fontSize:'9px',textDecoration:'underline'}}>Recent Improvements</span>
+                        <div id="changelogPopup" style={{display:'none',position:'absolute',bottom:'100%',left:'0',right:'0',marginBottom:'8px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',padding:'14px',boxShadow:'0 8px 30px rgba(0,0,0,0.4)',zIndex:200,maxHeight:'400px',overflowY:'auto',minWidth:'280px',width:'300px'}}>
+                            <div style={{fontSize:'13px',fontWeight:800,marginBottom:'10px',color:'var(--primary)'}}>📋 Recent Improvements</div>
+                            
+                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 11, 2026 — Build T107</div>
+                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
+                                • Auto-scans emails for issues on accept<br/>
+                                • 📌 Quick Notes tab on each ship<br/>
+                                • 📋 POC Directory page (auto-populated)<br/>
+                                • Dashboard order persists permanently<br/>
+                                • Stronger cross-user email dedup<br/>
+                                • Firebase won't overwrite data on network hiccup
+                            </div>
+                            
+                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 10, 2026 — Build T102</div>
+                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
+                                • Green "new emails" banner at top of screen<br/>
+                                • Incoming emails inbox always visible<br/>
+                                • Thread import from email body (13+ messages)<br/>
+                                • Email dedup by body content<br/>
+                                • Purge Firebase button for inbox cleanup
+                            </div>
+                            
+                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 8, 2026 — Build T095</div>
+                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
+                                • Chat-style email timeline (sent right, received left)<br/>
+                                • Sender name always above their bubble<br/>
+                                • Last Contact pulls from actual email history<br/>
+                                • Email body shows directly (no "View full" click)<br/>
+                                • Clear Email History button per ship<br/>
+                                • Delete button on issues
+                            </div>
+                            
+                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 8, 2026 — Build T086</div>
+                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
+                                • Outlook VBA auto-capture (incoming + sent)<br/>
+                                • Team name mapping (dbrown → Daniel Brown)<br/>
+                                • CG ship detection (CG52-CG73)<br/>
+                                • Signature stripping from email bodies<br/>
+                                • Incoming email inbox with accept/dismiss<br/>
+                                • Real-time sync between all users
+                            </div>
+                            
+                            <div style={{fontSize:'10px',fontWeight:700,color:'var(--amber)',marginBottom:'4px'}}>Sep 3, 2026 — Build T037</div>
+                            <div style={{fontSize:'10px',color:'var(--text-dim)',marginBottom:'8px',lineHeight:'1.5'}}>
+                                • Trips page redesign with base selector<br/>
+                                • End of Day HTML report<br/>
+                                • Morning report<br/>
+                                • Auto issue detection (15 rules)<br/>
+                                • Daily checks order persistence<br/>
+                                • Fleet status pie chart
+                            </div>
+                            
+                            <div style={{fontSize:'9px',color:'var(--text-muted)',marginTop:'6px',textAlign:'center'}}>Ship Tracker Pro — NSWC Corona PA22 REAP Team</div>
+                        </div>
+                    </div>
                 </div>
                 <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarCollapsed ? '▶' : '◀'}</button>
             </nav>
