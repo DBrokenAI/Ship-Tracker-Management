@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T106";
+    var APP_BUILD = "2026-02-27T107";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1288,7 +1288,7 @@ const Icon = ({ name, style }) => {
     return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>{paths[name]}</svg>;
 };
 
-const Toast = ({ toasts, remove }) => (
+const Toast = ({ toasts, remove, alerts, dismissAlert }) => (
     <div className="toast-container">
         {toasts.map(t => (
             <div key={t.id} className={`toast toast-${t.type}`} onClick={() => remove(t.id)} style={{display:'flex',alignItems:'center',gap:'8px'}}>
@@ -1297,6 +1297,16 @@ const Toast = ({ toasts, remove }) => (
                 <span>{t.message}</span>
             </div>
         ))}
+        {alerts && alerts.map(a => (
+            <div key={a.id} style={{background: a.type === 'urgent' ? 'rgba(239,68,68,0.95)' : a.type === 'warning' ? 'rgba(245,158,11,0.95)' : 'rgba(59,130,246,0.95)', color:'#fff',padding:'12px 16px',borderRadius:'10px',marginTop:'8px',minWidth:'280px',display:'flex',flexDirection:'column',gap:'4px',boxShadow:'0 4px 20px rgba(0,0,0,0.3)',animation:'fadeIn 0.3s ease',cursor:'pointer'}} onClick={() => dismissAlert(a.id)}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span style={{fontWeight:700,fontSize:'13px'}}>{a.icon} {a.ship}</span>
+                    <span style={{fontSize:'10px',opacity:0.8,cursor:'pointer'}}>✕</span>
+                </div>
+                <span style={{fontSize:'11px',opacity:0.95}}>{a.message}</span>
+            </div>
+        ))}
+    </div>
     </div>
 );
 
@@ -1408,6 +1418,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     const [parts, setParts] = useFirestore('parts', []);
     const [activityLog, setActivityLog] = useFirestore('activityLog', defaultActivityLog);
     const [suggestions, setSuggestions] = useFirestore('suggestions', []);
+    const [quickNotes, setQuickNotes] = useFirestore('quickNotes', []);
     const [onlineUsers, setOnlineUsers] = useState([]);
     // Local-only settings (not shared)
     const [toasts, setToasts] = useState([]);
@@ -1467,6 +1478,54 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     const activeUsers = onlineUsers;
 
     const toast = (msg, type = 'info') => { const id = Date.now(); setToasts(t => [...t, { id, message: msg, type }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000); };
+    
+    // Proactive Alert Notifications — bottom right corner
+    const [alerts, setAlerts] = useState([]);
+    const [dismissedAlerts, setDismissedAlerts] = useStorage('dismissedAlerts', []);
+    
+    useEffect(() => {
+        if (!ships || ships.length === 0) return;
+        var now = new Date();
+        var newAlerts = [];
+        
+        ships.forEach(function(ship) {
+            if (ship.pendingDeinstall) return;
+            
+            // No contact in 7+ days
+            var shipEmails = emailHistory.filter(function(h) { return h.shipId === ship.id; });
+            var lastContact = shipEmails.length > 0 ? new Date(shipEmails.sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); })[0].timestamp) : (ship.lastContact ? new Date(ship.lastContact) : null);
+            if (lastContact) {
+                var daysSince = Math.floor((now - lastContact) / 86400000);
+                if (daysSince >= 7) {
+                    newAlerts.push({ id: 'nc_' + ship.id, ship: ship.name, type: 'warning', icon: '⚠️', message: 'No contact in ' + daysSince + ' days' });
+                }
+            }
+            
+            // Unresolved urgent issue for 5+ days
+            var shipIssues = issues.filter(function(i) { return i.shipId === ship.id && !i.resolved && i.threat === 'Urgent'; });
+            shipIssues.forEach(function(iss) {
+                var issAge = Math.floor((now - new Date(iss.date)) / 86400000);
+                if (issAge >= 5) {
+                    newAlerts.push({ id: 'ui_' + iss.id, ship: ship.name, type: 'urgent', icon: '🔴', message: 'Urgent issue open ' + issAge + ' days: ' + (iss.title || '').substring(0, 30) });
+                }
+            });
+            
+            // Pending install date is tomorrow or today
+            if (ship.pendingInstall && ship.installDate) {
+                var installDate = new Date(ship.installDate);
+                var daysUntil = Math.floor((installDate - now) / 86400000);
+                if (daysUntil === 0) {
+                    newAlerts.push({ id: 'pi_' + ship.id, ship: ship.name, type: 'info', icon: '🔧', message: 'Install scheduled for TODAY' });
+                } else if (daysUntil === 1) {
+                    newAlerts.push({ id: 'pi_' + ship.id, ship: ship.name, type: 'info', icon: '🔧', message: 'Install scheduled for TOMORROW' });
+                }
+            }
+        });
+        
+        // Filter out dismissed alerts
+        newAlerts = newAlerts.filter(function(a) { return dismissedAlerts.indexOf(a.id) === -1; });
+        setAlerts(newAlerts);
+    }, [ships, issues, emailHistory]);
     const logActivity = (text, details = null) => { 
         const newEntry = { id: genId('A'), text, details, user: currentUser?.username || 'Unknown', time: new Date().toISOString() };
         setActivityLog(prev => [newEntry, ...prev.slice(0, 499)]); 
@@ -1537,7 +1596,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         { id: 0, label: 'Dashboard', icon: 'dashboard', dot: urgentIssues > 0 ? 'red' : null }, { id: 1, label: 'Daily Checks', icon: 'checks', dot: checksUnfilled > 0 ? 'amber' : null },
         { id: 2, label: 'Add Ship', icon: 'add' },
         { id: 4, label: 'Inventory', icon: 'inventory' }, { id: 5, label: 'Trips', icon: 'installs' },
-        { id: 6, label: 'Parts', icon: 'parts' }, { id: 7, label: 'Email Status', icon: 'email', badge: overdueShips, dot: overdueShips > 0 ? 'red' : null },
+        { id: 6, label: 'Parts', icon: 'parts' }, { id: 9, label: 'Contacts', icon: 'email' },
         { id: 8, label: 'Data / Import', icon: 'settings' },
         { id: 11, label: 'Activity Log', icon: 'activity' },
         ...(isAdmin ? [{ id: 10, label: 'Suggestions', icon: 'issues', badge: suggestions.filter(s => s.status === 'new').length }] : []),
@@ -1624,10 +1683,11 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 {page === 6 && <Parts parts={parts} setParts={setParts} toast={toast} logActivity={logActivity}/>}
                 {page === 7 && <EmailStatus ships={ships} setShips={setShips} issues={issues} toast={toast} logActivity={logActivity} currentUser={currentUser} allUsers={allUsers}/>}
                 {page === 8 && <DataSettings ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} setDailyChecks={setDailyChecks} installs={installs} setInstalls={setInstalls} parts={parts} setParts={setParts} activityLog={activityLog} setActivityLog={setActivityLog} toast={toast} backupSettings={backupSettings} setBackupSettings={setBackupSettings} downloadBackup={downloadBackup}/>}
+                {page === 9 && <POCDirectory ships={ships} emailHistory={emailHistory} toast={toast}/>}
                 {page === 10 && isAdmin && <Suggestions suggestions={suggestions} setSuggestions={setSuggestions} toast={toast}/>}
                 {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser}/>}
             </main>
-            <Toast toasts={toasts} remove={id => setToasts(t => t.filter(x => x.id !== id))}/>
+            <Toast toasts={toasts} remove={id => setToasts(t => t.filter(x => x.id !== id))} alerts={alerts} dismissAlert={id => setDismissedAlerts(prev => [...prev, id])}/>
             
             {/* Feedback Modal */}
             <Modal open={feedbackModal} onClose={() => setFeedbackModal(false)} title="💡 Suggest Improvement">
@@ -2328,6 +2388,31 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         
         // Mark processed in Firebase
         db.collection('incomingEmails').doc(item._docId).update({ processed: true, accepted: true, processedAt: new Date().toISOString() });
+        
+        // Auto-scan this email for potential issues
+        var emailText = ((item.body || '') + ' ' + (item._cleanSubject || '')).toLowerCase();
+        var issuePatterns = [
+            { r: /(?:router|switch)[\s\S]{0,40}(?:down|offline|failed|issue|error)/i, t: 'Router/Switch Issue', th: 'Urgent' },
+            { r: /(?:no |lost |cannot |can't )(?:connect|connection|connectivity)/i, t: 'Connection Lost', th: 'Urgent' },
+            { r: /(?:satcom|satellite)[\s\S]{0,30}(?:down|lost|fail|issue)/i, t: 'SATCOM Issue', th: 'Urgent' },
+            { r: /(?:drive|hdd|ssd|raid)[\s\S]{0,30}(?:fail|error|bad|dead)/i, t: 'Drive Failure', th: 'Urgent' },
+            { r: /(?:crash|bsod|blue screen|freeze|won't boot)/i, t: 'System Crash', th: 'Urgent' },
+            { r: /(?:crypto|comsec|taclane)[\s\S]{0,30}(?:fail|error|down|expired)/i, t: 'Crypto Issue', th: 'Urgent' },
+            { r: /(?:reap|reap system)[\s\S]{0,30}(?:down|offline|not working|fail)/i, t: 'REAP System Issue', th: 'Urgent' },
+            { r: /(?:diode|data diode)[\s\S]{0,20}(?:down|fail|error)/i, t: 'Diode Issue', th: 'Urgent' },
+            { r: /(?:still not working|still down|still broken|ongoing issue|unresolved)/i, t: 'Ongoing Issue', th: 'Urgent' },
+        ];
+        if (ship && emailText.length > 20) {
+            issuePatterns.forEach(function(p) {
+                if (p.r.test(emailText)) {
+                    var alreadyTracked = issues.some(function(i) { return i.shipId === ship.id && !i.resolved && i.title === p.t; });
+                    if (!alreadyTracked) {
+                        var newIssue = { id: 'ISS_' + Date.now() + '_' + Math.random().toString(36).substr(2,5), shipId: ship.id, shipName: ship.name, title: p.t, details: (item._cleanSubject || '').substring(0,100), threat: p.th, category: 'Auto-detected', reportedBy: 'Email Scan', date: new Date().toISOString(), resolved: false };
+                        setIssues(function(prev) { return [newIssue].concat(prev); });
+                    }
+                }
+            });
+        }
     };
     
     // Reject/delete an incoming email
@@ -3609,6 +3694,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     { id: 'email', label: 'Email', iconName: 'email', badge: emailHistory.filter(h => h.shipId === sel.id).length },
                                     { id: 'issues', label: 'Issues', icon: '⚠️', badge: selIssues.length, badgeColor: selIssues.some(i => i.threat === 'Urgent') ? 'var(--red)' : 'var(--amber)' },
                                     { id: 'assets', label: 'Assets', iconName: 'parts' },
+                                    { id: 'notes', label: 'Notes', icon: '📌' },
                                     { id: 'activity', label: 'Activity', iconName: 'clock' },
                                 ].map(tab => (
                                     <button key={tab.id} onClick={() => setDetailTab(tab.id)} style={{padding:'12px 16px',background:'none',border:'none',borderBottom: detailTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',color: detailTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',fontWeight: detailTab === tab.id ? 600 : 400,cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'6px',marginBottom:'-1px'}}>
@@ -3974,6 +4060,34 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             )}
 
                             {/* ACTIVITY TAB */}
+                            {/* NOTES TAB */}
+                            {detailTab === 'notes' && (() => {
+                                var shipNotes = quickNotes.filter(function(n) { return n.shipId === sel.id; }).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
+                                return React.createElement('div', null,
+                                    React.createElement('div', {style: {display:'flex',gap:'8px',marginBottom:'16px'}},
+                                        React.createElement('input', {id: 'noteInput', style: {flex:1,padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, placeholder: 'Add a quick note...', onKeyDown: function(e) { if (e.key === 'Enter' && e.target.value.trim()) { var note = { id: 'N_' + Date.now(), shipId: sel.id, shipName: sel.name, text: e.target.value.trim(), color: 'yellow', user: currentUser ? currentUser.username : 'Unknown', date: new Date().toISOString() }; setQuickNotes(function(p) { return [note].concat(p); }); e.target.value = ''; logActivity('Added note to ' + sel.name + ': ' + note.text.substring(0,30)); } }}),
+                                        React.createElement('button', {className:'btn btn-primary', style:{borderRadius:'8px',padding:'10px 16px',fontWeight:700}, onClick: function() { var inp = document.getElementById('noteInput'); if (inp && inp.value.trim()) { var note = { id: 'N_' + Date.now(), shipId: sel.id, shipName: sel.name, text: inp.value.trim(), color: 'yellow', user: currentUser ? currentUser.username : 'Unknown', date: new Date().toISOString() }; setQuickNotes(function(p) { return [note].concat(p); }); inp.value = ''; logActivity('Added note to ' + sel.name); } }}, '+ Add')
+                                    ),
+                                    shipNotes.length === 0 ? React.createElement('div', {style: {textAlign:'center',padding:'30px',color:'var(--text-muted)'}}, React.createElement('div', {style: {fontSize:'24px',marginBottom:'8px'}}, '\uD83D\uDCCC'), React.createElement('div', {style: {fontSize:'12px'}}, 'No notes yet for this ship')) :
+                                    React.createElement('div', {style: {display:'flex',flexDirection:'column',gap:'8px'}},
+                                        shipNotes.map(function(note) {
+                                            var colors = { yellow: {bg:'rgba(250,204,21,0.1)',border:'rgba(250,204,21,0.3)',accent:'#facc15'}, blue: {bg:'rgba(59,130,246,0.1)',border:'rgba(59,130,246,0.3)',accent:'#3b82f6'}, red: {bg:'rgba(239,68,68,0.1)',border:'rgba(239,68,68,0.3)',accent:'#ef4444'}, green: {bg:'rgba(16,185,129,0.1)',border:'rgba(16,185,129,0.3)',accent:'#10b981'} };
+                                            var c = colors[note.color] || colors.yellow;
+                                            return React.createElement('div', {key: note.id, style: {padding:'12px 16px',background:c.bg,border:'1px solid ' + c.border,borderLeft:'3px solid ' + c.accent,borderRadius:'8px'}},
+                                                React.createElement('div', {style: {display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
+                                                    React.createElement('div', {style: {fontSize:'13px',color:'var(--text)',lineHeight:'1.5',flex:1}}, note.text),
+                                                    React.createElement('div', {style: {display:'flex',gap:'4px',marginLeft:'8px',flexShrink:0}},
+                                                        ['yellow','blue','red','green'].map(function(clr) { return React.createElement('div', {key:clr, onClick: function() { setQuickNotes(function(p) { return p.map(function(n) { return n.id === note.id ? Object.assign({},n,{color:clr}) : n; }); }); }, style: {width:'12px',height:'12px',borderRadius:'50%',background: colors[clr].accent,cursor:'pointer',border: note.color === clr ? '2px solid var(--text)' : '2px solid transparent'}}); }),
+                                                        React.createElement('button', {onClick: function() { setQuickNotes(function(p) { return p.filter(function(n) { return n.id !== note.id; }); }); toast('Note deleted','info'); }, style: {background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:'11px',padding:'0 4px'}}, '\uD83D\uDDD1\uFE0F')
+                                                    )
+                                                ),
+                                                React.createElement('div', {style: {fontSize:'10px',color:'var(--text-muted)',marginTop:'6px'}}, (note.user || 'Unknown') + ' • ' + fmtDate(note.date))
+                                            );
+                                        })
+                                    )
+                                );
+                            })()}
+
                             {detailTab === 'activity' && (
                                 <div>
                                     <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'16px',letterSpacing:'0.5px'}}>RECENT ACTIVITY FOR {sel.name}</div>
@@ -8423,6 +8537,77 @@ function Suggestions({ suggestions, setSuggestions, toast }) {
     );
 }
 
+
+function POCDirectory({ ships, emailHistory, toast }) {
+    var [search, setSearch] = React.useState('');
+    var [filterShip, setFilterShip] = React.useState('all');
+    
+    // Build contacts from ships and email history
+    var contacts = [];
+    var seen = {};
+    
+    // From ship POC data
+    ships.forEach(function(s) {
+        if (s.email && s.email.indexOf('@') !== -1) {
+            var key = s.email.toLowerCase();
+            if (!seen[key]) {
+                seen[key] = true;
+                contacts.push({ name: s.poc || '', email: s.email, ship: s.name, shipId: s.id, source: 'ship', phone: '' });
+            }
+        }
+    });
+    
+    // From email history
+    emailHistory.forEach(function(h) {
+        if (h.fromEmail && h.fromEmail.indexOf('@') !== -1 && h.fromEmail.indexOf('navy.mil') !== -1) {
+            var key = h.fromEmail.toLowerCase();
+            if (!seen[key] && key.indexOf('niwc') === -1 && key.indexOf('sonar') === -1 && key.indexOf('spawar') === -1) {
+                seen[key] = true;
+                var senderName = h.fromName || (h.result && h.result.sender ? h.result.sender.name : '') || '';
+                if (senderName === '__SHIP__') senderName = '';
+                contacts.push({ name: senderName, email: h.fromEmail, ship: h.shipName || '', shipId: h.shipId || '', source: 'email', phone: '' });
+            }
+        }
+    });
+    
+    // Filter
+    var filtered = contacts.filter(function(c) {
+        if (filterShip !== 'all' && c.ship !== filterShip) return false;
+        if (search) {
+            var s = search.toLowerCase();
+            return (c.name || '').toLowerCase().indexOf(s) !== -1 || (c.email || '').toLowerCase().indexOf(s) !== -1 || (c.ship || '').toLowerCase().indexOf(s) !== -1;
+        }
+        return true;
+    }).sort(function(a, b) { return (a.ship || '').localeCompare(b.ship || '') || (a.name || '').localeCompare(b.name || ''); });
+    
+    return React.createElement('div', null,
+        React.createElement('div', {className:'flex-between mb-lg'},
+            React.createElement('h2', {style:{fontSize:'20px',fontWeight:800}}, '\uD83D\uDCCB POC Directory — ' + contacts.length + ' contacts'),
+            null
+        ),
+        React.createElement('div', {style:{display:'flex',gap:'10px',marginBottom:'16px'}},
+            React.createElement('input', {style:{flex:1,padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, placeholder:'Search name, email, or ship...', value:search, onChange:function(e){setSearch(e.target.value);}}),
+            React.createElement('select', {style:{padding:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, value:filterShip, onChange:function(e){setFilterShip(e.target.value);}},
+                React.createElement('option', {value:'all'}, 'All Ships'),
+                ships.map(function(s) { return React.createElement('option', {key:s.id, value:s.name}, s.name); })
+            )
+        ),
+        React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:'6px'}},
+            filtered.length === 0 ? React.createElement('div', {style:{textAlign:'center',padding:'40px',color:'var(--text-muted)'}}, 'No contacts found') :
+            filtered.map(function(c, i) {
+                return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',padding:'12px 16px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',gap:'16px'}},
+                    React.createElement('div', {style:{width:'36px',height:'36px',borderRadius:'10px',background:'var(--primary-glow)',border:'1px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:800,color:'var(--primary)',flexShrink:0}}, (c.name || '?').substring(0,2).toUpperCase()),
+                    React.createElement('div', {style:{flex:1,minWidth:0}},
+                        React.createElement('div', {style:{fontWeight:700,fontSize:'13px',color:'var(--text)'}}, c.name || 'Unknown'),
+                        React.createElement('div', {style:{fontSize:'11px',color:'var(--primary)',cursor:'pointer'}, onClick:function(){ navigator.clipboard.writeText(c.email); toast('Email copied!','success'); }}, c.email)
+                    ),
+                    React.createElement('div', {style:{fontSize:'12px',color:'var(--text-muted)',fontWeight:600,background:'var(--bg-input)',padding:'4px 10px',borderRadius:'6px'}}, c.ship || '—'),
+                    React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px'}}, c.source)
+                );
+            })
+        )
+    );
+}
 
 function DataSettings({ ships, setShips, issues, setIssues, dailyChecks, setDailyChecks, installs, setInstalls, parts, setParts, activityLog, setActivityLog, toast, backupSettings, setBackupSettings, downloadBackup }) {
     const [importText, setImportText] = useState('');
