@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T103";
+    var APP_BUILD = "2026-02-27T105";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -931,6 +931,7 @@ function VBAConfigPanel() {
     var [codeText, setCodeText] = React.useState('');
     var [currentVersion, setCurrentVersion] = React.useState('');
     var [newVersion, setNewVersion] = React.useState('');
+    var [changelog, setChangelog] = React.useState('');
     var [saving, setSaving] = React.useState(false);
     var [saved, setSaved] = React.useState(false);
     
@@ -967,7 +968,7 @@ function VBAConfigPanel() {
         var encoded = btoa(unescape(encodeURIComponent(codeToSave)));
         db.collection('settings').doc('vbaCode').set({ sourceCode: encoded, encoding: 'base64', pushedAt: new Date().toISOString(), pushedBy: 'admin' }).then(function() {
             // Update version
-            return db.collection('settings').doc('vbaConfig').set({ version: newVersion }, { merge: true });
+            return db.collection('settings').doc('vbaConfig').set({ version: newVersion, changelog: changelog }, { merge: true });
         }).then(function() {
             setSaving(false);
             setSaved(true);
@@ -995,6 +996,16 @@ function VBAConfigPanel() {
             value: codeText,
             onChange: function(e) { setCodeText(e.target.value); }
         }),
+        
+        React.createElement('div', {style: {marginTop:'12px'}},
+            React.createElement('label', {style: {fontSize:'10px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'0.5px',display:'block',marginBottom:'4px'}}, 'CHANGELOG (what\u0027s in this update)'),
+            React.createElement('textarea', {
+                style: {width:'100%',minHeight:'80px',padding:'8px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)',fontSize:'11px',resize:'vertical'},
+                placeholder: 'e.g.\n- Fixed recipient name mapping\n- Added Pierman to team roster\n- Better signature stripping',
+                value: changelog,
+                onChange: function(e) { setChangelog(e.target.value); }
+            })
+        ),
         
         React.createElement('div', {style: {display:'flex',alignItems:'center',gap:'12px',marginTop:'10px'}},
             React.createElement('button', {onClick: pushUpdate, disabled: saving, style: {padding:'10px 20px',background: saved ? 'var(--green)' : 'var(--primary)',color:'#fff',border:'none',borderRadius:'8px',fontWeight:700,fontSize:'13px',cursor:'pointer'}}, saving ? 'Pushing...' : saved ? '\u2705 Pushed!' : '\uD83D\uDE80 Push Update to All'),
@@ -1648,13 +1659,16 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [dashReorder, setDashReorder] = useState(false);
     const [dashDragShip, setDashDragShip] = useState(null);
     const [dashDragOver, setDashDragOver] = useState(null);
-    const [dashShipOrder, setDashShipOrder] = useState([]);
+    const [dashShipOrder, setDashShipOrder] = useState(() => {
+        try { var s = JSON.parse(localStorage.getItem('dashboardShipOrder')); return s && s.length > 0 ? s : []; } catch(e) { return []; }
+    });
     
-    // Load dashboard ship order from Firebase
+    // Load dashboard ship order from Firebase and sync to localStorage
     useEffect(() => {
         const unsub = db.collection('settings').doc('dashboardShipOrder').onSnapshot(doc => {
-            if (doc.exists && doc.data().order) {
+            if (doc.exists && doc.data().order && doc.data().order.length > 0) {
                 setDashShipOrder(doc.data().order);
+                localStorage.setItem('dashboardShipOrder', JSON.stringify(doc.data().order));
             }
         });
         return () => unsub();
@@ -1662,6 +1676,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     
     const saveDashOrder = (order) => {
         setDashShipOrder(order);
+        localStorage.setItem('dashboardShipOrder', JSON.stringify(order));
         db.collection('settings').doc('dashboardShipOrder').set({ order, updatedAt: new Date().toISOString() }).catch(err => console.error('Save order error:', err));
     };
     
