@@ -1557,7 +1557,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         { id: 11, label: 'Activity Log', icon: 'activity' },
         ...(isAdmin ? [{ id: 10, label: 'Suggestions', icon: 'issues', badge: suggestions.filter(s => s.status === 'new').length }] : []),
     ];
-    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2] }, { title: 'Equipment', items: [4, 5, 6] }, { title: 'Comms', items: [7] }, { title: 'System', items: isAdmin ? [8, 11, 10] : [8, 11] }];
+    const sections = [{ title: 'Overview', items: [0, 1] }, { title: 'Ships', items: [2] }, { title: 'Equipment', items: [4, 5, 6] }, { title: 'Comms', items: [9] }, { title: 'System', items: isAdmin ? [8, 11, 10] : [8, 11] }];
 
     return (
         <div className="app">
