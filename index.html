@@ -1478,53 +1478,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
     const toast = (msg, type = 'info') => { const id = Date.now(); setToasts(t => [...t, { id, message: msg, type }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000); };
     
-    // Proactive Alert Notifications — bottom right corner
+    // Alert state — populated by Dashboard, displayed by Toast
     const [alerts, setAlerts] = useState([]);
     const [dismissedAlerts, setDismissedAlerts] = useStorage('dismissedAlerts', []);
     
-    useEffect(() => {
-        if (!ships || ships.length === 0) return;
-        var now = new Date();
-        var newAlerts = [];
-        
-        ships.forEach(function(ship) {
-            if (ship.pendingDeinstall) return;
-            
-            // No contact in 7+ days
-            var shipEmails = emailHistory.filter(function(h) { return h.shipId === ship.id; });
-            var lastContact = shipEmails.length > 0 ? new Date(shipEmails.sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); })[0].timestamp) : (ship.lastContact ? new Date(ship.lastContact) : null);
-            if (lastContact) {
-                var daysSince = Math.floor((now - lastContact) / 86400000);
-                if (daysSince >= 7) {
-                    newAlerts.push({ id: 'nc_' + ship.id, ship: ship.name, type: 'warning', icon: '⚠️', message: 'No contact in ' + daysSince + ' days' });
-                }
-            }
-            
-            // Unresolved urgent issue for 5+ days
-            var shipIssues = issues.filter(function(i) { return i.shipId === ship.id && !i.resolved && i.threat === 'Urgent'; });
-            shipIssues.forEach(function(iss) {
-                var issAge = Math.floor((now - new Date(iss.date)) / 86400000);
-                if (issAge >= 5) {
-                    newAlerts.push({ id: 'ui_' + iss.id, ship: ship.name, type: 'urgent', icon: '🔴', message: 'Urgent issue open ' + issAge + ' days: ' + (iss.title || '').substring(0, 30) });
-                }
-            });
-            
-            // Pending install date is tomorrow or today
-            if (ship.pendingInstall && ship.installDate) {
-                var installDate = new Date(ship.installDate);
-                var daysUntil = Math.floor((installDate - now) / 86400000);
-                if (daysUntil === 0) {
-                    newAlerts.push({ id: 'pi_' + ship.id, ship: ship.name, type: 'info', icon: '🔧', message: 'Install scheduled for TODAY' });
-                } else if (daysUntil === 1) {
-                    newAlerts.push({ id: 'pi_' + ship.id, ship: ship.name, type: 'info', icon: '🔧', message: 'Install scheduled for TOMORROW' });
-                }
-            }
-        });
-        
-        // Filter out dismissed alerts
-        newAlerts = newAlerts.filter(function(a) { return dismissedAlerts.indexOf(a.id) === -1; });
-        setAlerts(newAlerts);
-    }, [ships, issues, emailHistory]);
     const logActivity = (text, details = null) => { 
         const newEntry = { id: genId('A'), text, details, user: currentUser?.username || 'Unknown', time: new Date().toISOString() };
         setActivityLog(prev => [newEntry, ...prev.slice(0, 499)]); 
@@ -1674,7 +1631,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         💡 Suggest Improvement
                     </button>
                 </div>
-                {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers}/>}
+                {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers} setAlerts={setAlerts} dismissedAlerts={dismissedAlerts} quickNotes={quickNotes} setQuickNotes={setQuickNotes}/>}
                 {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} issues={issues} toast={toast} logActivity={logActivity}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
                 {page === 4 && <Inventory ships={ships} setShips={setShips} dailyChecks={dailyChecks} toast={toast} logActivity={logActivity}/>}
@@ -1713,7 +1670,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     );
 }
 
-function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog, currentUser, allUsers }) {
+function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog, currentUser, allUsers, setAlerts, dismissedAlerts, quickNotes, setQuickNotes }) {
     const [sel, setSel] = useState(null);
     const [detailTab, setDetailTab] = useState('email');
     const [showConfirm, setShowConfirm] = useState(false);
@@ -2189,6 +2146,33 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     // ===== INCOMING EMAIL QUEUE =====
     const [pendingEmails, setPendingEmails] = useState([]);
     const [showInbox, setShowInbox] = useState(false);
+    
+    // Proactive Alert Notifications
+    useEffect(function() {
+        if (!ships || ships.length === 0 || !setAlerts) return;
+        var now = new Date();
+        var newAlerts = [];
+        ships.forEach(function(ship) {
+            if (ship.pendingDeinstall) return;
+            var shipEmails = emailHistory.filter(function(h) { return h.shipId === ship.id; });
+            var lastCon = shipEmails.length > 0 ? new Date(shipEmails.sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); })[0].timestamp) : (ship.lastContact ? new Date(ship.lastContact) : null);
+            if (lastCon) {
+                var daysSince = Math.floor((now - lastCon) / 86400000);
+                if (daysSince >= 7) newAlerts.push({ id: 'nc_' + ship.id, ship: ship.name, type: 'warning', icon: '\u26A0\uFE0F', message: 'No contact in ' + daysSince + ' days' });
+            }
+            issues.filter(function(i) { return i.shipId === ship.id && !i.resolved && i.threat === 'Urgent'; }).forEach(function(iss) {
+                var issAge = Math.floor((now - new Date(iss.date)) / 86400000);
+                if (issAge >= 5) newAlerts.push({ id: 'ui_' + iss.id, ship: ship.name, type: 'urgent', icon: '\uD83D\uDD34', message: 'Urgent issue open ' + issAge + ' days: ' + (iss.title || '').substring(0, 30) });
+            });
+            if (ship.pendingInstall && ship.installDate) {
+                var daysUntil = Math.floor((new Date(ship.installDate) - now) / 86400000);
+                if (daysUntil === 0) newAlerts.push({ id: 'pi_' + ship.id, ship: ship.name, type: 'info', icon: '\uD83D\uDD27', message: 'Install scheduled for TODAY' });
+                else if (daysUntil === 1) newAlerts.push({ id: 'pi_' + ship.id, ship: ship.name, type: 'info', icon: '\uD83D\uDD27', message: 'Install scheduled for TOMORROW' });
+            }
+        });
+        if (dismissedAlerts) newAlerts = newAlerts.filter(function(a) { return dismissedAlerts.indexOf(a.id) === -1; });
+        setAlerts(newAlerts);
+    }, [ships, issues, emailHistory]);
     
     // Listen for new emails from VBA/Power Automate
     useEffect(function() {
