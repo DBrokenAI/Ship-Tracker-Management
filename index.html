@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T114";
+    var APP_BUILD = "2026-02-27T115";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1601,7 +1601,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v3.9.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T114'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T115'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1612,7 +1612,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T114');
+                                    localStorage.setItem('lastSeenBuild', 'T115');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1625,7 +1625,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 21, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Removed avg ping and alert cards from Daily Checks\n\u2022 Email Templates: 7 pre-built templates with copy & mailto\n\u2022 Search Everything: finds ships by issues, emails, notes, POC\n\u2022 Activity Log: ship name filter added\n\u2022 Dead code cleanup: removed 130+ lines of unused code\n\u2022 Contacts: deduplicates same email across sources\n\u2022 Contacts: filters out REAP team members\n\u2022 Recently Contacted excludes team (only ship POCs)\n\u2022 Update banner checks every 30s with better cache busting\n\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Inbox completely redesigned: grouped by ship, priority flags, compact layoutn\u2022 Removed avg ping and alert cards from Daily Checks\n\u2022 Email Templates: 7 pre-built templates with copy & mailto\n\u2022 Search Everything: finds ships by issues, emails, notes, POC\n\u2022 Activity Log: ship name filter added\n\u2022 Dead code cleanup: removed 130+ lines of unused code\n\u2022 Contacts: deduplicates same email across sources\n\u2022 Contacts: filters out REAP team members\n\u2022 Recently Contacted excludes team (only ship POCs)\n\u2022 Update banner checks every 30s with better cache busting\n\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026'),
@@ -3571,70 +3571,93 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     </div>
                 )}
 
-                {/* INCOMING EMAIL INBOX — Always visible */}
-                
-                    <div className="card" style={{marginBottom:'16px',border: pendingEmails.length > 0 ? '1px solid var(--blue)' : '1px solid var(--border)'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
-                            <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-                                <span style={{fontSize:'16px'}}>📬</span>
-                                <span style={{fontWeight:700,fontSize:'14px'}}>Incoming Emails</span>
-                                {pendingEmails.length > 0 && <span style={{background:'var(--blue)',color:'#fff',borderRadius:'10px',padding:'2px 10px',fontSize:'11px',fontWeight:700}}>{pendingEmails.length} new</span>}
-                            </div>
-                        </div>
-                        {pendingEmails.length === 0 ? (
-                            <div style={{textAlign:'center',padding:'24px',color:'var(--text-muted)'}}>
-                                <div style={{fontSize:'24px',marginBottom:'8px'}}>✅</div>
-                                <div style={{fontSize:'13px'}}>No pending emails — all caught up!</div>
-                            </div>
-                        ) : (
-                            <div style={{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'350px',overflowY:'auto',paddingRight:'4px'}}>
-                                {pendingEmails.slice().sort(function(a,b) { return new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0); }).map(function(item, idx) {
-                                    var dirColor = item._isOutgoing ? 'var(--blue)' : 'var(--amber)';
-                                    var dirLabel = item._isOutgoing ? '→ Sent' : '← Reply';
-                                    var shipList = ships.map(function(s) { return s.name; });
-                                    return React.createElement('div', {key: idx, style: {padding:'14px 16px',background:'var(--bg-input)',borderRadius:'10px',border:'1px solid var(--border)'}},
-                                        React.createElement('div', {style: {display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}},
-                                            React.createElement('div', {style: {flex:1}},
-                                                React.createElement('div', {style: {display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}},
-                                                    item.matchedShip && item.matchedShip !== 'UNMATCHED' ? React.createElement('span', {style: {fontWeight:800,fontSize:'15px',color:'var(--primary)'}}, item.matchedShip) : React.createElement('span', {style: {fontWeight:600,fontSize:'13px',color:'var(--red)'}}, '\u26A0 No ship detected'),
-                                                    React.createElement('span', {style: {padding:'2px 8px',borderRadius:'4px',fontSize:'10px',fontWeight:700,background: item._isOutgoing ? 'var(--blue-glow)' : 'var(--amber-glow)',color: dirColor}}, dirLabel),
-                                                    item.importedBy ? React.createElement('span', {style: {fontSize:'10px',color:'var(--text-muted)'}}, 'via ' + item.importedBy) : null
+                {/* INCOMING EMAIL INBOX — Redesigned */}
+                {pendingEmails.length > 0 && (() => {
+                    // Group by ship
+                    var grouped = {};
+                    var unmatched = [];
+                    pendingEmails.slice().sort(function(a,b) { return new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0); }).forEach(function(item) {
+                        if (item.matchedShip && item.matchedShip !== 'UNMATCHED') {
+                            if (!grouped[item.matchedShip]) grouped[item.matchedShip] = [];
+                            grouped[item.matchedShip].push(item);
+                        } else {
+                            unmatched.push(item);
+                        }
+                    });
+                    var shipKeys = Object.keys(grouped).sort();
+                    var relTime = function(d) { if (!d) return ''; var m = Math.floor((new Date() - new Date(d))/60000); if (m < 60) return m + 'm ago'; var h = Math.floor(m/60); if (h < 24) return h + 'h ago'; return Math.floor(h/24) + 'd ago'; };
+                    
+                    return React.createElement('div', {style:{marginBottom:'20px'}},
+                        React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}},
+                            React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'10px'}},
+                                React.createElement('span', {style:{fontSize:'18px'}}, '\uD83D\uDCEC'),
+                                React.createElement('span', {style:{fontWeight:800,fontSize:'16px',color:'var(--text)'}}, 'Inbox'),
+                                React.createElement('span', {style:{background:'var(--blue)',color:'#fff',borderRadius:'12px',padding:'3px 12px',fontSize:'12px',fontWeight:700}}, pendingEmails.length)
+                            ),
+                            React.createElement('div', {style:{display:'flex',gap:'8px'}},
+                                React.createElement('button', {className:'btn btn-sm btn-primary', style:{fontWeight:700,borderRadius:'8px',padding:'6px 14px'}, onClick:function(){ pendingEmails.filter(function(e){return e.matchedShip && e.matchedShip !== 'UNMATCHED';}).forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 Accept All'),
+                                React.createElement('button', {className:'btn btn-sm', style:{color:'var(--red)',borderRadius:'8px',padding:'6px 14px'}, onClick:function(){ pendingEmails.forEach(function(e){rejectIncomingEmail(e);}); }}, '\u2715 Dismiss All'),
+                                React.createElement('button', {className:'btn btn-sm', style:{color:'var(--text-muted)',borderRadius:'8px'}, onClick:function(){ if(confirm('Purge ALL from Firebase?')){db.collection('incomingEmails').where('processed','==',false).get().then(function(snap){snap.forEach(function(doc){doc.ref.update({processed:true,accepted:false});});toast('Purged '+snap.size+' emails','info');});}}}, '\uD83D\uDDD1\uFE0F Purge')
+                            )
+                        ),
+                        React.createElement('div', {style:{maxHeight:'400px',overflowY:'auto',display:'flex',flexDirection:'column',gap:'12px',paddingRight:'4px'}},
+                            shipKeys.map(function(shipName) {
+                                var items = grouped[shipName];
+                                return React.createElement('div', {key:shipName, style:{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',overflow:'hidden'}},
+                                    React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid var(--border)',background:'var(--bg-input)'}},
+                                        React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'10px'}},
+                                            React.createElement('span', {style:{fontWeight:800,fontSize:'14px',color:'var(--primary)'}}, '\uD83D\uDEA2 ' + shipName),
+                                            React.createElement('span', {style:{fontSize:'10px',color:'var(--text-muted)',background:'var(--bg-card)',padding:'2px 8px',borderRadius:'10px',fontWeight:600}}, items.length + ' email' + (items.length > 1 ? 's' : ''))
+                                        ),
+                                        React.createElement('button', {className:'btn btn-sm btn-primary', style:{fontWeight:700,fontSize:'10px',padding:'4px 12px',borderRadius:'6px'}, onClick:function(){ items.forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 Accept All')
+                                    ),
+                                    items.map(function(item, i) {
+                                        var isUrgent = /(?:down|offline|fail|crash|urgent|critical|broken|dead)/i.test((item.body || '') + ' ' + (item._cleanSubject || ''));
+                                        return React.createElement('div', {key:i, style:{padding:'12px 16px',borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none',display:'flex',gap:'12px',alignItems:'flex-start'}},
+                                            React.createElement('div', {style:{width:'4px',borderRadius:'2px',background: isUrgent ? 'var(--red)' : item._isOutgoing ? 'var(--blue)' : 'var(--green)',alignSelf:'stretch',flexShrink:0}}),
+                                            React.createElement('div', {style:{flex:1,minWidth:0}},
+                                                React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4px'}},
+                                                    React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px'}},
+                                                        React.createElement('span', {style:{fontSize:'12px',fontWeight:700,color:'var(--text)'}}, mapTeamName(item.senderName, item.senderEmail)),
+                                                        React.createElement('span', {style:{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',fontWeight:600,background: item._isOutgoing ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)',color: item._isOutgoing ? 'var(--blue)' : 'var(--green)'}}, item._isOutgoing ? '\u2192 Sent' : '\u2190 Received'),
+                                                        isUrgent ? React.createElement('span', {style:{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',fontWeight:700,background:'rgba(239,68,68,0.1)',color:'var(--red)'}}, '\u26A0 Urgent') : null
+                                                    ),
+                                                    React.createElement('span', {style:{fontSize:'10px',color:'var(--text-muted)'}}, relTime(item.receivedAt))
                                                 ),
-                                                React.createElement('div', {style: {fontSize:'13px',fontWeight:600,marginBottom:'4px'}}, 
-                                                    item._cleanSubject || item.subject || 'No subject',
-                                                    item.items && item.items.length > 1 ? React.createElement('span', {style: {marginLeft:'8px',fontSize:'10px',padding:'2px 8px',borderRadius:'10px',background:'var(--primary-glow)',color:'var(--primary)',fontWeight:700}}, item.items.length + ' messages') : null
-                                                ),
-                                                (item.body && item.body.length > 0) ? React.createElement('div', {style: {fontSize:'11px',color:'var(--text-dim)',lineHeight:'1.5',marginBottom:'6px',padding:'8px 10px',background:'var(--bg-card)',borderRadius:'6px',borderLeft:'2px solid var(--border)',maxHeight:'60px',overflow:'hidden',whiteSpace:'pre-wrap'}}, 
-                                                    item.body.replace(/From:.*?(?=\n|$)/gi, '').replace(/Sent:.*?(?=\n|$)/gi, '').replace(/To:.*?(?=\n|$)/gi, '').replace(/Cc:.*?(?=\n|$)/gi, '').replace(/<[^>]*@[^>]*>/g, '').replace(/_{5,}/g, '').replace(/-{5,}/g, '').replace(/\n{2,}/g, ' ').trim().substring(0, 200)
-                                                ) : null,
-                                                React.createElement('div', {style: {fontSize:'11px',color:'var(--text-dim)',display:'flex',gap:'16px',flexWrap:'wrap'}},
-                                                    React.createElement('span', null, 'From: ' + mapTeamName(item.senderName, item.senderEmail)),
-                                                    React.createElement('span', null, 'To: ' + mapTeamName(item.toName, item.toEmail)),
-                                                    item.receivedAt ? React.createElement('span', {style: {color:'var(--text-muted)'}}, fmtDate(item.receivedAt)) : null
-                                                )
+                                                React.createElement('div', {style:{fontSize:'13px',fontWeight:600,color:'var(--text)',marginBottom:'4px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}, item._cleanSubject || item.subject || 'No subject'),
+                                                item.body ? React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',lineHeight:'1.4',maxHeight:'40px',overflow:'hidden',whiteSpace:'pre-wrap'}}, item.body.replace(/From:.*?(?=\n|$)/gi,'').replace(/Sent:.*?(?=\n|$)/gi,'').replace(/To:.*?(?=\n|$)/gi,'').replace(/<[^>]*>/g,'').replace(/_{3,}/g,'').replace(/-{3,}/g,'').replace(/\n{2,}/g,' ').trim().substring(0,150)) : null
                                             ),
-                                            React.createElement('div', {style: {display:'flex',gap:'6px',marginLeft:'12px'}},
-                                                (!item.matchedShip || item.matchedShip === 'UNMATCHED') ? React.createElement('select', {
-                                                    style: {padding:'4px 8px',fontSize:'11px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'4px',color:'var(--text)'},
-                                                    onChange: function(e) { item.matchedShip = e.target.value; setPendingEmails(function(p) { return p.slice(); }); }
-                                                },
-                                                    React.createElement('option', {value:''}, '-- Ship --'),
-                                                    shipList.map(function(sn) { return React.createElement('option', {key: sn, value: sn}, sn); })
-                                                ) : null,
-                                                React.createElement('button', {className:'btn btn-sm btn-primary', style:{fontWeight:700,padding:'6px 14px'}, disabled: !item.matchedShip || item.matchedShip === 'UNMATCHED', onClick: function() { acceptIncomingEmail(item); }}, '\u2713 Accept'),
-                                                React.createElement('button', {className:'btn btn-sm', style:{color:'var(--red)',padding:'6px 10px'}, onClick: function() { rejectIncomingEmail(item); }}, '✕')
+                                            React.createElement('div', {style:{display:'flex',gap:'6px',flexShrink:0}},
+                                                React.createElement('button', {className:'btn btn-sm btn-primary', style:{padding:'4px 10px',fontSize:'10px',fontWeight:700,borderRadius:'6px'}, onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
+                                                React.createElement('button', {className:'btn btn-sm', style:{padding:'4px 8px',fontSize:'10px',color:'var(--red)',borderRadius:'6px'}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
                                             )
-                                        )
+                                        );
+                                    })
+                                );
+                            }),
+                            unmatched.length > 0 ? React.createElement('div', {style:{background:'var(--bg-card)',border:'1px solid var(--amber)',borderRadius:'12px',overflow:'hidden'}},
+                                React.createElement('div', {style:{padding:'12px 16px',borderBottom:'1px solid var(--border)',background:'rgba(245,158,11,0.05)'}},
+                                    React.createElement('span', {style:{fontWeight:800,fontSize:'14px',color:'var(--amber)'}}, '\u26A0 Unmatched — ' + unmatched.length + ' email' + (unmatched.length > 1 ? 's' : ''))
+                                ),
+                                unmatched.map(function(item, i) {
+                                    var shipList = ships.map(function(s){return s.name;});
+                                    return React.createElement('div', {key:i, style:{padding:'12px 16px',borderBottom: i < unmatched.length - 1 ? '1px solid var(--border)' : 'none',display:'flex',gap:'12px',alignItems:'center'}},
+                                        React.createElement('div', {style:{flex:1}},
+                                            React.createElement('div', {style:{fontSize:'12px',fontWeight:600,marginBottom:'2px'}}, item._cleanSubject || item.subject || 'No subject'),
+                                            React.createElement('div', {style:{fontSize:'10px',color:'var(--text-muted)'}}, 'From: ' + mapTeamName(item.senderName, item.senderEmail))
+                                        ),
+                                        React.createElement('select', {style:{padding:'4px 8px',fontSize:'11px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)'}, onChange:function(e){item.matchedShip = e.target.value; setPendingEmails(function(p){return p.slice();});}},
+                                            React.createElement('option', {value:''}, '-- Ship --'),
+                                            shipList.map(function(sn){return React.createElement('option',{key:sn,value:sn},sn);})
+                                        ),
+                                        React.createElement('button', {className:'btn btn-sm btn-primary', style:{padding:'4px 10px',fontSize:'10px'}, disabled:!item.matchedShip || item.matchedShip === 'UNMATCHED', onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
+                                        React.createElement('button', {className:'btn btn-sm', style:{padding:'4px 8px',fontSize:'10px',color:'var(--red)'}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
                                     );
-                                })}
-                                {pendingEmails.length > 1 && React.createElement('div', {style: {display:'flex',gap:'8px',marginTop:'4px'}},
-                                    React.createElement('button', {className:'btn btn-sm btn-primary', style:{fontWeight:600}, onClick: function() { pendingEmails.filter(function(e){return e.matchedShip;}).forEach(function(e){acceptIncomingEmail(e);}); }}, '✓ Accept All (' + pendingEmails.filter(function(e){return e.matchedShip;}).length + ')'),
-                                    React.createElement('button', {className:'btn btn-sm', style:{color:'var(--red)'}, onClick: function() { pendingEmails.forEach(function(e){rejectIncomingEmail(e);}); }}, '\u2715 Dismiss All'),
-                                    React.createElement('button', {className:'btn btn-sm', style:{color:'var(--text-muted)',marginLeft:'8px'}, onClick: function() { if (confirm('Purge ALL incoming emails from Firebase? This clears the entire inbox permanently.')) { db.collection('incomingEmails').where('processed','==',false).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.update({processed:true,accepted:false}); }); toast('Purged ' + snap.size + ' emails from Firebase','info'); }); } }}, '\uD83D\uDDD1\uFE0F Purge Firebase')
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                })
+                            ) : null
+                        )
+                    );
+                })()}
 
                     <div className="card-title tip" data-tip="Based on today's AM/PM connectivity checks">Fleet Status (Today)</div>
                     <PieChart data={[chartData.online, chartData.offline, chartData.noData, chartData.pendingInstall, chartData.pendingDeinstall]} colors={['var(--green)', 'var(--red)', 'var(--text-muted)', 'var(--amber)', '#f87171']}/>
