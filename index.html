@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T113";
+    var APP_BUILD = "2026-02-27T114";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1601,7 +1601,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v3.9.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T113'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T114'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1612,7 +1612,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T113');
+                                    localStorage.setItem('lastSeenBuild', 'T114');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1625,7 +1625,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 11, 2026'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'12px',lineHeight:'1.7'}}, 
-                                    '\u2022 Email Templates: 7 pre-built templates with copy & mailto\n\u2022 Search Everything: finds ships by issues, emails, notes, POC\n\u2022 Activity Log: ship name filter added\n\u2022 Dead code cleanup: removed 130+ lines of unused code\n\u2022 Contacts: deduplicates same email across sources\n\u2022 Contacts: filters out REAP team members\n\u2022 Recently Contacted excludes team (only ship POCs)\n\u2022 Update banner checks every 30s with better cache busting\n\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Removed avg ping and alert cards from Daily Checks\n\u2022 Email Templates: 7 pre-built templates with copy & mailto\n\u2022 Search Everything: finds ships by issues, emails, notes, POC\n\u2022 Activity Log: ship name filter added\n\u2022 Dead code cleanup: removed 130+ lines of unused code\n\u2022 Contacts: deduplicates same email across sources\n\u2022 Contacts: filters out REAP team members\n\u2022 Recently Contacted excludes team (only ship POCs)\n\u2022 Update banner checks every 30s with better cache busting\n\u2022 Contacts page fully rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5)\n\u2022 A-Z alphabet sidebar for quick navigation\n\u2022 Last contact indicator on every card\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Suggest Improvement button on Dashboard\n\u2022 \uD83D\uDCCC Quick Notes tab on each ship (color-coded)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Dashboard order persists permanently\n\u2022 Stronger cross-user email dedup\n\u2022 Firebase data protection on network hiccups\n\u2022 Changelog viewer with update indicator\n\u2022 Data/Import page removed\n\u2022 VBA v3.0: Ship name detection (40+ names)\n\u2022 VBA v3.0: Smart auto-capture (skips team emails)\n\u2022 VBA v3.0: Ignore list (noreply, newsletters)\n\u2022 VBA v3.0: Persistent status bar with daily count\n\u2022 VBA v3.0: Fixed startup scan reliability'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
                                 React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--amber)',marginBottom:'6px',marginTop:'4px'}}, 'Sep 10, 2026'),
@@ -6127,32 +6127,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                     <div style={{fontSize:'28px',fontWeight:700,color:'var(--blue)'}}>{stats.inPort}</div>
                     <div style={{fontSize:'11px',color:'var(--text-muted)'}}>IN PORT</div>
                 </div>
-                <div style={{padding:'16px',background:'var(--bg-card)',borderRadius:'8px',border:'1px solid var(--border)',textAlign:'center'}}>
-                    <div style={{fontSize:'20px',fontWeight:700,color:'var(--text)'}}>{stats.avgPingAM}<span style={{fontSize:'11px',color:'var(--text-muted)'}}> / </span>{stats.avgPingPM}</div>
-                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>AVG PING (AM/PM)</div>
-                </div>
-                <div style={{padding:'16px',background: stats.highPing > 0 || stats.lowDisk > 0 ? 'var(--amber-glow)' : 'var(--bg-card)',borderRadius:'8px',border:`1px solid ${stats.highPing > 0 || stats.lowDisk > 0 ? 'var(--amber)' : 'var(--border)'}`,textAlign:'center'}}>
-                    <div style={{fontSize:'20px',fontWeight:700,color: stats.highPing > 0 || stats.lowDisk > 0 ? 'var(--amber)' : 'var(--text-muted)'}}>{stats.highPing + stats.lowDisk}</div>
-                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>ALERTS</div>
-                </div>
             </div>
-
-            {/* Alerts Panel */}
-            {(stats.highPing > 0 || stats.lowDisk > 0) && (
-                <div style={{padding:'12px',background:'var(--amber-glow)',borderRadius:'8px',border:'1px solid var(--amber)',marginBottom:'16px'}}>
-                    <div style={{fontWeight:600,color:'var(--amber)',marginBottom:'8px'}}>⚠️ Alerts</div>
-                    <div style={{display:'flex',gap:'16px',flexWrap:'wrap',fontSize:'12px'}}>
-                        {sorted.filter(s => { const c = getCheck(s.id); return parseInt(c.pingAM) > 300 || parseInt(c.pingPM) > 300; }).map(s => {
-                            const c = getCheck(s.id);
-                            return <span key={s.id} style={{color:'var(--text)'}}><strong>{s.name}</strong>: High ping ({c.pingAM || c.pingPM}ms)</span>;
-                        })}
-                        {sorted.filter(s => { const c = getCheck(s.id); return parseInt(c.hdSpace) < 200 && parseInt(c.hdSpace) > 0; }).map(s => {
-                            const c = getCheck(s.id);
-                            return <span key={s.id} style={{color:'var(--text)'}}><strong>{s.name}</strong>: Low disk ({c.hdSpace}GB)</span>;
-                        })}
-                    </div>
-                </div>
-            )}
 
             {/* Controls */}
             <div className="card">
