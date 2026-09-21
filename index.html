@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T115";
+    var APP_BUILD = "2026-02-27T116";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1601,7 +1601,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v3.9.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T115'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T116'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1612,7 +1612,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T115');
+                                    localStorage.setItem('lastSeenBuild', 'T116');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -2245,20 +2245,62 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             snapshot.forEach(function(doc) {
                 var data = doc.data();
                 data._docId = doc.id;
-                // Auto-detect ship - check EVERYTHING: subject, body, from, to
+                // Auto-detect ship - comprehensive matching
                 if (!data.matchedShip || data.matchedShip === 'UNMATCHED') {
                     data.matchedShip = '';
-                    var text = ((data.subject || '') + ' ' + (data.body || '') + ' ' + (data.senderEmail || '') + ' ' + (data.senderName || '') + ' ' + (data.from || '') + ' ' + (data.toEmail || '') + ' ' + (data.toName || '') + ' ' + (data.to || '')).toLowerCase();
+                    var text = ((data.subject || '') + ' ' + (data.body || '') + ' ' + (data.senderEmail || '') + ' ' + (data.senderName || '') + ' ' + (data.from || '') + ' ' + (data.toEmail || '') + ' ' + (data.toName || '') + ' ' + (data.to || '')).toUpperCase();
+                    
+                    // Method 1: Direct hull number match (DDG71, CG70, LCS5, etc)
                     ships.forEach(function(s) {
-                        if (text.indexOf(s.name.toLowerCase()) !== -1) data.matchedShip = s.name;
+                        if (!data.matchedShip && text.indexOf(s.name) !== -1) data.matchedShip = s.name;
                     });
+                    
+                    // Method 2: Hull number with spaces/dashes (DDG 71, DDG-71)
                     if (!data.matchedShip) {
                         ships.forEach(function(s) {
+                            var prefix = s.name.replace(/[0-9]/g, '');
                             var num = s.name.replace(/[^0-9]/g, '');
-                            if (num && text.match(new RegExp('ddg[- ]?' + num + '\\b'))) data.matchedShip = s.name;
+                            if (num && (text.indexOf(prefix + ' ' + num) !== -1 || text.indexOf(prefix + '-' + num) !== -1)) data.matchedShip = s.name;
                         });
                     }
-                    // Also check POC emails/names stored on ships
+                    
+                    // Method 3: Ship NAMES (Lake Erie → CG70, Fitzgerald → DDG62, etc)
+                    if (!data.matchedShip) {
+                        var shipNames = {
+                            'CURTIS WILBUR':'DDG54','STOUT':'DDG55','JOHN S MCCAIN':'DDG56','MITSCHER':'DDG57',
+                            'FITZGERALD':'DDG62','STETHEM':'DDG63','COLE':'DDG67','HOPPER':'DDG70',
+                            'ROSS':'DDG71','MAHAN':'DDG72',"O'KANE":'DDG77','LASSEN':'DDG82',
+                            'BAINBRIDGE':'DDG96','FORREST SHERMAN':'DDG98','GRIDLEY':'DDG101','TRUXTUN':'DDG103',
+                            'JASON DUNHAM':'DDG109','SPRUANCE':'DDG111',
+                            'LAKE ERIE':'CG70','BUNKER HILL':'CG52','MOBILE BAY':'CG53',
+                            'ANTIETAM':'CG54','LEYTE GULF':'CG55','SAN JACINTO':'CG56',
+                            'LAKE CHAMPLAIN':'CG57','PHILIPPINE SEA':'CG58','PRINCETON':'CG59',
+                            'NORMANDY':'CG60','MONTEREY':'CG61','CHANCELLORSVILLE':'CG62',
+                            'COWPENS':'CG63','GETTYSBURG':'CG64','CHOSIN':'CG65',
+                            'HUE CITY':'CG66','SHILOH':'CG67','ANZIO':'CG68',
+                            'VICKSBURG':'CG69','CAPE ST GEORGE':'CG71','VELLA GULF':'CG72','PORT ROYAL':'CG73'
+                        };
+                        Object.keys(shipNames).forEach(function(name) {
+                            if (!data.matchedShip && text.indexOf(name) !== -1) {
+                                var hull = shipNames[name];
+                                var matchingShip = ships.find(function(s) { return s.name === hull; });
+                                if (matchingShip) data.matchedShip = matchingShip.name;
+                            }
+                        });
+                    }
+                    
+                    // Method 4: Email domain matching (@ddg71, @cg70, .ddg71.)
+                    if (!data.matchedShip) {
+                        var allAddrs = ((data.senderEmail || '') + ' ' + (data.toEmail || '') + ' ' + (data.from || '') + ' ' + (data.to || '')).toLowerCase();
+                        ships.forEach(function(s) {
+                            var hullLower = s.name.toLowerCase();
+                            if (!data.matchedShip && (allAddrs.indexOf('@' + hullLower) !== -1 || allAddrs.indexOf('.' + hullLower + '.') !== -1 || allAddrs.indexOf(hullLower + '.navy') !== -1)) {
+                                data.matchedShip = s.name;
+                            }
+                        });
+                    }
+                    
+                    // Method 5: POC email/name match from ship data
                     if (!data.matchedShip) {
                         var fromAddr = (data.senderEmail || data.from || '').toLowerCase();
                         var fromName = (data.senderName || '').toLowerCase();
@@ -2268,9 +2310,21 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             if (s.email && (fromAddr.indexOf(s.email.toLowerCase()) !== -1 || toAddr.indexOf(s.email.toLowerCase()) !== -1)) data.matchedShip = s.name;
                             if (!data.matchedShip && s.poc) {
                                 var pocLower = s.poc.toLowerCase();
-                                if ((fromName && fromName.indexOf(pocLower) !== -1) || (toName && toName.indexOf(pocLower) !== -1)) data.matchedShip = s.name;
+                                if (pocLower.length > 3 && ((fromName && fromName.indexOf(pocLower) !== -1) || (toName && toName.indexOf(pocLower) !== -1))) data.matchedShip = s.name;
                             }
                         });
+                    }
+                    
+                    // Method 6: Sender history — if we've seen this sender before on a specific ship
+                    if (!data.matchedShip) {
+                        var senderKey = (data.senderEmail || data.from || '').toLowerCase();
+                        if (senderKey) {
+                            var match = emailHistory.find(function(h) { return (h.fromEmail || '').toLowerCase() === senderKey && h.shipId; });
+                            if (match) {
+                                var histShip = ships.find(function(s) { return s.id === match.shipId; });
+                                if (histShip) data.matchedShip = histShip.name;
+                            }
+                        }
                     }
                 }
                 // Detect direction
