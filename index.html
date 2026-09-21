@@ -1620,72 +1620,122 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
                             React.createElement('div', {id:'changelogOverlay', onClick:function(){document.getElementById('changelogDrop').style.display='none';document.getElementById('changelogOverlay').style.display='none';}, style:{display:'none',position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:199}}),
                             React.createElement('div', {id:'changelogDrop', style:{display:'none',position:'fixed',bottom:'50px',left:'210px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px',boxShadow:'0 12px 40px rgba(0,0,0,0.5)',zIndex:200,maxHeight:'600px',overflowY:'auto',width:'520px'}},
-                                React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px'}},
-                                    React.createElement('span', {style:{fontSize:'18px',fontWeight:800,color:'var(--primary)'}}, '\uD83D\uDCCB Recent Improvements'),
-                                    React.createElement('span', {onClick:function(){document.getElementById('changelogDrop').style.display='none';document.getElementById('changelogOverlay').style.display='none';},style:{cursor:'pointer',fontSize:'16px',color:'var(--text-muted)'}}, '\u2715')
+
+                                React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}},
+                                    React.createElement('span', {style:{fontSize:'18px',fontWeight:800,color:'var(--primary)'}}, '📋 Recent Improvements'),
+                                    React.createElement('span', {onClick:function(){document.getElementById('changelogDrop').style.display='none';document.getElementById('changelogOverlay').style.display='none';},style:{cursor:'pointer',fontSize:'16px',color:'var(--text-muted)'}}, '✕')
                                 ),
-                                
-                                // Sep 21
+
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Sep 21, 2026'),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px',marginTop:'2px'}}, '\uD83D\uDCEC Email & Inbox'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Inbox redesigned: grouped by ship with priority flags\n\u2022 6-method ship detection (hull #, ship names, email domain, sender history)\n\u2022 40+ ship name-to-hull mappings (Lake Erie \u2192 CG70)\n\u2022 Auto-scans emails for issues on accept\n\u2022 Stronger cross-user email dedup\n\u2022 Email Templates: 7 pre-built with copy & mailto'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📬 Email & Inbox'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Inbox redesigned: grouped by ship with priority flags
+• 6-method ship detection (hull, names, domains, history)
+• 40+ ship name-to-hull mappings
+• Auto-scans emails for issues on accept
+• Stronger cross-user email dedup
+• Email Templates: 7 pre-built with copy and mailto'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDEA2 Dashboard & Ships'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Inventory: completion progress bar at top\n\u2022 Daily Checks: export buttons grouped and color-coded\n\u2022 Trips: status color coding (blue/green/red/amber)\n\u2022 Activity Log: today entries highlighted green\n\u2022 Suggest Improvement moved to sidebar footer\n\u2022 Ship cards show REAL last contact from email history\n\u2022 Last contact color-coded: green/amber/red\n\u2022 Dashboard ship order persists permanently\n\u2022 Firebase data protection on network hiccups\n\u2022 Removed avg ping and alert cards from Daily Checks\n\u2022 Search bar finds across issues, emails, notes, POC'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🚢 Dashboard & Ships'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Inventory: completion progress bar
+• Daily Checks: exports grouped and color-coded
+• Trips: status color coding
+• Activity Log: today entries highlighted
+• Suggest Improvement moved to sidebar
+• Ship cards: real last contact from emails
+• Last contact color-coded green/amber/red
+• Last Contact pie chart (replaces Documentation)
+• Recent Activity collapsible
+• Fleet header, NOT CHECKED counter
+• Dashboard order persists permanently
+• Search finds issues, emails, notes, POC'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDC64 Contacts & POC'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Contacts page rebuilt with card grid layout\n\u2022 Recently Contacted section (top 5, excludes team)\n\u2022 A-Z alphabet sidebar for quick jump\n\u2022 Last contact indicator (green/amber dot)\n\u2022 Quick actions: Email, Edit, Delete, Copy\n\u2022 Deduplicates same email across sources\n\u2022 Filters out REAP team members'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '👤 Contacts & POC'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Contacts page rebuilt with card grid
+• Recently Contacted (top 5, excludes team)
+• A-Z alphabet sidebar
+• Last contact indicator (green/amber)
+• Quick actions: Email, Edit, Delete, Copy
+• Deduplicates emails, filters team members'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDCCC Notes & Templates'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Quick Notes tab on each ship (color-coded, synced)\n\u2022 Changelog viewer with orange/green indicator\n\u2022 Activity Log: ship name filter added\n\u2022 Dead code cleanup (130+ lines removed)'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📌 Notes & Tools'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Quick Notes tab on each ship
+• Changelog viewer with update indicator
+• Activity Log: ship name filter
+• Dead code cleanup (130+ lines removed)'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDD27 VBA / Outlook (v3.0)'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Ship name detection (40+ names)\n\u2022 Smart auto-capture (skips internal team emails)\n\u2022 Ignore list (noreply, newsletters, NMCI alerts)\n\u2022 Persistent status bar with daily email count\n\u2022 Fixed startup scan reliability\n\u2022 Removed Windows API declarations (crash fix)'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔧 VBA / Outlook (v3.0)'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Ship name detection (40+ names)
+• Smart auto-capture (skips team emails)
+• Ignore list (noreply, newsletters)
+• Persistent status bar
+• Fixed startup scan
+• Removed crash-causing API declarations'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                // Sep 11
+
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Sep 11, 2026'),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDCEC Email System'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Scan History: 19 \u2192 55 detection patterns\n\u2022 9 scan categories with severity sorting\n\u2022 Skips positive emails\n\u2022 Green "new emails" banner\n\u2022 Inbox scrollable (max 350px)\n\u2022 Thread import from email body\n\u2022 Purge Firebase button'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📬 Email System'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Scan History: 55 patterns, 9 categories
+• Severity sorting, skips positive emails
+• Green new emails banner
+• Inbox scrollable
+• Thread import, Purge button'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                // Sep 8
+
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Sep 8, 2026'),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDCEC Email & VBA'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Chat-style email timeline (sent right, received left)\n\u2022 Outlook VBA auto-capture (incoming + sent)\n\u2022 Team name mapping (dbrown \u2192 Daniel Brown)\n\u2022 CG ship detection (CG52-CG73)\n\u2022 Signature stripping from email bodies\n\u2022 Real-time Firebase sync between users'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📬 Email & VBA'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Chat-style email timeline
+• Outlook VBA auto-capture
+• Team name mapping
+• CG ship detection
+• Signature stripping
+• Real-time Firebase sync'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                // Sep 3
+
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Sep 3, 2026'),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDEA2 Features'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Trips page redesign with base selector\n\u2022 End of Day HTML report\n\u2022 Auto issue detection (15 rules)\n\u2022 Daily checks drag-and-drop reorder\n\u2022 Fleet status pie chart\n\u2022 Admin panel with user management'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🚢 Features'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Trips page redesign
+• End of Day report
+• Auto issue detection
+• Daily checks drag-and-drop
+• Fleet status pie chart
+• Admin panel'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                // Earlier
+
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Earlier (Feb 2026)'),
-                                
-                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDE80 Foundation'),
-                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Initial Ship Tracker Pro launch\n\u2022 Dashboard, Daily Checks, Ship Management\n\u2022 Firebase Firestore integration\n\u2022 User authentication & login\n\u2022 Leaflet.js naval base maps\n\u2022 Installation sites with gate markers\n\u2022 Email workflow & shipping templates\n\u2022 Inventory & parts tracking\n\u2022 Pending install/deinstall workflow\n\u2022 Excel export with SheetJS'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🚀 Foundation'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Initial Ship Tracker Pro launch
+• Dashboard, Daily Checks, Ship Management
+• Firebase Firestore integration
+• User authentication
+• Leaflet.js naval base maps
+• Inventory and parts tracking
+• Excel export'.split('
+').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
-                                
-                                React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',textAlign:'center',marginTop:'12px',borderTop:'1px solid var(--border)',paddingTop:'10px'}}, 'Ship Tracker Pro \u2014 NSWC Corona PA22 REAP Team')
+
+                                React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',textAlign:'center',marginTop:'12px',borderTop:'1px solid var(--border)',paddingTop:'10px'}}, 'Ship Tracker Pro — NSWC Corona PA22 REAP Team')
                             )
                         );
                     })()}
