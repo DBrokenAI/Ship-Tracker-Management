@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T117";
+    var APP_BUILD = "2026-02-27T124";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1471,6 +1471,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     
     // Alert state — populated by Dashboard, displayed by Toast
     const [alerts, setAlerts] = useState([]);
+    const [suggestModal, setSuggestModal] = useState(false);
     const [dismissedAlerts, setDismissedAlerts] = useStorage('dismissedAlerts', []);
     
     const logActivity = (text, details = null) => { 
@@ -1598,10 +1599,11 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
-                    <div className="version">v3.9.0 Firebase</div>
+                    <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
+                    <div className="version">v4.0.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T117'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T124'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1612,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T117');
+                                    localStorage.setItem('lastSeenBuild', 'T124');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1633,7 +1635,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDEA2 Dashboard & Ships'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}}, 
-                                    '\u2022 Dashboard ship order persists permanently\n\u2022 Firebase data protection on network hiccups\n\u2022 Removed avg ping and alert cards from Daily Checks\n\u2022 Search bar finds across issues, emails, notes, POC\n\u2022 Suggest Improvement button on Dashboard'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '\u2022 Inventory: completion progress bar at top\n\u2022 Daily Checks: export buttons grouped and color-coded\n\u2022 Trips: status color coding (blue/green/red/amber)\n\u2022 Activity Log: today's entries highlighted green\n\u2022 Suggest Improvement moved to sidebar footer\n\u2022 Ship cards show REAL last contact from email history\n\u2022 Last contact color-coded: green (recent), amber (3+ days), red (7+ days)\n\u2022 Dashboard ship order persists permanently\n\u2022 Firebase data protection on network hiccups\n\u2022 Removed avg ping and alert cards from Daily Checks\n\u2022 Search bar finds across issues, emails, notes, POC\n\u2022 Suggest Improvement button on Dashboard'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
                                 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '\uD83D\uDC64 Contacts & POC'),
@@ -1720,6 +1722,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser}/>}
             </main>
             <Toast toasts={toasts} remove={id => setToasts(t => t.filter(x => x.id !== id))} alerts={alerts} dismissAlert={id => setDismissedAlerts(prev => [...prev, id])}/>
+            {suggestModal && <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={e => { if(e.target===e.currentTarget) setSuggestModal(false); }}><div style={{background:'var(--bg-card)',borderRadius:'14px',padding:'24px',width:'440px',border:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}><h3 style={{fontSize:'16px',fontWeight:800,margin:0}}>💡 Suggest an Improvement</h3><button onClick={() => setSuggestModal(false)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'18px',cursor:'pointer'}}>✕</button></div><p style={{fontSize:'13px',color:'var(--text-dim)',marginBottom:'12px'}}>What would make Ship Tracker better?</p><textarea id="suggestInput" style={{width:'100%',minHeight:'120px',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px',resize:'vertical'}} placeholder="Describe your suggestion..."/><button className="btn btn-primary" style={{width:'100%',padding:'12px',fontWeight:700,borderRadius:'10px',marginTop:'12px'}} onClick={() => { var inp = document.getElementById('suggestInput'); if(!inp || !inp.value.trim()) return; db.collection('suggestions').add({text:inp.value.trim(),user:currentUser?currentUser.username:'Unknown',date:new Date().toISOString(),status:'new'}); toast('Suggestion submitted! 🎉','success'); setSuggestModal(false); }}>Submit Suggestion</button></div></div>}
             
             {/* Feedback Modal */}
             <Modal open={feedbackModal} onClose={() => setFeedbackModal(false)} title="💡 Suggest Improvement">
@@ -1803,6 +1806,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [contactForm, setContactForm] = useState({ name: '', date: toDateString(new Date()), notes: '', waitingReply: false });
     const [activityDetailModal, setActivityDetailModal] = useState(null);
     const [showAllActivity, setShowAllActivity] = useState(false);
+    const [showActivity, setShowActivity] = useState(true);
     const [inPortModal, setInPortModal] = useState(false);
     const [inPortDate, setInPortDate] = useState('');
     const [pendingInstallModal, setPendingInstallModal] = useState(false);
@@ -3613,7 +3617,6 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
 
     return (
         <div className="page active">
-            <button onClick={() => setSuggestModal(true)} style={{display:'flex',alignItems:'center',gap:'6px',padding:'8px 14px',background:'var(--primary-glow)',border:'1px solid var(--primary)',borderRadius:'8px',color:'var(--primary)',fontSize:'11px',fontWeight:600,cursor:'pointer',marginBottom:'10px'}}>💡 Suggest Improvement</button>
             <div className="page-header">
                 <div className="page-header-left"><h1 className="page-title">Dashboard</h1><p className="page-sub">Fleet overview • {today}</p></div>
                 <div className="flex gap-md">
@@ -3769,12 +3772,29 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 </div>
                 
                 <div className="chart-card">
-                    <div className="card-title">Documentation</div>
-                    <DonutChart value={chartData.complete} total={ships.length} color="var(--primary)" label="Complete" sublabel={`of ${ships.length}`}/>
-                    <div className="chart-legend">
-                        <span className="legend-item tip" data-tip="All serial numbers and docs filled in"><span className="legend-dot" style={{background:'var(--primary)'}}></span> Complete: {chartData.complete}</span>
-                        <span className="legend-item tip" data-tip="Missing serial numbers or documentation"><span className="legend-dot" style={{background:'var(--red)'}}></span> Missing: {chartData.incomplete}</span>
-                    </div>
+                    <div className="card-title tip" data-tip="How recently each ship was last contacted">Last Contact</div>
+                    {(() => {
+                        var recent = 0, aging = 0, overdue = 0, never = 0;
+                        ships.forEach(s => {
+                            if (s.pendingInstall || s.pendingDeinstall) return;
+                            var shipEm = emailHistory.filter(h => h.shipId === s.id);
+                            var last = shipEm.length > 0 ? new Date(shipEm.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0].timestamp) : (s.lastContact ? new Date(s.lastContact) : null);
+                            if (!last) { never++; return; }
+                            var days = Math.floor((new Date() - last) / 86400000);
+                            if (days <= 3) recent++;
+                            else if (days <= 7) aging++;
+                            else overdue++;
+                        });
+                        return (<>
+                            <PieChart data={[recent, aging, overdue, never]} colors={['var(--green)', 'var(--amber)', 'var(--red)', 'var(--text-muted)']}/>
+                            <div className="chart-legend">
+                                <span className="legend-item"><span className="legend-dot" style={{background:'var(--green)'}}></span> {'< 3 days: ' + recent}</span>
+                                <span className="legend-item"><span className="legend-dot" style={{background:'var(--amber)'}}></span> 3-7 days: {aging}</span>
+                                <span className="legend-item"><span className="legend-dot" style={{background:'var(--red)'}}></span> 7+ days: {overdue}</span>
+                                {never > 0 && <span className="legend-item"><span className="legend-dot" style={{background:'var(--text-muted)'}}></span> Never: {never}</span>}
+                            </div>
+                        </>);
+                    })()}
                 </div>
             </div>
             
@@ -3795,7 +3815,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             
             <div className="dash-grid">
                 <div className="card">
-                    <div className="card-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>Select Ship <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>{dashReorder ? <><button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px',background:'var(--primary)',color:'#000',fontWeight:700}} onClick={() => setDashReorder(false)}>✓ Done</button><button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 8px'}} onClick={resetDashOrder}>↩ Reset</button></> : <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setDashReorder(true)}>↕ Reorder</button>}<span style={{fontWeight:'normal',color:'var(--text-muted)',fontSize:'11px'}}>{sorted.length} shown</span></span>{ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length > 0 && <span style={{fontSize:'10px',color:'var(--green)',fontWeight:500,display:'flex',alignItems:'center',gap:'4px'}}><span style={{width:'8px',height:'8px',borderRadius:'2px',background:'var(--green)'}}></span>{ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length} updated today</span>}</div>
+                    <div className="card-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>🚢 Fleet <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>{dashReorder ? <><button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px',background:'var(--primary)',color:'#000',fontWeight:700}} onClick={() => setDashReorder(false)}>✓ Done</button><button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 8px'}} onClick={resetDashOrder}>↩ Reset</button></> : <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setDashReorder(true)}>↕ Reorder</button>}<span style={{fontWeight:'normal',color:'var(--text-muted)',fontSize:'11px'}}>{sorted.length} ships</span></span></div>
                     <div className="ship-list">
                         <div className="ship-list-header"><span>STATUS</span><span>SHIP</span><span>TYPE</span><span>COMMS</span><span>HOMEPORT</span></div>
                         {sorted.map(ship => {
@@ -3808,8 +3828,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             const isPending = ship.pendingInstall;
                             const isDeinstall = ship.pendingDeinstall;
                             const topIssue = si.length > 0 ? si.sort((a,b) => a.threat === 'Urgent' ? -1 : 1)[0] : null;
-                            const updatedToday = ship.lastContact && fmtDateInput(ship.lastContact) === today;
-                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined} style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'opacity 0.15s'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}>{dashReorder && <span style={{color:'var(--text-muted)',fontSize:'12px',cursor:'grab',userSelect:'none',padding:'0 4px',flexShrink:0}}>⋮⋮</span>}<span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}><span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span><button style={{fontSize:'9px',padding:'2px 8px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button></span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(ship.lastContact)} style={{color:'var(--text-muted)',fontSize:'10px'}}>{relTime(ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}>{'Back ' + fmtDate(ship.inPortUntil)}<button style={{fontSize:'9px',padding:'2px 8px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button></span> : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {topIssue.details.substring(0, 50)}{topIssue.details.length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
+                            // Real last contact from email history
+                            const shipEmails = emailHistory.filter(h => h.shipId === ship.id);
+                            const realLastContact = shipEmails.length > 0 ? shipEmails.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0].timestamp : ship.lastContact;
+                            const updatedToday = realLastContact && fmtDateInput(realLastContact) === today;
+                            const daysSinceContact = realLastContact ? Math.floor((new Date() - new Date(realLastContact)) / 86400000) : 999;
+                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined} style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'opacity 0.15s'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}>{dashReorder && <span style={{color:'var(--text-muted)',fontSize:'12px',cursor:'grab',userSelect:'none',padding:'0 4px',flexShrink:0}}>⋮⋮</span>}<span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}><span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span><button style={{fontSize:'9px',padding:'2px 8px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button></span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(realLastContact || ship.lastContact)} style={{color: daysSinceContact > 7 ? 'var(--red)' : daysSinceContact > 3 ? 'var(--amber)' : 'var(--text-muted)',fontSize:'10px',fontWeight: daysSinceContact > 7 ? 600 : 400}}>{daysSinceContact > 7 ? '⚠ ' : ''}{relTime(realLastContact || ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}>{'Back ' + fmtDate(ship.inPortUntil)}<button style={{fontSize:'9px',padding:'2px 8px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button></span> : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {topIssue.details.substring(0, 50)}{topIssue.details.length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
                         })}
                     </div>
                 </div>
@@ -4359,12 +4383,16 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 </>}
             </Modal>
             
-            {/* Recent Activity Section */}
+            {/* Recent Activity Section — Collapsible */}
             <div className="card" style={{marginTop:'16px'}}>
-                <div className="flex-between mb-md">
-                    <span className="card-title">📝 Recent Activity</span>
-                    <button className="btn btn-sm btn-secondary" onClick={() => setShowAllActivity(true)}>View All</button>
+                <div className="flex-between mb-md" style={{cursor:'pointer'}} onClick={() => setShowActivity(!showActivity)}>
+                    <span className="card-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>📝 Recent Activity <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:400}}>{activityLog.length} entries</span></span>
+                    <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                        <button className="btn btn-sm btn-secondary" onClick={(e) => { e.stopPropagation(); setShowAllActivity(true); }}>View All</button>
+                        <span style={{fontSize:'12px',color:'var(--text-muted)',transition:'transform 0.2s',transform: showActivity ? 'rotate(0deg)' : 'rotate(-90deg)'}}>{showActivity ? '▼' : '▶'}</span>
+                    </div>
                 </div>
+                {showActivity && (<>
                 {activityLog.length === 0 ? (
                     <div style={{textAlign:'center',padding:'30px 20px',color:'var(--text-muted)'}}><div style={{fontSize:'28px',marginBottom:'6px',opacity:0.5}}>📋</div><div style={{fontSize:'12px'}}>No activity yet — actions will appear here as your team works</div></div>
                 ) : (
@@ -4411,6 +4439,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         })}
                     </div>
                 )}
+            </>)}
             </div>
             
             {/* Activity Detail Modal */}
@@ -6226,6 +6255,10 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                     <div style={{fontSize:'28px',fontWeight:700,color:'var(--blue)'}}>{stats.inPort}</div>
                     <div style={{fontSize:'11px',color:'var(--text-muted)'}}>IN PORT</div>
                 </div>
+                <div style={{padding:'16px',background: stats.noData > 0 ? 'rgba(156,163,175,0.1)' : 'var(--bg-card)',borderRadius:'8px',border:`1px solid ${stats.noData > 0 ? 'var(--text-muted)' : 'var(--border)'}`,textAlign:'center'}}>
+                    <div style={{fontSize:'28px',fontWeight:700,color: stats.noData > 0 ? 'var(--text-muted)' : 'var(--text-muted)'}}>{stats.noData}</div>
+                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>NOT CHECKED</div>
+                </div>
             </div>
 
             {/* Controls */}
@@ -6238,11 +6271,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <button className="btn btn-sm btn-secondary" onClick={() => { const d = parseLocalDate(date); d.setDate(d.getDate()+1); setDate(toDateString(d)); }}>→</button>
                         <button className="btn btn-sm btn-primary" onClick={() => setDate(toDateString(new Date()))}>Today</button>
                     </div>
-                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-                        <button className="btn btn-sm btn-warning" onClick={copyYesterday}>Copy Yesterday</button>
-                        <button className="btn btn-sm btn-success" onClick={exportForExcel}>📊 Excel</button>
-                        <button className="btn btn-sm btn-secondary" onClick={exportMorningReport}>☀️ Morning</button>
-                        <button className="btn btn-sm btn-primary" onClick={exportStatus}>📧 End of Day</button>
+                    <div style={{display:'flex',gap:'6px',flexWrap:'wrap',alignItems:'center'}}>
+                        <button className="btn btn-sm btn-warning" style={{fontSize:'10px'}} onClick={copyYesterday}>📋 Copy Yesterday</button>
+                        <div style={{width:'1px',height:'20px',background:'var(--border)'}}></div>
+                        <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600}}>Export:</span>
+                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(16,185,129,0.1)',border:'1px solid var(--green)',color:'var(--green)'}} onClick={exportForExcel}>📊 Excel</button>
+                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(59,130,246,0.1)',border:'1px solid var(--blue)',color:'var(--blue)'}} onClick={exportStatus}>📧 End of Day</button>
+                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(245,158,11,0.1)',border:'1px solid var(--amber)',color:'var(--amber)'}} onClick={exportMorningReport}>☀️ Morning</button>
                     </div>
                 </div>
 
@@ -6689,6 +6724,23 @@ function Inventory({ ships, setShips, dailyChecks, toast, logActivity }) {
     return (
         <div className="page active">
             <div className="page-header"><div className="page-header-left"><h1 className="page-title">Inventory</h1><p className="page-sub">Track asset documentation status</p></div><div className="btn-group"><button className="btn btn-secondary" onClick={exportCSV}>Export CSV</button><button className="btn btn-primary" onClick={exportExcel}>Export Daily Report</button></div></div>
+            
+            {/* Completion Progress Bar */}
+            {(() => {
+                var complete = ships.filter(s => s.ciscoRouter && s.hddStar && s.hddData && !s.pendingInstall && !s.pendingDeinstall).length;
+                var total = ships.filter(s => !s.pendingInstall && !s.pendingDeinstall).length;
+                var pct = total > 0 ? Math.round((complete / total) * 100) : 0;
+                return <div style={{marginBottom:'16px',padding:'14px 18px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                        <span style={{fontSize:'12px',fontWeight:700,color:'var(--text)'}}>Documentation Complete</span>
+                        <span style={{fontSize:'13px',fontWeight:800,color: pct === 100 ? 'var(--green)' : pct > 70 ? 'var(--primary)' : 'var(--amber)'}}>{pct}%</span>
+                    </div>
+                    <div style={{height:'8px',background:'var(--bg-input)',borderRadius:'4px',overflow:'hidden'}}>
+                        <div style={{height:'100%',width: pct + '%',background: pct === 100 ? 'var(--green)' : pct > 70 ? 'var(--primary)' : 'var(--amber)',borderRadius:'4px',transition:'width 0.5s ease'}}></div>
+                    </div>
+                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'6px'}}>{complete} of {total} ships have all serial numbers documented</div>
+                </div>;
+            })()}
             <div className="filters"><button className={`filter-btn ${filter==='all'?'active':''}`} onClick={() => setFilter('all')}>All Ships</button><button className={`filter-btn ${filter==='missing'?'active':''}`} onClick={() => setFilter('missing')}>Missing Docs</button><button className={`filter-btn ${filter==='complete'?'active':''}`} onClick={() => setFilter('complete')}>Complete</button><button className={`filter-btn ${filter==='inport'?'active':''}`} style={{borderColor:'var(--blue)',color: filter==='inport' ? '#fff' : 'var(--blue)',background: filter==='inport' ? 'var(--blue)' : 'transparent'}} onClick={() => setFilter(filter==='inport'?'all':'inport')}>⚓ In Port ({inPortCount})</button></div>
             
             {/* Edit Form at Top */}
@@ -7274,10 +7326,10 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))',gap:'10px'}}>
                             {activeTrips.map(trip => (
                                 <div key={trip.id} style={{padding:'16px 18px',background:'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.03))',border:'1.5px solid rgba(59,130,246,0.3)',borderRadius:'14px',position:'relative',overflow:'hidden'}}>
-                                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg, var(--blue), var(--primary))'}}></div>
+                                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background: trip.status === 'Completed' ? 'var(--green)' : trip.status === 'Cancelled' ? 'var(--red)' : trip.status === 'Delayed' || trip.status === 'On Hold' ? 'var(--amber)' : 'linear-gradient(90deg, var(--blue), var(--primary))'}}></div>
                                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
                                         <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-                                            <div style={{width:'40px',height:'40px',borderRadius:'10px',background:'var(--blue)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontWeight:800,color:'#fff',fontFamily:'JetBrains Mono'}}>{trip.ship?.replace(/[^0-9]/g,'').slice(-2) || '??'}</div>
+                                            <div style={{width:'40px',height:'40px',borderRadius:'10px',background: trip.status === 'Completed' ? 'var(--green)' : trip.status === 'Cancelled' ? 'var(--red)' : trip.status === 'Delayed' ? 'var(--amber)' : 'var(--blue)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontWeight:800,color:'#fff',fontFamily:'JetBrains Mono'}}>{trip.ship?.replace(/[^0-9]/g,'').slice(-2) || '??'}</div>
                                             <div>
                                                 <div style={{fontWeight:800,fontSize:'16px'}}>{trip.ship}</div>
                                                 <div style={{fontSize:'12px',color:'var(--blue)',fontWeight:600}}>📍 {trip.location}</div>
@@ -7292,6 +7344,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                                         <span style={{display:'flex',alignItems:'center',gap:'4px'}}>📅 {fmtDate(trip.start)}{trip.end ? ` → ${fmtDate(trip.end)}` : ''}</span>
                                         {trip.techs && <span style={{display:'flex',alignItems:'center',gap:'4px'}}>👤 {trip.techs}</span>}
                                         {trip.purpose && <span style={{display:'flex',alignItems:'center',gap:'4px'}}>🎯 {trip.purpose}</span>}
+                                        <span style={{padding:'2px 8px',borderRadius:'4px',fontSize:'10px',fontWeight:700,background: trip.status === 'In Progress' ? 'rgba(59,130,246,0.15)' : trip.status === 'Completed' ? 'rgba(16,185,129,0.15)' : trip.status === 'Cancelled' ? 'rgba(239,68,68,0.15)' : trip.status === 'Delayed' ? 'rgba(245,158,11,0.15)' : trip.status === 'On Hold' ? 'rgba(156,163,175,0.15)' : 'rgba(59,130,246,0.1)', color: trip.status === 'In Progress' ? 'var(--blue)' : trip.status === 'Completed' ? 'var(--green)' : trip.status === 'Cancelled' ? 'var(--red)' : trip.status === 'Delayed' ? 'var(--amber)' : 'var(--text-muted)'}}>{trip.status}</span>
                                     </div>
                                 </div>
                             ))}
@@ -8481,8 +8534,9 @@ function ActivityLog({ activityLog, allUsers, currentUser }) {
                             <div style={{display:'flex',flexDirection:'column',gap:'4px',paddingLeft:'16px',borderLeft:'2px solid var(--border)',marginLeft:'6px'}}>
                                 {items.map(a => {
                                     const action = getActionType(a.text);
+                                    const isToday = a.time && toDateString(new Date(a.time)) === toDateString(new Date());
                                     return (
-                                        <div key={a.id} style={{display:'flex',alignItems:'flex-start',gap:'12px',padding:'10px 14px',background:'var(--bg-card)',borderRadius:'10px',border:'1px solid var(--border)',position:'relative',transition:'border-color 0.15s'}} onMouseOver={e => e.currentTarget.style.borderColor=action.color} onMouseOut={e => e.currentTarget.style.borderColor='var(--border)'}>
+                                        <div key={a.id} style={{display:'flex',alignItems:'flex-start',gap:'12px',padding:'10px 14px',background: isToday ? 'rgba(16,185,129,0.04)' : 'var(--bg-card)',borderRadius:'10px',border: isToday ? '1px solid rgba(16,185,129,0.2)' : '1px solid var(--border)',position:'relative',transition:'border-color 0.15s'}} onMouseOver={e => e.currentTarget.style.borderColor=action.color} onMouseOut={e => e.currentTarget.style.borderColor= isToday ? 'rgba(16,185,129,0.2)' : 'var(--border)'}>
                                             {/* Timeline dot */}
                                             <div style={{position:'absolute',left:'-24px',top:'14px',width:'10px',height:'10px',borderRadius:'50%',background:action.color,border:'2px solid var(--bg-main)',zIndex:1}}></div>
                                             
