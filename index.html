@@ -3572,7 +3572,14 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 )}
 
                 {/* INCOMING EMAIL INBOX — Redesigned */}
-                {pendingEmails.length > 0 && (() => {
+                {(() => {
+                    if (pendingEmails.length === 0) {
+                        return React.createElement('div', {style:{marginBottom:'20px',padding:'16px 20px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',display:'flex',alignItems:'center',gap:'12px'}},
+                            React.createElement('span', {style:{fontSize:'18px'}}, '\uD83D\uDCEC'),
+                            React.createElement('span', {style:{fontWeight:700,fontSize:'14px',color:'var(--text)'}}, 'Inbox'),
+                            React.createElement('span', {style:{fontSize:'13px',color:'var(--green)'}}, '\u2705 All caught up — no pending emails')
+                        );
+                    }
                     // Group by ship
                     var grouped = {};
                     var unmatched = [];
