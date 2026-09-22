@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T124";
+    var APP_BUILD = "2026-02-27T125";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1603,7 +1603,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.0.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T124'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T125'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T124');
+                                    localStorage.setItem('lastSeenBuild', 'T125');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1629,7 +1629,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📬 Email & Inbox'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• Inbox redesigned: grouped by ship with priority flags\n• 6-method ship detection (hull, names, domains, history)\n• 40+ ship name-to-hull mappings\n• Auto-scans emails for issues on accept\n• Email Templates: 7 pre-built with copy and mailto'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '• Inbox redesigned: grouped by ship with priority flags\n• End of Day notes: clean, concise, no raw email dumps\n• 6-method ship detection (hull, names, domains, history)\n• 40+ ship name-to-hull mappings\n• Auto-scans emails for issues on accept\n• Email Templates: 7 pre-built with copy and mailto'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🚢 Dashboard & Ships'),
@@ -5899,134 +5899,56 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             var shipIssues = (issues || []).filter(function(i) { return i.shipId === s.id && !i.resolved; });
             var emails = (getEmailHistory() || []).filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
             
-            // ---- SMART NOTE BUILDER ----
-            // Strips all junk from any text
-            var clean = function(t) {
-                if (!t) return '';
-                t = t.replace(/\s*[|]\s*From:[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Sent by[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Contacted by[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Logged by[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Updated by[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Marked by[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*By:[^|]*/gi, '');
-                t = t.replace(/\s*[|]\s*Response requested/gi, '');
-                t = t.replace(/\s*[|]\s*FYI only/gi, '');
-                t = t.replace(/\s*[|]\s*General status update/gi, '');
-                t = t.replace(/\s*[|]\s*\d+ action item[^|]*/gi, '');
-                t = t.replace(/From:\s*\S+/gi, '');
-                t = t.replace(/Contacted by\s+\S+/gi, '');
-                t = t.replace(/Sent by\s+\S+/gi, '');
-                t = t.replace(/Logged by\s+\S+/gi, '');
-                t = t.replace(/Updated by\s+\S+/gi, '');
-                t = t.replace(/Marked by\s+\S+/gi, '');
-                t = t.replace(/\b[a-z][a-z0-9]*_[a-z][a-z0-9_]*/g, '');
-                t = t.replace(/\b[A-Z]_[A-Za-z]+\b/g, '');
-                t = t.replace(/^\s*[|]\s*/g, '').replace(/\s*[|]\s*$/g, '');
-                t = t.replace(/\s*[|]\s*/g, '. ');
-                t = t.replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ');
-                t = t.replace(/^[\s.,]+/, '').replace(/[\s.,]+$/, '');
-                return t.trim();
-            };
-            
-            // Capitalize first letter of string
-            var cap = function(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; };
-            
-            // Ensure ends with period
-            var endPeriod = function(str) {
-                str = str.trim();
-                if (!str) return '';
-                if (!/[.!?]$/.test(str)) str += '.';
-                return str;
-            };
-            
+            // ---- CLEAN NOTE BUILDER ----
             var noteText = '';
             
             if (isPending) {
-                var pts = ['Pending Install \u2014 ' + s.type + '.'];
-                if (s.installDate) pts.push('Estimated install date: ' + fmtDate(s.installDate) + '.');
-                if (s.location) pts.push('Location: ' + s.location + '.');
-                var trip = (installs || []).find(function(t2) { return t2.ship === s.name && (t2.status === 'Scheduled' || t2.status === 'In Progress'); });
-                if (trip) pts.push('Trip scheduled ' + fmtDate(trip.start) + (trip.end ? ' through ' + fmtDate(trip.end) : '') + ' at ' + trip.location + '.');
-                noteText = pts.join(' ');
+                noteText = 'Pending Install \u2014 ' + s.type + '.';
+                if (s.installDate) noteText += ' Est. ' + fmtDate(s.installDate) + '.';
+                if (s.location) noteText += ' ' + s.location + '.';
             } else if (isDeinstall) {
-                noteText = 'Pending deinstall' + (s.deinstallDate ? ', estimated ' + fmtDate(s.deinstallDate) : '') + '.';
+                noteText = 'Pending deinstall' + (s.deinstallDate ? ', est. ' + fmtDate(s.deinstallDate) : '') + '.';
             } else {
-                // Active ship - build professional note
-                var lastEmail = emails.length > 0 ? emails[0] : null;
-                var hasEmails = emails.length > 0;
-                var lastSender = lastEmail ? (lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null) : null;
-                var isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
-                var rawSummary = lastEmail ? (lastEmail.result ? (lastEmail.result.emailSummary || '') : '') : '';
-                var cleanedSummary = clean(rawSummary);
-                var manualNote = clean(s.lastSaid || '');
-                
-                var sentences = [];
+                var parts = [];
                 
                 // 1. In port status
                 if (s.inPort && s.inPortUntil) {
-                    sentences.push('Ship is currently in port, expected return ' + fmtDate(s.inPortUntil) + '.');
+                    parts.push('In port until ' + fmtDate(s.inPortUntil) + '.');
                 }
                 
-                // 2. Issue description - the WHY
+                // 2. Top issue TITLE only (no details, no email body)
                 if (shipIssues.length > 0) {
-                    shipIssues.forEach(function(iss) {
-                        var title = clean(iss.title || '');
-                        var detail = clean(iss.details || '');
-                        if (title && detail && title.toLowerCase() !== detail.toLowerCase()) {
-                            sentences.push(endPeriod(cap(title + ': ' + detail)));
-                        } else if (title) {
-                            sentences.push(endPeriod(cap(title)));
-                        } else if (detail) {
-                            sentences.push(endPeriod(cap(detail)));
-                        }
+                    var topIssues = shipIssues.slice(0, 2).map(function(iss) {
+                        return (iss.title || 'Open issue').replace(/[.!?]$/, '');
                     });
+                    parts.push(topIssues.join('. ') + '.');
                 }
                 
-                // 3. Communication context - the WHAT WE DID
-                // Use email summary (best) or manual notes (fallback only if no emails)
-                var commText = '';
-                if (hasEmails && cleanedSummary && cleanedSummary.toLowerCase() !== 'general status update') {
-                    commText = cleanedSummary;
-                } else if (!hasEmails && manualNote) {
-                    commText = manualNote;
-                }
-                
-                if (commText) {
-                    // Don't duplicate what issues already say
-                    var isDuplicate = shipIssues.some(function(iss) {
-                        var t = (iss.title || '').toLowerCase();
-                        return t && commText.toLowerCase().indexOf(t.substring(0, 15)) !== -1;
-                    });
-                    if (!isDuplicate) {
-                        sentences.push(endPeriod(cap(commText)));
-                    }
-                }
-                
-                // 4. Status line - WHERE WE STAND
-                if (hasEmails) {
+                // 3. Status line based on communication
+                if (emails.length > 0) {
+                    var lastEmail = emails[0];
+                    var lastSender = lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null;
+                    var isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
+                    
                     if (s.waitingReply) {
-                        sentences.push('Awaiting response from ship.');
+                        parts.push('Awaiting ship response.');
                     } else if (isFromShip) {
-                        sentences.push('Ship has responded, reviewing reply.');
-                    } else if (shipIssues.length > 0) {
-                        sentences.push('Email sent to ship forces for resolution.');
+                        parts.push('Ship responded, reviewing.');
+                    } else {
+                        parts.push('Email sent to ship.');
                     }
-                } else if (shipIssues.length > 0 && !s.inPort) {
-                    sentences.push('Attempting to establish communication with ship.');
+                } else if (shipIssues.length > 0) {
+                    parts.push('Attempting contact.');
                 }
                 
-                // 5. Date - always last, on its own line
-                var dateStr = '';
-                if (hasEmails && lastEmail.timestamp) {
-                    dateStr = fmtDate(lastEmail.timestamp);
+                // 4. Last contact date inline
+                if (emails.length > 0 && emails[0].timestamp) {
+                    parts.push('(' + fmtDate(emails[0].timestamp) + ')');
                 } else if (s.lastContact) {
-                    dateStr = fmtDate(s.lastContact);
+                    parts.push('(' + fmtDate(s.lastContact) + ')');
                 }
                 
-                // Build final note
-                var body = sentences.join(' ');
-                noteText = dateStr ? body + '\n' + dateStr : body;
+                noteText = parts.join(' ');
             }
             
             return {
