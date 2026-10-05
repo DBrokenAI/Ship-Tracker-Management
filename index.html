@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T125";
+    var APP_BUILD = "2026-02-27T128";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1603,7 +1603,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.0.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T125'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T128'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T125');
+                                    localStorage.setItem('lastSeenBuild', 'T128');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1625,7 +1625,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
                                 ),
 
-                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Sep 21, 2026'),
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Sep 22, 2026'),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📬 Email & Inbox'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
@@ -1702,7 +1702,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     </button>
                 </div>
                 {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers} setAlerts={setAlerts} dismissedAlerts={dismissedAlerts} quickNotes={quickNotes} setQuickNotes={setQuickNotes}/>}
-                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} issues={issues} toast={toast} logActivity={logActivity}/>}
+                {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} issues={issues} toast={toast} logActivity={logActivity} quickNotes={quickNotes}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
                 {page === 4 && <Inventory ships={ships} setShips={setShips} dailyChecks={dailyChecks} toast={toast} logActivity={logActivity}/>}
                 {page === 5 && <Installs ships={ships} installs={installs} setInstalls={setInstalls} toast={toast} logActivity={logActivity}/>}
@@ -3633,94 +3633,80 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     </div>
                 )}
 
-                {/* INCOMING EMAIL INBOX — Redesigned */}
+                {/* INCOMING EMAIL INBOX — Compact */}
                 {(() => {
                     if (pendingEmails.length === 0) {
-                        return React.createElement('div', {style:{marginBottom:'20px',padding:'16px 20px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',display:'flex',alignItems:'center',gap:'12px'}},
-                            React.createElement('span', {style:{fontSize:'18px'}}, '\uD83D\uDCEC'),
-                            React.createElement('span', {style:{fontWeight:700,fontSize:'14px',color:'var(--text)'}}, 'Inbox'),
-                            React.createElement('span', {style:{fontSize:'13px',color:'var(--green)'}}, '\u2705 All caught up — no pending emails')
+                        return React.createElement('div', {style:{marginBottom:'16px',padding:'14px 18px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',display:'flex',alignItems:'center',gap:'10px'}},
+                            React.createElement('span', {style:{fontSize:'16px'}}, '\uD83D\uDCEC'),
+                            React.createElement('span', {style:{fontWeight:700,fontSize:'13px',color:'var(--text)'}}, 'Inbox'),
+                            React.createElement('span', {style:{fontSize:'12px',color:'var(--green)'}}, '\u2705 All caught up')
                         );
                     }
-                    // Group by ship
                     var grouped = {};
                     var unmatched = [];
                     pendingEmails.slice().sort(function(a,b) { return new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0); }).forEach(function(item) {
                         if (item.matchedShip && item.matchedShip !== 'UNMATCHED') {
                             if (!grouped[item.matchedShip]) grouped[item.matchedShip] = [];
                             grouped[item.matchedShip].push(item);
-                        } else {
-                            unmatched.push(item);
-                        }
+                        } else { unmatched.push(item); }
                     });
                     var shipKeys = Object.keys(grouped).sort();
-                    var relTime = function(d) { if (!d) return ''; var m = Math.floor((new Date() - new Date(d))/60000); if (m < 60) return m + 'm ago'; var h = Math.floor(m/60); if (h < 24) return h + 'h ago'; return Math.floor(h/24) + 'd ago'; };
+                    var relTime = function(d) { if (!d) return ''; var m = Math.floor((new Date() - new Date(d))/60000); if (m < 60) return m + 'm'; var h = Math.floor(m/60); if (h < 24) return h + 'h'; return Math.floor(h/24) + 'd'; };
                     
-                    return React.createElement('div', {style:{marginBottom:'20px'}},
-                        React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}},
-                            React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'10px'}},
-                                React.createElement('span', {style:{fontSize:'18px'}}, '\uD83D\uDCEC'),
-                                React.createElement('span', {style:{fontWeight:800,fontSize:'16px',color:'var(--text)'}}, 'Inbox'),
-                                React.createElement('span', {style:{background:'var(--blue)',color:'#fff',borderRadius:'12px',padding:'3px 12px',fontSize:'12px',fontWeight:700}}, pendingEmails.length)
+                    return React.createElement('div', {style:{marginBottom:'16px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',overflow:'hidden'}},
+                        
+                        React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid var(--border)'}},
+                            React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px'}},
+                                React.createElement('span', {style:{fontSize:'14px'}}, '\uD83D\uDCEC'),
+                                React.createElement('span', {style:{fontWeight:800,fontSize:'14px'}}, 'Inbox'),
+                                React.createElement('span', {style:{background:'var(--blue)',color:'#fff',borderRadius:'10px',padding:'2px 8px',fontSize:'11px',fontWeight:700}}, pendingEmails.length)
                             ),
-                            React.createElement('div', {style:{display:'flex',gap:'8px'}},
-                                React.createElement('button', {className:'btn btn-sm btn-primary', style:{fontWeight:700,borderRadius:'8px',padding:'6px 14px'}, onClick:function(){ pendingEmails.filter(function(e){return e.matchedShip && e.matchedShip !== 'UNMATCHED';}).forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 Accept All'),
-                                React.createElement('button', {className:'btn btn-sm', style:{color:'var(--red)',borderRadius:'8px',padding:'6px 14px'}, onClick:function(){ pendingEmails.forEach(function(e){rejectIncomingEmail(e);}); }}, '\u2715 Dismiss All'),
-                                React.createElement('button', {className:'btn btn-sm', style:{color:'var(--text-muted)',borderRadius:'8px'}, onClick:function(){ if(confirm('Purge ALL from Firebase?')){db.collection('incomingEmails').where('processed','==',false).get().then(function(snap){snap.forEach(function(doc){doc.ref.update({processed:true,accepted:false});});toast('Purged '+snap.size+' emails','info');});}}}, '\uD83D\uDDD1\uFE0F Purge')
+                            React.createElement('div', {style:{display:'flex',gap:'6px'}},
+                                React.createElement('button', {className:'btn btn-sm', style:{fontSize:'10px',padding:'4px 10px',background:'var(--primary)',color:'#000',fontWeight:700,borderRadius:'6px'}, onClick:function(){ pendingEmails.filter(function(e){return e.matchedShip && e.matchedShip !== 'UNMATCHED';}).forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 Accept All'),
+                                React.createElement('button', {className:'btn btn-sm', style:{fontSize:'10px',padding:'4px 10px',color:'var(--red)',borderRadius:'6px'}, onClick:function(){ pendingEmails.forEach(function(e){rejectIncomingEmail(e);}); }}, '\u2715 All'),
+                                React.createElement('button', {className:'btn btn-sm', style:{fontSize:'10px',padding:'4px 8px',color:'var(--text-muted)',borderRadius:'6px'}, onClick:function(){ if(confirm('Purge all from Firebase?')){db.collection('incomingEmails').where('processed','==',false).get().then(function(snap){snap.forEach(function(doc){doc.ref.update({processed:true,accepted:false});});toast('Purged '+snap.size,'info');});}}}, '\uD83D\uDDD1')
                             )
                         ),
-                        React.createElement('div', {style:{maxHeight:'400px',overflowY:'auto',display:'flex',flexDirection:'column',gap:'12px',paddingRight:'4px'}},
+                        
+                        React.createElement('div', {style:{maxHeight:'300px',overflowY:'auto'}},
                             shipKeys.map(function(shipName) {
                                 var items = grouped[shipName];
-                                return React.createElement('div', {key:shipName, style:{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',overflow:'hidden'}},
-                                    React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid var(--border)',background:'var(--bg-input)'}},
-                                        React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'10px'}},
-                                            React.createElement('span', {style:{fontWeight:800,fontSize:'14px',color:'var(--primary)'}}, '\uD83D\uDEA2 ' + shipName),
-                                            React.createElement('span', {style:{fontSize:'10px',color:'var(--text-muted)',background:'var(--bg-card)',padding:'2px 8px',borderRadius:'10px',fontWeight:600}}, items.length + ' email' + (items.length > 1 ? 's' : ''))
+                                return React.createElement('div', {key:shipName},
+                                    React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 16px',background:'var(--bg-input)',borderBottom:'1px solid var(--border)'}},
+                                        React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px'}},
+                                            React.createElement('span', {style:{fontWeight:700,fontSize:'12px',color:'var(--primary)'}}, shipName),
+                                            React.createElement('span', {style:{fontSize:'9px',color:'var(--text-muted)',background:'var(--bg-card)',padding:'1px 6px',borderRadius:'8px'}}, items.length)
                                         ),
-                                        React.createElement('button', {className:'btn btn-sm btn-primary', style:{fontWeight:700,fontSize:'10px',padding:'4px 12px',borderRadius:'6px'}, onClick:function(){ items.forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 Accept All')
+                                        React.createElement('button', {style:{fontSize:'9px',padding:'2px 8px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'4px',fontWeight:700,cursor:'pointer'}, onClick:function(){ items.forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 All')
                                     ),
                                     items.map(function(item, i) {
-                                        var isUrgent = /(?:down|offline|fail|crash|urgent|critical|broken|dead)/i.test((item.body || '') + ' ' + (item._cleanSubject || ''));
-                                        return React.createElement('div', {key:i, style:{padding:'12px 16px',borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none',display:'flex',gap:'12px',alignItems:'flex-start'}},
-                                            React.createElement('div', {style:{width:'4px',borderRadius:'2px',background: isUrgent ? 'var(--red)' : item._isOutgoing ? 'var(--blue)' : 'var(--green)',alignSelf:'stretch',flexShrink:0}}),
-                                            React.createElement('div', {style:{flex:1,minWidth:0}},
-                                                React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4px'}},
-                                                    React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px'}},
-                                                        React.createElement('span', {style:{fontSize:'12px',fontWeight:700,color:'var(--text)'}}, mapTeamName(item.senderName, item.senderEmail)),
-                                                        React.createElement('span', {style:{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',fontWeight:600,background: item._isOutgoing ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)',color: item._isOutgoing ? 'var(--blue)' : 'var(--green)'}}, item._isOutgoing ? '\u2192 Sent' : '\u2190 Received'),
-                                                        isUrgent ? React.createElement('span', {style:{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',fontWeight:700,background:'rgba(239,68,68,0.1)',color:'var(--red)'}}, '\u26A0 Urgent') : null
-                                                    ),
-                                                    React.createElement('span', {style:{fontSize:'10px',color:'var(--text-muted)'}}, relTime(item.receivedAt))
-                                                ),
-                                                React.createElement('div', {style:{fontSize:'13px',fontWeight:600,color:'var(--text)',marginBottom:'4px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}, item._cleanSubject || item.subject || 'No subject'),
-                                                item.body ? React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',lineHeight:'1.4',maxHeight:'40px',overflow:'hidden',whiteSpace:'pre-wrap'}}, item.body.replace(/From:.*?(?=\n|$)/gi,'').replace(/Sent:.*?(?=\n|$)/gi,'').replace(/To:.*?(?=\n|$)/gi,'').replace(/<[^>]*>/g,'').replace(/_{3,}/g,'').replace(/-{3,}/g,'').replace(/\n{2,}/g,' ').trim().substring(0,150)) : null
-                                            ),
-                                            React.createElement('div', {style:{display:'flex',gap:'6px',flexShrink:0}},
-                                                React.createElement('button', {className:'btn btn-sm btn-primary', style:{padding:'4px 10px',fontSize:'10px',fontWeight:700,borderRadius:'6px'}, onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
-                                                React.createElement('button', {className:'btn btn-sm', style:{padding:'4px 8px',fontSize:'10px',color:'var(--red)',borderRadius:'6px'}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
-                                            )
+                                        var isUrgent = /(?:down|offline|fail|crash|urgent|critical)/i.test((item.body || '') + ' ' + (item._cleanSubject || ''));
+                                        return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 16px',borderBottom:'1px solid var(--border)',fontSize:'11px'}},
+                                            React.createElement('div', {style:{width:'3px',height:'24px',borderRadius:'2px',background: isUrgent ? 'var(--red)' : item._isOutgoing ? 'var(--blue)' : 'var(--green)',flexShrink:0}}),
+                                            React.createElement('span', {style:{fontWeight:600,color:'var(--text)',minWidth:'80px',flexShrink:0}}, mapTeamName(item.senderName, item.senderEmail).split(' ')[0]),
+                                            React.createElement('span', {style:{color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, item._cleanSubject || item.subject || 'No subject'),
+                                            isUrgent ? React.createElement('span', {style:{fontSize:'8px',padding:'1px 5px',borderRadius:'3px',background:'rgba(239,68,68,0.15)',color:'var(--red)',fontWeight:700,flexShrink:0}}, '\u26A0') : null,
+                                            React.createElement('span', {style:{fontSize:'9px',color:'var(--text-muted)',flexShrink:0}}, relTime(item.receivedAt)),
+                                            React.createElement('button', {style:{fontSize:'9px',padding:'2px 6px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'3px',fontWeight:700,cursor:'pointer',flexShrink:0}, onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
+                                            React.createElement('button', {style:{fontSize:'9px',padding:'2px 4px',background:'none',color:'var(--red)',border:'none',cursor:'pointer',flexShrink:0}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
                                         );
                                     })
                                 );
                             }),
-                            unmatched.length > 0 ? React.createElement('div', {style:{background:'var(--bg-card)',border:'1px solid var(--amber)',borderRadius:'12px',overflow:'hidden'}},
-                                React.createElement('div', {style:{padding:'12px 16px',borderBottom:'1px solid var(--border)',background:'rgba(245,158,11,0.05)'}},
-                                    React.createElement('span', {style:{fontWeight:800,fontSize:'14px',color:'var(--amber)'}}, '\u26A0 Unmatched — ' + unmatched.length + ' email' + (unmatched.length > 1 ? 's' : ''))
+                            unmatched.length > 0 ? React.createElement('div', null,
+                                React.createElement('div', {style:{padding:'8px 16px',background:'rgba(245,158,11,0.05)',borderBottom:'1px solid var(--border)'}},
+                                    React.createElement('span', {style:{fontWeight:700,fontSize:'12px',color:'var(--amber)'}}, '\u26A0 Unmatched \u2014 ' + unmatched.length)
                                 ),
                                 unmatched.map(function(item, i) {
                                     var shipList = ships.map(function(s){return s.name;});
-                                    return React.createElement('div', {key:i, style:{padding:'12px 16px',borderBottom: i < unmatched.length - 1 ? '1px solid var(--border)' : 'none',display:'flex',gap:'12px',alignItems:'center'}},
-                                        React.createElement('div', {style:{flex:1}},
-                                            React.createElement('div', {style:{fontSize:'12px',fontWeight:600,marginBottom:'2px'}}, item._cleanSubject || item.subject || 'No subject'),
-                                            React.createElement('div', {style:{fontSize:'10px',color:'var(--text-muted)'}}, 'From: ' + mapTeamName(item.senderName, item.senderEmail))
-                                        ),
-                                        React.createElement('select', {style:{padding:'4px 8px',fontSize:'11px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)'}, onChange:function(e){item.matchedShip = e.target.value; setPendingEmails(function(p){return p.slice();});}},
-                                            React.createElement('option', {value:''}, '-- Ship --'),
+                                    return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 16px',borderBottom:'1px solid var(--border)',fontSize:'11px'}},
+                                        React.createElement('span', {style:{color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, (item._cleanSubject || item.subject || 'No subject') + ' \u2014 ' + mapTeamName(item.senderName, item.senderEmail)),
+                                        React.createElement('select', {style:{padding:'2px 4px',fontSize:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'4px',color:'var(--text)',maxWidth:'80px'}, onChange:function(e){item.matchedShip = e.target.value; setPendingEmails(function(p){return p.slice();});}},
+                                            React.createElement('option', {value:''}, 'Ship'),
                                             shipList.map(function(sn){return React.createElement('option',{key:sn,value:sn},sn);})
                                         ),
-                                        React.createElement('button', {className:'btn btn-sm btn-primary', style:{padding:'4px 10px',fontSize:'10px'}, disabled:!item.matchedShip || item.matchedShip === 'UNMATCHED', onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
-                                        React.createElement('button', {className:'btn btn-sm', style:{padding:'4px 8px',fontSize:'10px',color:'var(--red)'}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
+                                        React.createElement('button', {style:{fontSize:'9px',padding:'2px 6px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'3px',fontWeight:700,cursor:'pointer'}, disabled:!item.matchedShip || item.matchedShip === 'UNMATCHED', onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
+                                        React.createElement('button', {style:{fontSize:'9px',padding:'2px 4px',background:'none',color:'var(--red)',border:'none',cursor:'pointer'}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
                                     );
                                 })
                             ) : null
@@ -5672,7 +5658,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     );
 }
 
-function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toast, logActivity }) {
+function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toast, logActivity, quickNotes }) {
     const [date, setDate] = useState(toDateString(new Date()));
     const [bulkPasteModal, setBulkPasteModal] = useState(false);
     const [bulkPasteText, setBulkPasteText] = useState('');
@@ -5897,10 +5883,18 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             var am = (isPending || isDeinstall) ? false : hasPingAM;
             var pm = (isPending || isDeinstall) ? false : hasPingPM;
             var shipIssues = (issues || []).filter(function(i) { return i.shipId === s.id && !i.resolved; });
-            var emails = (getEmailHistory() || []).filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+            var emails = emailHistory.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
             
             // ---- CLEAN NOTE BUILDER ----
             var noteText = '';
+            
+            // Get email history from localStorage + Firebase
+            var allEmails = [];
+            try { allEmails = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e2) {}
+            var emails = allEmails.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+            
+            // Get quick notes for this ship
+            var shipNotes = (quickNotes || []).filter(function(n) { return n.shipId === s.id; }).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
             
             if (isPending) {
                 noteText = 'Pending Install \u2014 ' + s.type + '.';
@@ -5911,44 +5905,56 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             } else {
                 var parts = [];
                 
-                // 1. In port status
+                // 1. Quick notes first (human-written, most relevant)
+                if (shipNotes.length > 0) {
+                    parts.push(shipNotes[0].text.substring(0, 80));
+                }
+                
+                // 2. In port status
                 if (s.inPort && s.inPortUntil) {
-                    parts.push('In port until ' + fmtDate(s.inPortUntil) + '.');
+                    parts.push('In port until ' + fmtDate(s.inPortUntil));
                 }
                 
-                // 2. Top issue TITLE only (no details, no email body)
-                if (shipIssues.length > 0) {
-                    var topIssues = shipIssues.slice(0, 2).map(function(iss) {
-                        return (iss.title || 'Open issue').replace(/[.!?]$/, '');
-                    });
-                    parts.push(topIssues.join('. ') + '.');
+                // 3. Latest email subject as context (cleaned, no RE:/FW:)
+                if (emails.length > 0) {
+                    var lastSubject = (emails[0].result ? (emails[0].result.emailSummary || '') : '').replace(/^(RE|FW|FWD):\s*/gi, '').trim();
+                    if (lastSubject && lastSubject.length > 5) {
+                        parts.push(lastSubject.substring(0, 60));
+                    }
                 }
                 
-                // 3. Status line based on communication
+                // 4. Top issue title (only if different from email subject)
+                if (shipIssues.length > 0 && parts.length < 2) {
+                    var topTitle = (shipIssues[0].title || '').replace(/[.!?]$/, '');
+                    if (topTitle && !parts.some(function(p) { return p.toLowerCase().indexOf(topTitle.toLowerCase()) !== -1; })) {
+                        parts.push(topTitle);
+                    }
+                }
+                
+                // 5. Communication status
                 if (emails.length > 0) {
                     var lastEmail = emails[0];
-                    var lastSender = lastEmail.result ? (lastEmail.result.sender ? lastEmail.result.sender.name : lastEmail.result.contactedBy) : null;
-                    var isFromShip = lastSender === '__SHIP__' || lastSender === 'Ship';
+                    var isFromShip = lastEmail.fromName === '__SHIP__' || lastEmail.fromName === 'Ship' || (lastEmail.result && lastEmail.result.sender && lastEmail.result.sender.name === '__SHIP__');
+                    var isOutgoing = lastEmail._isOutgoing || lastEmail.result && lastEmail.result.contactedBy && lastEmail.result.contactedBy !== '__SHIP__';
                     
-                    if (s.waitingReply) {
-                        parts.push('Awaiting ship response.');
-                    } else if (isFromShip) {
-                        parts.push('Ship responded, reviewing.');
+                    if (isFromShip) {
+                        parts.push('Ship has responded, reviewing reply');
+                    } else if (s.waitingReply || isOutgoing) {
+                        parts.push('Awaiting response from ship');
                     } else {
-                        parts.push('Email sent to ship.');
+                        parts.push('Email sent to ship forces for resolution');
                     }
-                } else if (shipIssues.length > 0) {
-                    parts.push('Attempting contact.');
                 }
                 
-                // 4. Last contact date inline
+                // 6. Last contact date
                 if (emails.length > 0 && emails[0].timestamp) {
-                    parts.push('(' + fmtDate(emails[0].timestamp) + ')');
+                    parts.push(fmtDate(emails[0].timestamp));
                 } else if (s.lastContact) {
-                    parts.push('(' + fmtDate(s.lastContact) + ')');
+                    parts.push(fmtDate(s.lastContact));
                 }
                 
-                noteText = parts.join(' ');
+                noteText = parts.join('. ').replace(/\.\./g, '.').replace(/\. \./g, '.');
+                if (noteText && !noteText.endsWith('.') && !noteText.match(/\d{4}$/)) noteText += '.';
             }
             
             return {
