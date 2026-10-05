@@ -5883,7 +5883,9 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             var am = (isPending || isDeinstall) ? false : hasPingAM;
             var pm = (isPending || isDeinstall) ? false : hasPingPM;
             var shipIssues = (issues || []).filter(function(i) { return i.shipId === s.id && !i.resolved; });
-            var emails = emailHistory.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+            var allEmailHist = [];
+            try { allEmailHist = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e3) {}
+            var emails = allEmailHist.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
             
             // ---- CLEAN NOTE BUILDER ----
             var noteText = '';
