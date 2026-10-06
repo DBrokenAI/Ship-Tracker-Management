@@ -395,6 +395,53 @@
         .check-row.drag-over { border-top: 3px solid var(--primary) !important; background: var(--primary-glow) !important; }
         .drag-handle { color: var(--text-muted); font-size: 14px; cursor: grab; user-select: none; padding: 0 4px; }
         .drag-handle:active { cursor: grabbing; }
+        /* Dashboard inbox */
+        .inbox { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+        .inbox-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; flex-wrap: wrap; }
+        .inbox-title { font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .inbox-count { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: var(--primary); color: #000; }
+        .inbox-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+        .inbox-actions { display: flex; gap: 8px; }
+        .inbox-actions .btn:disabled, .inbox-btns .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .inbox-tabs { display: flex; gap: 4px; padding: 8px 18px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg-main); }
+        .inbox-tab { background: none; border: 1px solid transparent; color: var(--text-dim); font: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+        .inbox-tab:hover { color: var(--text); }
+        .inbox-tab.active { background: var(--bg-card-hover); border-color: var(--border); color: var(--text); }
+        .inbox-tab .n { margin-left: 6px; color: var(--text-muted); font-weight: 500; }
+        .inbox-list { max-height: 440px; overflow-y: auto; }
+        .inbox-cols, .inbox-row { display: grid; grid-template-columns: 110px 86px 150px minmax(0, 1fr) 90px 150px; gap: 14px; align-items: center; }
+        .inbox-cols { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); padding: 8px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-card); z-index: 1; }
+        .inbox-row { padding: 10px 18px 10px 15px; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; cursor: pointer; font-size: 12px; transition: background 0.1s; }
+        .inbox-row:hover, .inbox-row.open { background: var(--bg-card-hover); }
+        .inbox-row.flagged { border-left-color: var(--red); }
+        .inbox-ship { font-weight: 700; color: var(--text); }
+        .inbox-dir { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; justify-self: start; }
+        .inbox-dir.in { background: var(--green-glow); color: var(--green); }
+        .inbox-dir.out { background: var(--blue-glow); color: var(--blue); }
+        .inbox-from { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .inbox-subj { min-width: 0; }
+        .inbox-subj-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .inbox-subj-text { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .inbox-preview { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+        .inbox-tag { flex-shrink: 0; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+        .inbox-tag.flag { background: var(--red-glow); color: var(--red); }
+        .inbox-tag.count { background: var(--bg-input); color: var(--text-dim); }
+        .inbox-time { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+        .inbox-btns { display: flex; gap: 6px; justify-content: flex-end; }
+        .inbox-select { width: 100%; padding: 5px 6px; font: inherit; font-size: 11px; background: var(--bg-input); border: 1px solid var(--amber); border-radius: 5px; color: var(--text); }
+        .inbox-detail { padding: 14px 18px 16px 142px; border-bottom: 1px solid var(--border); background: var(--bg-main); }
+        .inbox-msg + .inbox-msg { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+        .inbox-msg-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; overflow-wrap: anywhere; }
+        .inbox-msg-meta strong { color: var(--text-dim); }
+        .inbox-msg-body { font-size: 12px; line-height: 1.6; color: var(--text-dim); white-space: pre-wrap; max-height: 260px; overflow-y: auto; }
+        .inbox-empty { padding: 28px 18px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        @media (max-width: 1000px) {
+            .inbox-cols { display: none; }
+            .inbox-row { grid-template-columns: 80px minmax(0, 1fr); row-gap: 8px; }
+            .inbox-btns { grid-column: 1 / -1; justify-content: flex-start; }
+            .inbox-dir, .inbox-from, .inbox-time { display: none; }
+            .inbox-detail { padding-left: 18px; }
+        }
     </style>
 </head>
 <body>
@@ -432,7 +479,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T130";
+    var APP_BUILD = "2026-02-27T132";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2219,6 +2266,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     // ===== INCOMING EMAIL QUEUE =====
     const [pendingEmails, setPendingEmails] = useState([]);
     const [showInbox, setShowInbox] = useState(false);
+    const [inboxFilter, setInboxFilter] = useState('all');
+    const [inboxExpanded, setInboxExpanded] = useState(null);
     
     // Proactive Alert Notifications
     useEffect(function() {
@@ -2417,7 +2466,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         return name || email || 'Unknown';
     };
     
-    var acceptIncomingEmail = function(item) {
+    var acceptIncomingEmail = function(item, quiet) {
         // If this is a thread group, accept all items in it
         var itemsToAccept = item.items || [item];
         itemsToAccept.forEach(function(singleItem) {
@@ -2425,7 +2474,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         });
         var shipLabel = item.matchedShip || 'Unknown';
         var count = itemsToAccept.length;
-        toast('\u2705 ' + count + ' email' + (count > 1 ? 's' : '') + ' added to ' + shipLabel, 'success');
+        if (!quiet) toast(count + ' email' + (count > 1 ? 's' : '') + ' added to ' + shipLabel, 'success');
         var arrow = item._isOutgoing ? '\u2192 Sent' : '\u2190 Reply';
         logActivity('Accepted ' + count + ' email(s): ' + shipLabel + ' ' + arrow + ' | ' + (item._cleanSubject || '').substring(0, 50), { ship: shipLabel });
     };
@@ -2532,8 +2581,6 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             db.collection('incomingEmails').doc(singleItem._docId).update({ processed: true, accepted: false, processedAt: new Date().toISOString() });
         });
         logActivity('Rejected ' + itemsToReject.length + ' incoming email(s): ' + (item._cleanSubject || '').substring(0, 50));
-        toast('Email dismissed', 'info');
-        logActivity('Rejected incoming email: ' + (item._cleanSubject || '').substring(0, 50));
         toast('Email dismissed', 'info');
     };
     
@@ -3622,98 +3669,138 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 </div>
             </div>
             
+            {/* EMAIL INBOX */}
+            {(() => {
+                var flagRe = /\b(down|offline|outage|fail(?:ed|ure|ing)?|crash(?:ed)?|urgent|critical|casrep|degraded|inop)\b/i;
+                var rows = pendingEmails.slice()
+                    .sort((a, b) => new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0))
+                    .map(item => ({
+                        item,
+                        key: item._docId || item.threadGroup,
+                        flagged: flagRe.test((item._cleanSubject || item.subject || '') + ' ' + (item.body || '')),
+                        unmatched: !item.matchedShip || item.matchedShip === 'UNMATCHED'
+                    }));
+                var counts = { all: rows.length, flagged: rows.filter(r => r.flagged).length, unassigned: rows.filter(r => r.unmatched).length };
+                var visible = rows.filter(r => inboxFilter === 'flagged' ? r.flagged : inboxFilter === 'unassigned' ? r.unmatched : true);
+                var matchedRows = rows.filter(r => !r.unmatched);
+                var shipCount = new Set(matchedRows.map(r => r.item.matchedShip)).size;
+                var fmtWhen = d => {
+                    if (!d) return '';
+                    var dt = new Date(d), m = Math.floor((Date.now() - dt) / 60000);
+                    if (m < 1) return 'Just now';
+                    if (m < 60) return m + ' min ago';
+                    if (m < 1440) return Math.floor(m / 60) + ' hr ago';
+                    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                };
+                var fmtFull = d => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+                var oneLine = t => String(t || '').replace(/\s+/g, ' ').trim();
+                var acceptAll = () => {
+                    if (matchedRows.length === 0) return;
+                    var n = 0;
+                    matchedRows.forEach(r => { n += (r.item.items || [r.item]).length; acceptIncomingEmail(r.item, true); });
+                    toast(n + ' email' + (n === 1 ? '' : 's') + ' added to ship timelines', 'success');
+                };
+                var dismissAll = () => {
+                    if (!confirm('Dismiss all ' + rows.length + ' emails in the inbox? This clears them for everyone.')) return;
+                    db.collection('incomingEmails').where('processed', '==', false).get().then(snap => {
+                        snap.forEach(doc => doc.ref.update({ processed: true, accepted: false, processedAt: new Date().toISOString() }));
+                        logActivity('Dismissed all inbox emails (' + snap.size + ')');
+                        toast('Inbox cleared', 'info');
+                    });
+                };
+
+                if (rows.length === 0) {
+                    return (
+                        <div className="inbox">
+                            <div className="inbox-head">
+                                <div><div className="inbox-title">Inbox</div><div className="inbox-sub">No emails awaiting review</div></div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="inbox">
+                        <div className="inbox-head">
+                            <div>
+                                <div className="inbox-title">Inbox <span className="inbox-count">{rows.length}</span></div>
+                                <div className="inbox-sub">
+                                    {rows.length} email{rows.length === 1 ? '' : 's'} awaiting review
+                                    {shipCount > 0 ? ' across ' + shipCount + ' ship' + (shipCount === 1 ? '' : 's') : ''}
+                                    {counts.unassigned > 0 ? ' · ' + counts.unassigned + ' need a ship assigned' : ''}
+                                </div>
+                            </div>
+                            <div className="inbox-actions">
+                                <button className="btn btn-sm btn-primary" disabled={matchedRows.length === 0} onClick={acceptAll}>Accept all assigned</button>
+                                <button className="btn btn-sm btn-secondary" onClick={dismissAll}>Dismiss all</button>
+                            </div>
+                        </div>
+                        <div className="inbox-tabs">
+                            {[['all', 'All'], ['flagged', 'Flagged'], ['unassigned', 'Unassigned']].map(([k, label]) => (
+                                <button key={k} className={'inbox-tab' + (inboxFilter === k ? ' active' : '')} onClick={() => setInboxFilter(k)}>
+                                    {label}<span className="n">{counts[k]}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="inbox-list">
+                            <div className="inbox-cols"><span>Ship</span><span>Direction</span><span>From</span><span>Subject</span><span>Received</span><span></span></div>
+                            {visible.length === 0 && <div className="inbox-empty">Nothing in this view.</div>}
+                            {visible.map(({ item, key, flagged, unmatched }) => {
+                                var thread = item.items || [item];
+                                var open = inboxExpanded === key;
+                                return (
+                                    <React.Fragment key={key}>
+                                        <div className={'inbox-row' + (flagged ? ' flagged' : '') + (open ? ' open' : '')} onClick={() => setInboxExpanded(open ? null : key)}>
+                                            <div className="inbox-ship" onClick={unmatched ? e => e.stopPropagation() : undefined}>
+                                                {unmatched ? (
+                                                    <select className="inbox-select" value="" onChange={e => { item.matchedShip = e.target.value; setPendingEmails(p => p.slice()); }}>
+                                                        <option value="">Assign ship</option>
+                                                        {ships.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                                    </select>
+                                                ) : item.matchedShip}
+                                            </div>
+                                            <span className={'inbox-dir ' + (item._isOutgoing ? 'out' : 'in')}>{item._isOutgoing ? 'Outgoing' : 'Incoming'}</span>
+                                            <span className="inbox-from" title={item.senderEmail || ''}>{mapTeamName(item.senderName, item.senderEmail)}</span>
+                                            <div className="inbox-subj">
+                                                <div className="inbox-subj-line">
+                                                    <span className="inbox-subj-text">{item._cleanSubject || item.subject || '(No subject)'}</span>
+                                                    {thread.length > 1 && <span className="inbox-tag count">{thread.length} messages</span>}
+                                                    {flagged && <span className="inbox-tag flag" title="Mentions an outage, failure, or urgent issue">Flagged</span>}
+                                                </div>
+                                                <div className="inbox-preview">{oneLine(item.body).substring(0, 160)}</div>
+                                            </div>
+                                            <span className="inbox-time" title={fmtFull(item.receivedAt)}>{fmtWhen(item.receivedAt)}</span>
+                                            <div className="inbox-btns" onClick={e => e.stopPropagation()}>
+                                                <button className="btn btn-sm btn-primary" disabled={unmatched} title={unmatched ? 'Assign a ship first' : 'Add to ship timeline'} onClick={() => acceptIncomingEmail(item)}>Accept</button>
+                                                <button className="btn btn-sm btn-secondary" onClick={() => rejectIncomingEmail(item)}>Dismiss</button>
+                                            </div>
+                                        </div>
+                                        {open && (
+                                            <div className="inbox-detail">
+                                                {thread.map((m, i) => (
+                                                    <div className="inbox-msg" key={i}>
+                                                        <div className="inbox-msg-meta">
+                                                            <strong>{mapTeamName(m.senderName, m.senderEmail)}</strong>
+                                                            {m.senderEmail ? ' <' + m.senderEmail + '>' : ''}
+                                                            {m.toName || m.toEmail ? ' to ' + mapTeamName(m.toName, m.toEmail) : ''}
+                                                            {' · ' + fmtFull(m.receivedAt)}
+                                                        </div>
+                                                        <div className="inbox-msg-body">{String(m.body || '').trim() || '(No message body)'}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Visual Charts Row */}
             <div className="charts-row">
                 <div className="chart-card">
-                {/* Green email notification banner — fixed to top */}
-                {pendingEmails.length > 0 && (
-                    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:100,background:'var(--green-glow)',borderBottom:'1px solid var(--green)',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px'}}>
-                        <span style={{fontSize:'16px'}}>📬</span>
-                        <span style={{color:'var(--green)',fontWeight:700,fontSize:'14px'}}>There {pendingEmails.length === 1 ? 'is' : 'are'} {pendingEmails.length} new email{pendingEmails.length > 1 ? 's' : ''} to review</span>
-                    </div>
-                )}
-
-                {/* INCOMING EMAIL INBOX — Compact */}
-                {(() => {
-                    if (pendingEmails.length === 0) {
-                        return React.createElement('div', {style:{marginBottom:'16px',padding:'14px 18px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',display:'flex',alignItems:'center',gap:'10px'}},
-                            React.createElement('span', {style:{fontSize:'16px'}}, '\uD83D\uDCEC'),
-                            React.createElement('span', {style:{fontWeight:700,fontSize:'13px',color:'var(--text)'}}, 'Inbox'),
-                            React.createElement('span', {style:{fontSize:'12px',color:'var(--green)'}}, '\u2705 All caught up')
-                        );
-                    }
-                    var grouped = {};
-                    var unmatched = [];
-                    pendingEmails.slice().sort(function(a,b) { return new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0); }).forEach(function(item) {
-                        if (item.matchedShip && item.matchedShip !== 'UNMATCHED') {
-                            if (!grouped[item.matchedShip]) grouped[item.matchedShip] = [];
-                            grouped[item.matchedShip].push(item);
-                        } else { unmatched.push(item); }
-                    });
-                    var shipKeys = Object.keys(grouped).sort();
-                    var relTime = function(d) { if (!d) return ''; var m = Math.floor((new Date() - new Date(d))/60000); if (m < 60) return m + 'm'; var h = Math.floor(m/60); if (h < 24) return h + 'h'; return Math.floor(h/24) + 'd'; };
-                    
-                    return React.createElement('div', {style:{marginBottom:'16px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',overflow:'hidden'}},
-                        
-                        React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid var(--border)'}},
-                            React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px'}},
-                                React.createElement('span', {style:{fontSize:'14px'}}, '\uD83D\uDCEC'),
-                                React.createElement('span', {style:{fontWeight:800,fontSize:'14px'}}, 'Inbox'),
-                                React.createElement('span', {style:{background:'var(--blue)',color:'#fff',borderRadius:'10px',padding:'2px 8px',fontSize:'11px',fontWeight:700}}, pendingEmails.length)
-                            ),
-                            React.createElement('div', {style:{display:'flex',gap:'6px'}},
-                                React.createElement('button', {className:'btn btn-sm', style:{fontSize:'10px',padding:'4px 10px',background:'var(--primary)',color:'#000',fontWeight:700,borderRadius:'6px'}, onClick:function(){ pendingEmails.filter(function(e){return e.matchedShip && e.matchedShip !== 'UNMATCHED';}).forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 Accept All'),
-                                React.createElement('button', {className:'btn btn-sm', style:{fontSize:'10px',padding:'4px 10px',color:'var(--red)',borderRadius:'6px'}, onClick:function(){ pendingEmails.forEach(function(e){rejectIncomingEmail(e);}); }}, '\u2715 All'),
-                                React.createElement('button', {className:'btn btn-sm', style:{fontSize:'10px',padding:'4px 8px',color:'var(--text-muted)',borderRadius:'6px'}, onClick:function(){ if(confirm('Purge all from Firebase?')){db.collection('incomingEmails').where('processed','==',false).get().then(function(snap){snap.forEach(function(doc){doc.ref.update({processed:true,accepted:false});});toast('Purged '+snap.size,'info');});}}}, '\uD83D\uDDD1')
-                            )
-                        ),
-                        
-                        React.createElement('div', {style:{maxHeight:'300px',overflowY:'auto'}},
-                            shipKeys.map(function(shipName) {
-                                var items = grouped[shipName];
-                                return React.createElement('div', {key:shipName},
-                                    React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 16px',background:'var(--bg-input)',borderBottom:'1px solid var(--border)'}},
-                                        React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px'}},
-                                            React.createElement('span', {style:{fontWeight:700,fontSize:'12px',color:'var(--primary)'}}, shipName),
-                                            React.createElement('span', {style:{fontSize:'9px',color:'var(--text-muted)',background:'var(--bg-card)',padding:'1px 6px',borderRadius:'8px'}}, items.length)
-                                        ),
-                                        React.createElement('button', {style:{fontSize:'9px',padding:'2px 8px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'4px',fontWeight:700,cursor:'pointer'}, onClick:function(){ items.forEach(function(e){acceptIncomingEmail(e);}); }}, '\u2713 All')
-                                    ),
-                                    items.map(function(item, i) {
-                                        var isUrgent = /(?:down|offline|fail|crash|urgent|critical)/i.test((item.body || '') + ' ' + (item._cleanSubject || ''));
-                                        return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 16px',borderBottom:'1px solid var(--border)',fontSize:'11px'}},
-                                            React.createElement('div', {style:{width:'3px',height:'24px',borderRadius:'2px',background: isUrgent ? 'var(--red)' : item._isOutgoing ? 'var(--blue)' : 'var(--green)',flexShrink:0}}),
-                                            React.createElement('span', {style:{fontWeight:600,color:'var(--text)',minWidth:'80px',flexShrink:0}}, mapTeamName(item.senderName, item.senderEmail).split(' ')[0]),
-                                            React.createElement('span', {style:{color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, item._cleanSubject || item.subject || 'No subject'),
-                                            isUrgent ? React.createElement('span', {style:{fontSize:'8px',padding:'1px 5px',borderRadius:'3px',background:'rgba(239,68,68,0.15)',color:'var(--red)',fontWeight:700,flexShrink:0}}, '\u26A0') : null,
-                                            React.createElement('span', {style:{fontSize:'9px',color:'var(--text-muted)',flexShrink:0}}, relTime(item.receivedAt)),
-                                            React.createElement('button', {style:{fontSize:'9px',padding:'2px 6px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'3px',fontWeight:700,cursor:'pointer',flexShrink:0}, onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
-                                            React.createElement('button', {style:{fontSize:'9px',padding:'2px 4px',background:'none',color:'var(--red)',border:'none',cursor:'pointer',flexShrink:0}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
-                                        );
-                                    })
-                                );
-                            }),
-                            unmatched.length > 0 ? React.createElement('div', null,
-                                React.createElement('div', {style:{padding:'8px 16px',background:'rgba(245,158,11,0.05)',borderBottom:'1px solid var(--border)'}},
-                                    React.createElement('span', {style:{fontWeight:700,fontSize:'12px',color:'var(--amber)'}}, '\u26A0 Unmatched \u2014 ' + unmatched.length)
-                                ),
-                                unmatched.map(function(item, i) {
-                                    var shipList = ships.map(function(s){return s.name;});
-                                    return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 16px',borderBottom:'1px solid var(--border)',fontSize:'11px'}},
-                                        React.createElement('span', {style:{color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, (item._cleanSubject || item.subject || 'No subject') + ' \u2014 ' + mapTeamName(item.senderName, item.senderEmail)),
-                                        React.createElement('select', {style:{padding:'2px 4px',fontSize:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'4px',color:'var(--text)',maxWidth:'80px'}, onChange:function(e){item.matchedShip = e.target.value; setPendingEmails(function(p){return p.slice();});}},
-                                            React.createElement('option', {value:''}, 'Ship'),
-                                            shipList.map(function(sn){return React.createElement('option',{key:sn,value:sn},sn);})
-                                        ),
-                                        React.createElement('button', {style:{fontSize:'9px',padding:'2px 6px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'3px',fontWeight:700,cursor:'pointer'}, disabled:!item.matchedShip || item.matchedShip === 'UNMATCHED', onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
-                                        React.createElement('button', {style:{fontSize:'9px',padding:'2px 4px',background:'none',color:'var(--red)',border:'none',cursor:'pointer'}, onClick:function(){rejectIncomingEmail(item);}}, '\u2715')
-                                    );
-                                })
-                            ) : null
-                        )
-                    );
-                })()}
-
                     <div className="card-title tip" data-tip="Based on today's AM/PM connectivity checks">Fleet Status (Today)</div>
                     <PieChart data={[chartData.online, chartData.offline, chartData.noData, chartData.pendingInstall, chartData.pendingDeinstall]} colors={['var(--green)', 'var(--red)', 'var(--text-muted)', 'var(--amber)', '#f87171']}/>
                     <div className="chart-legend">
@@ -5892,7 +5979,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 t = String(t || '').replace(/\s+/g, ' ').trim().replace(/^(RE|FW|FWD):\s*/i, '');
                 var fs = t.match(/^.*?[.!?](?=\s|$)/); var firstSentence = fs ? fs[0] : t;
                 if (firstSentence.length >= 15) t = firstSentence;
-                if (t.length > max) { t = t.substring(0, max); t = t.substring(0, t.lastIndexOf(' ') > 20 ? t.lastIndexOf(' ') : max) + '…'; }
+                if (t.length > max) { t = t.substring(0, max); t = t.substring(0, t.lastIndexOf(' ') > 20 ? t.lastIndexOf(' ') : max).replace(/[,;:\-\s]+$/, ''); }
                 return t.replace(/[.!?]+$/, '');
             };
             // true = online, false = offline, null = no checks recorded that day (weekend, etc.)
@@ -5916,56 +6003,45 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             };
             var daysBetween = function(a, b) { return Math.round((parseLocalDate(b) - parseLocalDate(a)) / 86400000); };
 
+            // Management-facing wording: status first, then what's being done about it. No day counts.
+            var sentence = function(x) { x = String(x || '').trim().replace(/[.!?]+$/, ''); return x ? x.charAt(0).toUpperCase() + x.slice(1) + '.' : ''; };
             if (isPending) {
-                noteText = 'Pending install — ' + s.type + '.';
-                if (s.installDate) noteText += ' Est. ' + shortDate(s.installDate) + '.';
+                noteText = 'Pending REAP install' + (s.installDate ? ', scheduled for ' + shortDate(s.installDate) : '') + '.';
             } else if (isDeinstall) {
-                noteText = 'Pending deinstall' + (s.deinstallDate ? ', est. ' + shortDate(s.deinstallDate) : '') + '.';
+                noteText = 'Pending REAP deinstall' + (s.deinstallDate ? ', scheduled for ' + shortDate(s.deinstallDate) : '') + '.';
             } else {
                 var parts = [];
                 var inPort = s.inPort && s.inPortUntil && parseLocalDate(s.inPortUntil) >= parseLocalDate(date);
+                var down = !am && !pm;
 
-                // 1. Connection status, with how long it's been that way
-                if (!am && !pm) {
-                    var off = streakStart(false);
-                    var n = daysBetween(off.start, date) + 1;
-                    if (off.start === date && off.known) parts.push('Went offline today');
-                    // (no history to compare against: the Offline column already says it)
-                    else if (off.start !== date) parts.push('Offline since ' + shortDate(off.start) + ' (' + n + ' days' + (off.known ? '' : '+') + ')');
-                } else if (!am && pm) {
-                    parts.push('Back online this afternoon');
-                } else if (am && !pm) {
-                    parts.push('Went offline this afternoon');
-                } else {
+                // 1. Connection change today (the AM/PM columns already show current state)
+                if (!am && pm) parts.push('Connectivity restored this afternoon');
+                else if (am && !pm) parts.push('Connectivity lost this afternoon');
+                else if (am && pm) {
                     var prevDown = streakStart(true);
-                    if (prevDown.start === date && prevDown.known) parts.push('Back online today');
+                    if (prevDown.start === date && prevDown.known) parts.push('Connectivity restored');
                 }
-                if (inPort) parts.push('In port until ' + shortDate(s.inPortUntil));
+                if (inPort) parts.push('Ship in port through ' + shortDate(s.inPortUntil));
 
-                // 2. Anything you typed in today's Daily Checks notes
-                if (c.notes && c.notes.trim()) parts.push(c.notes.trim().replace(/[.!?]+$/, ''));
+                // 2. Anything typed in today's Daily Checks notes
+                if (c.notes && c.notes.trim()) parts.push(c.notes.trim());
 
                 // 3. Diode explicitly marked down while the ship is up
-                if ((am || pm) && (c.diode === 'Down' || c.diode === 'Output-down')) parts.push(c.diode === 'Output-down' ? 'Diode output down' : 'Diode down');
+                if ((am || pm) && (c.diode === 'Down' || c.diode === 'Output-down')) parts.push(c.diode === 'Output-down' ? 'Diode output is down' : 'Diode is down');
 
-                // 4. Open issues (skip email auto-detections, they're the unreliable ones)
+                // 4. Top open issue (skip email auto-detections, they're unreliable)
                 var realIssues = shipIssues.filter(function(i) { return i.category !== 'Auto-detected' && i.reportedBy !== 'Email Scan'; })
                     .sort(function(a, b) { return (b.threat === 'Urgent') - (a.threat === 'Urgent'); });
-                realIssues.slice(0, 2).forEach(function(i) {
-                    var t = clip(i.title || i.details, 70);
-                    if (t) parts.push((i.threat === 'Urgent' ? 'URGENT: ' : '') + t);
-                });
-                if (realIssues.length > 2) parts.push('+' + (realIssues.length - 2) + ' more open issues');
+                if (realIssues.length > 0) parts.push(clip(realIssues[0].title || realIssues[0].details, 140));
 
-                // 5. Who we're waiting on — only worth saying when something is wrong
-                var hasProblem = (!am || !pm) || realIssues.length > 0;
+                // 5. Action being taken, only when something is wrong and the ship isn't simply in port
+                var hasProblem = !am || !pm || realIssues.length > 0 || c.diode === 'Down' || c.diode === 'Output-down';
                 if (hasProblem && !inPort) {
-                    if (s.waitingReply && s.lastContact) parts.push('Emailed ship ' + shortDate(s.lastContact) + ', awaiting reply');
-                    else if (s.waitingReply) parts.push('Awaiting reply from ship');
-                    else if (s.lastContact && daysBetween(toDateString(new Date(s.lastContact)), date) <= 14) parts.push('Last contact ' + shortDate(s.lastContact));
+                    if (s.waitingReply) parts.push("Coordinating with ship's force, awaiting response");
+                    else if (down) parts.push('Troubleshooting in progress');
                 }
 
-                noteText = parts.length > 0 ? parts.join('. ') + '.' : 'No issues.';
+                noteText = parts.length > 0 ? parts.map(sentence).filter(Boolean).join(' ') : 'Fully operational.';
             }
             
             return {
