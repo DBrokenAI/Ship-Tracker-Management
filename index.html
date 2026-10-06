@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-02-27T129";
+    var APP_BUILD = "2026-02-27T130";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -5883,80 +5883,89 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             var am = (isPending || isDeinstall) ? false : hasPingAM;
             var pm = (isPending || isDeinstall) ? false : hasPingPM;
             var shipIssues = (issues || []).filter(function(i) { return i.shipId === s.id && !i.resolved; });
-            var allEmailHist = [];
-            try { allEmailHist = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e3) {}
-            var emails = allEmailHist.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
-            
-            // ---- CLEAN NOTE BUILDER ----
+            // ---- SMART NOTE BUILDER ----
+            // Built only from facts the app tracks (daily check history, ship status, logged issues).
+            // No email guessing, so nothing gets made up.
             var noteText = '';
-            
-            // Get email history from localStorage + Firebase
-            var allEmails = [];
-            try { allEmails = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e2) {}
-            var emails = allEmails.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
-            
-            // Get quick notes for this ship
-            var shipNotes = (quickNotes || []).filter(function(n) { return n.shipId === s.id; }).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
-            
+            var shortDate = function(d) { var x = parseLocalDate(d); return (x.getMonth() + 1) + '/' + x.getDate(); };
+            var clip = function(t, max) {
+                t = String(t || '').replace(/\s+/g, ' ').trim().replace(/^(RE|FW|FWD):\s*/i, '');
+                var fs = t.match(/^.*?[.!?](?=\s|$)/); var firstSentence = fs ? fs[0] : t;
+                if (firstSentence.length >= 15) t = firstSentence;
+                if (t.length > max) { t = t.substring(0, max); t = t.substring(0, t.lastIndexOf(' ') > 20 ? t.lastIndexOf(' ') : max) + '…'; }
+                return t.replace(/[.!?]+$/, '');
+            };
+            // true = online, false = offline, null = no checks recorded that day (weekend, etc.)
+            var dayOnline = function(dStr) {
+                var dc = (checks || []).find(function(x) { return x.shipId === s.id && x.date === dStr; });
+                if (!dc) return null;
+                return !!((dc.pingAM && String(dc.pingAM).trim() !== '') || (dc.pingPM && String(dc.pingPM).trim() !== ''));
+            };
+            // Walk back through past checks to find when the current offline/online streak started
+            var streakStart = function(wantOnline) {
+                var d = parseLocalDate(date), start = date, sawPrior = false;
+                for (var k = 0; k < 60; k++) {
+                    d.setDate(d.getDate() - 1);
+                    var ds = toDateString(d), st = dayOnline(ds);
+                    if (st === null) continue;
+                    sawPrior = true;
+                    if (st !== wantOnline) return { start: start, known: true };
+                    start = ds;
+                }
+                return { start: start, known: false, sawPrior: sawPrior };
+            };
+            var daysBetween = function(a, b) { return Math.round((parseLocalDate(b) - parseLocalDate(a)) / 86400000); };
+
             if (isPending) {
-                noteText = 'Pending Install \u2014 ' + s.type + '.';
-                if (s.installDate) noteText += ' Est. ' + fmtDate(s.installDate) + '.';
-                if (s.location) noteText += ' ' + s.location + '.';
+                noteText = 'Pending install — ' + s.type + '.';
+                if (s.installDate) noteText += ' Est. ' + shortDate(s.installDate) + '.';
             } else if (isDeinstall) {
-                noteText = 'Pending deinstall' + (s.deinstallDate ? ', est. ' + fmtDate(s.deinstallDate) : '') + '.';
+                noteText = 'Pending deinstall' + (s.deinstallDate ? ', est. ' + shortDate(s.deinstallDate) : '') + '.';
             } else {
                 var parts = [];
-                
-                // 1. Quick notes first (human-written, most relevant)
-                if (shipNotes.length > 0) {
-                    parts.push(shipNotes[0].text.substring(0, 80));
+                var inPort = s.inPort && s.inPortUntil && parseLocalDate(s.inPortUntil) >= parseLocalDate(date);
+
+                // 1. Connection status, with how long it's been that way
+                if (!am && !pm) {
+                    var off = streakStart(false);
+                    var n = daysBetween(off.start, date) + 1;
+                    if (off.start === date && off.known) parts.push('Went offline today');
+                    // (no history to compare against: the Offline column already says it)
+                    else if (off.start !== date) parts.push('Offline since ' + shortDate(off.start) + ' (' + n + ' days' + (off.known ? '' : '+') + ')');
+                } else if (!am && pm) {
+                    parts.push('Back online this afternoon');
+                } else if (am && !pm) {
+                    parts.push('Went offline this afternoon');
+                } else {
+                    var prevDown = streakStart(true);
+                    if (prevDown.start === date && prevDown.known) parts.push('Back online today');
                 }
-                
-                // 2. In port status
-                if (s.inPort && s.inPortUntil) {
-                    parts.push('In port until ' + fmtDate(s.inPortUntil));
+                if (inPort) parts.push('In port until ' + shortDate(s.inPortUntil));
+
+                // 2. Anything you typed in today's Daily Checks notes
+                if (c.notes && c.notes.trim()) parts.push(c.notes.trim().replace(/[.!?]+$/, ''));
+
+                // 3. Diode explicitly marked down while the ship is up
+                if ((am || pm) && (c.diode === 'Down' || c.diode === 'Output-down')) parts.push(c.diode === 'Output-down' ? 'Diode output down' : 'Diode down');
+
+                // 4. Open issues (skip email auto-detections, they're the unreliable ones)
+                var realIssues = shipIssues.filter(function(i) { return i.category !== 'Auto-detected' && i.reportedBy !== 'Email Scan'; })
+                    .sort(function(a, b) { return (b.threat === 'Urgent') - (a.threat === 'Urgent'); });
+                realIssues.slice(0, 2).forEach(function(i) {
+                    var t = clip(i.title || i.details, 70);
+                    if (t) parts.push((i.threat === 'Urgent' ? 'URGENT: ' : '') + t);
+                });
+                if (realIssues.length > 2) parts.push('+' + (realIssues.length - 2) + ' more open issues');
+
+                // 5. Who we're waiting on — only worth saying when something is wrong
+                var hasProblem = (!am || !pm) || realIssues.length > 0;
+                if (hasProblem && !inPort) {
+                    if (s.waitingReply && s.lastContact) parts.push('Emailed ship ' + shortDate(s.lastContact) + ', awaiting reply');
+                    else if (s.waitingReply) parts.push('Awaiting reply from ship');
+                    else if (s.lastContact && daysBetween(toDateString(new Date(s.lastContact)), date) <= 14) parts.push('Last contact ' + shortDate(s.lastContact));
                 }
-                
-                // 3. Latest email subject as context (cleaned, no RE:/FW:)
-                if (emails.length > 0) {
-                    var lastSubject = (emails[0].result ? (emails[0].result.emailSummary || '') : '').replace(/^(RE|FW|FWD):\s*/gi, '').trim();
-                    if (lastSubject && lastSubject.length > 5) {
-                        parts.push(lastSubject.substring(0, 60));
-                    }
-                }
-                
-                // 4. Top issue title (only if different from email subject)
-                if (shipIssues.length > 0 && parts.length < 2) {
-                    var topTitle = (shipIssues[0].title || '').replace(/[.!?]$/, '');
-                    if (topTitle && !parts.some(function(p) { return p.toLowerCase().indexOf(topTitle.toLowerCase()) !== -1; })) {
-                        parts.push(topTitle);
-                    }
-                }
-                
-                // 5. Communication status
-                if (emails.length > 0) {
-                    var lastEmail = emails[0];
-                    var isFromShip = lastEmail.fromName === '__SHIP__' || lastEmail.fromName === 'Ship' || (lastEmail.result && lastEmail.result.sender && lastEmail.result.sender.name === '__SHIP__');
-                    var isOutgoing = lastEmail._isOutgoing || lastEmail.result && lastEmail.result.contactedBy && lastEmail.result.contactedBy !== '__SHIP__';
-                    
-                    if (isFromShip) {
-                        parts.push('Ship has responded, reviewing reply');
-                    } else if (s.waitingReply || isOutgoing) {
-                        parts.push('Awaiting response from ship');
-                    } else {
-                        parts.push('Email sent to ship forces for resolution');
-                    }
-                }
-                
-                // 6. Last contact date
-                if (emails.length > 0 && emails[0].timestamp) {
-                    parts.push(fmtDate(emails[0].timestamp));
-                } else if (s.lastContact) {
-                    parts.push(fmtDate(s.lastContact));
-                }
-                
-                noteText = parts.join('. ').replace(/\.\./g, '.').replace(/\. \./g, '.');
-                if (noteText && !noteText.endsWith('.') && !noteText.match(/\d{4}$/)) noteText += '.';
+
+                noteText = parts.length > 0 ? parts.join('. ') + '.' : 'No issues.';
             }
             
             return {
