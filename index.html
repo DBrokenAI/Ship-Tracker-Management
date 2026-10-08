@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-08T129";
+    var APP_BUILD = "2026-10-08T130";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1600,10 +1600,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
                     <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
-                    <div className="version">v4.1.0 Firebase</div>
+                    <div className="version">v4.2.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T129'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T130'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T129');
+                                    localStorage.setItem('lastSeenBuild', 'T130');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1625,7 +1625,12 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
                                 ),
 
-                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 8, 2026 — Build T129'),
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 8, 2026 — Build T130'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📋 End of Day Notes Revamp'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Professional EOD format: [Issue Label]: [Email excerpt]. [Topic]. [Status]\n• 15+ issue label categories: ATU Expired, BCR Issue, Systems Offline, Connection Lost, Waiting on NOC, REAP System Issue, Diode Issue, Drive Failure, Crypto Issue, SATCOM Issue, Phone Issue, REAP Install, Router/Switch Issue, and more\n• Email body excerpts: 140-char intelligent snippets with signature stripping\n• Quick notes integrated as topic tags with deduplication\n• Communication status: Ship has responded / Awaiting response / Email sent to ship forces\n• In port status automatically included\n• Last contact date shown on separate line below notes\n• Pending install/deinstall ships show clean status with location and dates\n• Matches the professional format used in actual PA22 REAP Team EOD reports'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🛡️ Email Filtering & Cleanup'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
@@ -6600,7 +6605,10 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontSize:'13px',color:'#9ca3af'}}, r.files),
                         React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.diode==='Up'?'#4ade80':r.diode==='Down'||r.diode==='Output-down'?'#f87171':'#6b7280'}}, r.diode),
                         React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.phone==='Up'?'#4ade80':r.phone==='Down'?'#f87171':'#6b7280'}}, r.phone),
-                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontSize:'12px',color:'#d1d5db',lineHeight:'1.7',whiteSpace:'pre-wrap'}}, r.notes)
+                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontSize:'12px',color:'#d1d5db',lineHeight:'1.7',whiteSpace:'pre-wrap'}},
+                            r.notes,
+                            r.lastContactDate ? React.createElement('div', {style:{color:'#6b7280',fontSize:'11px',marginTop:'4px'}}, r.lastContactDate) : null
+                        )
                     );
                 }); };
                 var secHead = function(label, bg) { return React.createElement('tr', null,
