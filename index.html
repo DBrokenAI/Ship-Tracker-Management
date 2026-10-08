@@ -6025,92 +6025,161 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             var am = (isPending || isDeinstall) ? false : hasPingAM;
             var pm = (isPending || isDeinstall) ? false : hasPingPM;
             var shipIssues = (issues || []).filter(function(i) { return i.shipId === s.id && !i.resolved; });
-            var allEmailHist = [];
-            try { allEmailHist = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e3) {}
-            var emails = allEmailHist.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
-            
-            // ---- CLEAN NOTE BUILDER ----
-            var noteText = '';
-            
-            // Get email history from localStorage + Firebase
+
+            // Get email history
             var allEmails = [];
             try { allEmails = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e2) {}
             var emails = allEmails.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
-            
+
             // Get quick notes for this ship
             var shipNotes = (quickNotes || []).filter(function(n) { return n.shipId === s.id; }).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
-            
+
+            // ---- REVAMPED NOTE BUILDER ----
+            // Format: [Issue Label]: [Email excerpt]. [Topic]. [Comm status].
+            // Mirrors the style used in the actual EOD reports the team sends
+            var noteText = '';
+            var lastContactDate = '';
+
             if (isPending) {
                 noteText = 'Pending Install \u2014 ' + s.type + '.';
-                if (s.installDate) noteText += ' Est. ' + fmtDate(s.installDate) + '.';
-                if (s.location) noteText += ' ' + s.location + '.';
+                if (s.installDate) noteText += ' Estimated install date: ' + fmtDate(s.installDate) + '.';
+                if (s.location) noteText += ' Location: ' + s.location + '.';
             } else if (isDeinstall) {
-                noteText = 'Pending deinstall' + (s.deinstallDate ? ', est. ' + fmtDate(s.deinstallDate) : '') + '.';
+                noteText = 'Pending Deinstall' + (s.deinstallDate ? '. Estimated date: ' + fmtDate(s.deinstallDate) : '') + '.';
             } else {
-                var parts = [];
-                
-                // 1. Quick notes first (human-written, most relevant)
-                if (shipNotes.length > 0) {
-                    parts.push(shipNotes[0].text.substring(0, 80));
+                var noteParts = [];
+
+                // === PART 1: Issue label + email excerpt ===
+                // Detect the issue category from issues list or email content
+                var issueLabel = '';
+                var emailExcerpt = '';
+
+                // Get issue label from tracked issues
+                if (shipIssues.length > 0) {
+                    var topIssue = shipIssues[0];
+                    // Map issue titles to professional EOD labels
+                    var title = (topIssue.title || '').toLowerCase();
+                    if (title.indexOf('atu') !== -1 || title.indexOf('expired') !== -1) issueLabel = 'ATU Expired';
+                    else if (title.indexOf('connection') !== -1 || title.indexOf('connectivity') !== -1) issueLabel = 'Connection Lost';
+                    else if (title.indexOf('bcr') !== -1) issueLabel = 'BCR Issue';
+                    else if (title.indexOf('reap') !== -1 || title.indexOf('system') !== -1) issueLabel = 'REAP System Issue';
+                    else if (title.indexOf('offline') !== -1 || title.indexOf('down') !== -1) issueLabel = 'Systems Offline';
+                    else if (title.indexOf('diode') !== -1) issueLabel = 'Diode Issue';
+                    else if (title.indexOf('drive') !== -1 || title.indexOf('hdd') !== -1 || title.indexOf('ssd') !== -1) issueLabel = 'Drive Failure';
+                    else if (title.indexOf('crypto') !== -1 || title.indexOf('comsec') !== -1 || title.indexOf('taclane') !== -1) issueLabel = 'Crypto Issue';
+                    else if (title.indexOf('satcom') !== -1) issueLabel = 'SATCOM Issue';
+                    else if (title.indexOf('noc') !== -1 || title.indexOf('waiting') !== -1) issueLabel = 'Waiting on NOC';
+                    else if (title.indexOf('router') !== -1 || title.indexOf('switch') !== -1) issueLabel = 'Router/Switch Issue';
+                    else if (title.indexOf('phone') !== -1 || title.indexOf('voip') !== -1) issueLabel = 'Phone Issue';
+                    else if (title.indexOf('install') !== -1) issueLabel = 'REAP Install';
+                    else issueLabel = topIssue.title.substring(0, 30);
                 }
-                
-                // 2. In port status
-                if (s.inPort && s.inPortUntil) {
-                    parts.push('In port until ' + fmtDate(s.inPortUntil));
+
+                // If no tracked issue, try to detect from latest email
+                if (!issueLabel && emails.length > 0) {
+                    var subj = ((emails[0].result ? emails[0].result.emailSummary : '') || emails[0].emailText || '').toLowerCase();
+                    if (subj.indexOf('atu') !== -1) issueLabel = 'ATU Expired';
+                    else if (subj.indexOf('bcr') !== -1) issueLabel = 'BCR Issue';
+                    else if (subj.indexOf('offline') !== -1 || subj.indexOf('down') !== -1) issueLabel = 'Systems Offline';
+                    else if (subj.indexOf('connection') !== -1 || subj.indexOf('connect') !== -1) issueLabel = 'Connection Lost';
+                    else if (subj.indexOf('noc') !== -1) issueLabel = 'Waiting on NOC';
+                    else if (subj.indexOf('reap') !== -1) issueLabel = 'REAP System Issue';
+                    else if (subj.indexOf('install') !== -1) issueLabel = 'REAP Install';
+                    else if (subj.indexOf('status') !== -1) issueLabel = 'REAP status';
                 }
-                
-                // 3. Latest email subject as context (cleaned, no RE:/FW:)
+
+                // Get excerpt from the latest email body (the actual message content)
                 if (emails.length > 0) {
-                    var lastSubject = (emails[0].result ? (emails[0].result.emailSummary || '') : '').replace(/^(RE|FW|FWD):\s*/gi, '').trim();
-                    if (lastSubject && lastSubject.length > 5) {
-                        parts.push(lastSubject.substring(0, 60));
+                    var rawBody = (emails[0].emailText || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+                    // Strip common email fluff: signatures, disclaimers, forwarded headers
+                    rawBody = rawBody.replace(/^(-----.*|From:.*|Sent:.*|To:.*|Subject:.*|Cc:.*)\s*/gim, '').trim();
+                    rawBody = rawBody.replace(/v\/r.*$/i, '').replace(/respectfully.*$/i, '').replace(/-----.*$/s, '').trim();
+                    if (rawBody.length > 10) {
+                        emailExcerpt = rawBody.substring(0, 140);
+                        // Cut at last word boundary
+                        if (rawBody.length > 140) {
+                            var lastSpace = emailExcerpt.lastIndexOf(' ');
+                            if (lastSpace > 80) emailExcerpt = emailExcerpt.substring(0, lastSpace);
+                        }
                     }
                 }
-                
-                // 4. Top issue title (only if different from email subject)
-                if (shipIssues.length > 0 && parts.length < 2) {
-                    var topTitle = (shipIssues[0].title || '').replace(/[.!?]$/, '');
-                    if (topTitle && !parts.some(function(p) { return p.toLowerCase().indexOf(topTitle.toLowerCase()) !== -1; })) {
-                        parts.push(topTitle);
-                    }
+
+                // Build part 1: "Issue Label: email excerpt"
+                if (issueLabel && emailExcerpt) {
+                    noteParts.push(issueLabel + ': ' + emailExcerpt);
+                } else if (issueLabel) {
+                    noteParts.push(issueLabel);
+                } else if (emailExcerpt) {
+                    noteParts.push(emailExcerpt);
                 }
-                
-                // 5. Communication status
+
+                // === PART 2: Quick note or topic tag ===
+                // Quick notes are human-written and always take priority as context
+                if (shipNotes.length > 0) {
+                    var qnText = shipNotes[0].text.trim();
+                    // Don't duplicate if already in the excerpt
+                    if (!noteParts.some(function(p) { return p.toLowerCase().indexOf(qnText.toLowerCase().substring(0, 20)) !== -1; })) {
+                        noteParts.push(qnText.substring(0, 60));
+                    }
+                } else if (emails.length > 0) {
+                    // Use email subject as topic tag (short)
+                    var topicTag = (emails[0].result ? (emails[0].result.emailSummary || '') : '').replace(/^(RE|FW|FWD):\s*/gi, '').trim();
+                    // Don't duplicate with issue label or excerpt
+                    if (topicTag && topicTag.length > 3 && issueLabel.toLowerCase() !== topicTag.toLowerCase()) {
+                        if (!emailExcerpt || emailExcerpt.toLowerCase().indexOf(topicTag.toLowerCase().substring(0, 15)) === -1) {
+                            noteParts.push(topicTag.substring(0, 50));
+                        }
+                    }
+                } else if (shipIssues.length > 0 && !issueLabel) {
+                    noteParts.push(shipIssues[0].title.substring(0, 40));
+                }
+
+                // === PART 3: In port status ===
+                if (s.inPort && s.inPortUntil) {
+                    noteParts.push('In port until ' + fmtDate(s.inPortUntil));
+                }
+
+                // === PART 4: Communication status ===
                 if (emails.length > 0) {
                     var lastEmail = emails[0];
-                    var isFromShip = lastEmail.fromName === '__SHIP__' || lastEmail.fromName === 'Ship' || (lastEmail.result && lastEmail.result.sender && lastEmail.result.sender.name === '__SHIP__');
-                    var isOutgoing = lastEmail._isOutgoing || lastEmail.result && lastEmail.result.contactedBy && lastEmail.result.contactedBy !== '__SHIP__';
-                    
+                    var senderName = (lastEmail.result && lastEmail.result.sender) ? lastEmail.result.sender.name : (lastEmail.fromName || '');
+                    var contactedBy = (lastEmail.result ? lastEmail.result.contactedBy : '') || '';
+                    var isFromShip = senderName === '__SHIP__' || senderName === 'Ship' || contactedBy.indexOf('Ship') === 0;
+                    var isOutgoing = lastEmail._isOutgoing || (contactedBy && contactedBy.indexOf('Ship') !== 0 && contactedBy !== '__SHIP__' && contactedBy !== 'Unknown');
+
                     if (isFromShip) {
-                        parts.push('Ship has responded, reviewing reply');
+                        noteParts.push('Ship has responded, reviewing reply');
                     } else if (s.waitingReply || isOutgoing) {
-                        parts.push('Awaiting response from ship');
+                        noteParts.push('Awaiting response from ship');
                     } else {
-                        parts.push('Email sent to ship forces for resolution');
+                        noteParts.push('Email sent to ship forces for resolution');
                     }
+                } else if (shipIssues.length > 0) {
+                    noteParts.push('Awaiting response from ship');
                 }
-                
-                // 6. Last contact date
+
+                // === LAST CONTACT DATE (separate line in EOD) ===
                 if (emails.length > 0 && emails[0].timestamp) {
-                    parts.push(fmtDate(emails[0].timestamp));
+                    lastContactDate = fmtDate(emails[0].timestamp);
                 } else if (s.lastContact) {
-                    parts.push(fmtDate(s.lastContact));
+                    lastContactDate = fmtDate(s.lastContact);
                 }
-                
-                noteText = parts.join('. ').replace(/\.\./g, '.').replace(/\. \./g, '.');
-                if (noteText && !noteText.endsWith('.') && !noteText.match(/\d{4}$/)) noteText += '.';
+
+                // Join with ". " separator, clean up
+                noteText = noteParts.join('. ').replace(/\.\./g, '.').replace(/\. \./g, '.').replace(/\.\s*\./g, '.');
+                if (noteText && !noteText.endsWith('.')) noteText += '.';
             }
-            
+
             return {
-                name: s.name, 
+                name: s.name,
                 am: am ? 'Online' : 'Offline',
                 amPing: am && c.pingAM ? c.pingAM : '',
-                pm: pm ? 'Online' : 'Offline', 
+                pm: pm ? 'Online' : 'Offline',
                 pmPing: pm && c.pingPM ? c.pingPM : '',
-                files: (isPending || isDeinstall) ? '' : (c.hdSpace || '0'), 
-                diode: (isPending || isDeinstall) ? 'N/A' : (c.diode || (am || pm ? 'Up' : 'N/A')), 
+                files: (isPending || isDeinstall) ? '' : (c.hdSpace || '0'),
+                diode: (isPending || isDeinstall) ? 'N/A' : (c.diode || (am || pm ? 'Up' : 'N/A')),
                 phone: (isPending || isDeinstall) ? 'Down' : (c.phone || (am || pm ? 'Up' : 'Down')),
-                notes: noteText, amUp: am, pmUp: pm
+                notes: noteText, lastContactDate: lastContactDate, amUp: am, pmUp: pm
             };
         };
         return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow) };
