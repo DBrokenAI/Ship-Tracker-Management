@@ -1629,7 +1629,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🛡️ Email Filtering & Cleanup'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• Server-side spam filter: 40+ sender patterns, 30+ subject patterns\n• Auto-rejects Teams notifications, meeting invites, system emails\n• Auto-rejects EOD reports, daily digests, newsletters\n• Auto-rejects undeliverable bounces, password alerts\n• 🧹 Clean Junk button: purges bad emails from history + Firebase\n• 🚫 Block Sender button on every inbox email\n• Blocked senders persist across sessions\n• Email history auto-cleans junk on page load\n• Removes orphan emails with no ship assignment\n• Fixed duplicate toast on email reject\n• MessageClass filtering (blocks Teams chats, voicemails)'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '• Server-side spam filter: 40+ sender patterns, 30+ subject patterns\n• Auto-rejects Teams notifications, meeting invites, system emails\n• Auto-rejects EOD reports, daily digests, newsletters\n• Auto-rejects undeliverable bounces, password alerts\n• 🧹 Clean Junk button: purges bad emails from history + Firebase\n• 🚫 Block Sender button on every inbox email\n• Blocked senders persist across sessions\n• Email history auto-cleans junk on page load\n• Removes orphan emails with no ship assignment\n• Fixed duplicate toast on email reject\n• MessageClass filtering (blocks Teams chats, voicemails)\n• Inbox emails now show body preview snippet'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Sep 22, 2026'),
@@ -3798,10 +3798,14 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     ),
                                     items.map(function(item, i) {
                                         var isUrgent = /(?:down|offline|fail|crash|urgent|critical)/i.test((item.body || '') + ' ' + (item._cleanSubject || ''));
+                                        var bodySnippet = (item.body || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 90);
                                         return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 16px',borderBottom:'1px solid var(--border)',fontSize:'11px'}},
-                                            React.createElement('div', {style:{width:'3px',height:'24px',borderRadius:'2px',background: isUrgent ? 'var(--red)' : item._isOutgoing ? 'var(--blue)' : 'var(--green)',flexShrink:0}}),
-                                            React.createElement('span', {style:{fontWeight:600,color:'var(--text)',minWidth:'80px',flexShrink:0}}, mapTeamName(item.senderName, item.senderEmail).split(' ')[0]),
-                                            React.createElement('span', {style:{color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, item._cleanSubject || item.subject || 'No subject'),
+                                            React.createElement('div', {style:{width:'3px',height:'36px',borderRadius:'2px',background: isUrgent ? 'var(--red)' : item._isOutgoing ? 'var(--blue)' : 'var(--green)',flexShrink:0}}),
+                                            React.createElement('span', {style:{fontWeight:600,color:'var(--text)',minWidth:'70px',flexShrink:0,fontSize:'10px'}}, mapTeamName(item.senderName, item.senderEmail).split(' ')[0]),
+                                            React.createElement('div', {style:{flex:1,overflow:'hidden',minWidth:0}},
+                                                React.createElement('div', {style:{color:'var(--text)',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'11px'}}, item._cleanSubject || item.subject || 'No subject'),
+                                                bodySnippet ? React.createElement('div', {style:{color:'var(--text-muted)',fontSize:'9px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:'1px'}}, bodySnippet) : null
+                                            ),
                                             isUrgent ? React.createElement('span', {style:{fontSize:'8px',padding:'1px 5px',borderRadius:'3px',background:'rgba(239,68,68,0.15)',color:'var(--red)',fontWeight:700,flexShrink:0}}, '\u26A0') : null,
                                             React.createElement('span', {style:{fontSize:'9px',color:'var(--text-muted)',flexShrink:0}}, relTime(item.receivedAt)),
                                             React.createElement('button', {style:{fontSize:'9px',padding:'2px 6px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'3px',fontWeight:700,cursor:'pointer',flexShrink:0}, onClick:function(){acceptIncomingEmail(item);}}, '\u2713'),
@@ -3825,8 +3829,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                 ),
                                 unmatched.map(function(item, i) {
                                     var shipList = ships.map(function(s){return s.name;});
+                                    var bodySnippet2 = (item.body || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 90);
                                     return React.createElement('div', {key:i, style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 16px',borderBottom:'1px solid var(--border)',fontSize:'11px'}},
-                                        React.createElement('span', {style:{color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, (item._cleanSubject || item.subject || 'No subject') + ' \u2014 ' + mapTeamName(item.senderName, item.senderEmail)),
+                                        React.createElement('div', {style:{flex:1,overflow:'hidden',minWidth:0}},
+                                            React.createElement('div', {style:{color:'var(--text)',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'11px'}}, (item._cleanSubject || item.subject || 'No subject') + ' \u2014 ' + mapTeamName(item.senderName, item.senderEmail)),
+                                            bodySnippet2 ? React.createElement('div', {style:{color:'var(--text-muted)',fontSize:'9px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:'1px'}}, bodySnippet2) : null
+                                        ),
                                         React.createElement('select', {style:{padding:'2px 4px',fontSize:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'4px',color:'var(--text)',maxWidth:'80px'}, onChange:function(e){item.matchedShip = e.target.value; setPendingEmails(function(p){return p.slice();});}},
                                             React.createElement('option', {value:''}, 'Ship'),
                                             shipList.map(function(sn){return React.createElement('option',{key:sn,value:sn},sn);})
