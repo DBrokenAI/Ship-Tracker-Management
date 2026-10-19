@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-19T132";
+    var APP_BUILD = "2026-10-19T134";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1600,10 +1600,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
                     <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
-                    <div className="version">v4.3.0 Firebase</div>
+                    <div className="version">v4.4.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T132'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T133'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T132');
+                                    localStorage.setItem('lastSeenBuild', 'T133');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1623,6 +1623,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 19, 2026 — Build T133'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📋 EOD Notes Rewrite'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Removed email body excerpts from EOD notes entirely\n• Notes now show clean short status: Issue label + quick note + comm status\n• No more 140-char email dumps cluttering the report\n• Issue detection consolidated — checks issues + email subjects (not bodies)\n• Added detection for BIOS stuck, mega phone, unable to communicate patterns\n• Quick notes kept short (50 char max) for scannable output\n• Result: professional quick-reference notes for management review'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 19, 2026 — Build T132'),
@@ -6257,7 +6264,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                     noteParts.push('In port until ' + fmtDate(s.inPortUntil));
                 }
 
-                // === PART 4: Communication status ===
+                // === PART 4: Communication status (time-aware) ===
                 if (emails.length > 0) {
                     var lastEmail = emails[0];
                     var senderName = (lastEmail.result && lastEmail.result.sender) ? lastEmail.result.sender.name : (lastEmail.fromName || '');
@@ -6265,15 +6272,23 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                     var isFromShip = senderName === '__SHIP__' || senderName === 'Ship' || contactedBy.indexOf('Ship') === 0;
                     var isOutgoing = lastEmail._isOutgoing || (contactedBy && contactedBy.indexOf('Ship') !== 0 && contactedBy !== '__SHIP__' && contactedBy !== 'Unknown');
 
-                    if (isFromShip) {
+                    // How old is the last email?
+                    var emailTs = lastEmail.timestamp ? (lastEmail.timestamp.toDate ? lastEmail.timestamp.toDate() : new Date(lastEmail.timestamp)) : null;
+                    var daysSince = emailTs ? Math.floor((Date.now() - emailTs.getTime()) / 86400000) : 999;
+
+                    if (isFromShip && daysSince <= 7) {
                         noteParts.push('Ship has responded, reviewing reply');
-                    } else if (s.waitingReply || isOutgoing) {
+                    } else if (isFromShip && daysSince <= 30) {
+                        noteParts.push('Ship responded ' + fmtDate(emailTs) + ', pending review');
+                    } else if (daysSince <= 7) {
                         noteParts.push('Awaiting response from ship');
+                    } else if (daysSince <= 30) {
+                        noteParts.push('No response since ' + fmtDate(emailTs) + ' — follow-up needed');
                     } else {
-                        noteParts.push('Email sent to ship forces for resolution');
+                        noteParts.push('No communication since ' + fmtDate(emailTs) + ' — requires attention');
                     }
                 } else if (shipIssues.length > 0) {
-                    noteParts.push('Awaiting response from ship');
+                    noteParts.push('No communication on file — outreach needed');
                 }
 
                 // === LAST CONTACT DATE ===
