@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-08T130";
+    var APP_BUILD = "2026-10-19T132";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1600,10 +1600,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
                     <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
-                    <div className="version">v4.2.0 Firebase</div>
+                    <div className="version">v4.3.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T130'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T132'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T130');
+                                    localStorage.setItem('lastSeenBuild', 'T132');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1625,11 +1625,18 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
                                 ),
 
-                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 8, 2026 — Build T130'),
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 19, 2026 — Build T132'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔧 Email Persistence Fix'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• FIXED: Deleted/rejected emails no longer reappear next session\n• Rejections now saved to Firebase rejectedEmails collection\n• acceptedEmails sync filters out rejected + junk emails automatically\n• Junk emails auto-deleted from Firebase when detected during sync\n• Block Sender now removes ALL of that sender\'s emails from Firebase\n• Blocked senders list synced to Firebase (persists across devices)\n• Blocked senders loaded from Firebase on startup + merged with local\n• Clean Junk button now checks blocked senders against Firebase too\n• Clean Junk records rejections in Firebase to prevent re-sync\n• Email history re-cleaned when new blocked senders loaded from Firebase'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 8, 2026 — Build T131'),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📋 End of Day Notes Revamp'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• Professional EOD format: [Issue Label]: [Email excerpt]. [Topic]. [Status]\n• 15+ issue label categories: ATU Expired, BCR Issue, Systems Offline, Connection Lost, Waiting on NOC, REAP System Issue, Diode Issue, Drive Failure, Crypto Issue, SATCOM Issue, Phone Issue, REAP Install, Router/Switch Issue, and more\n• Email body excerpts: 140-char intelligent snippets with signature stripping\n• Quick notes integrated as topic tags with deduplication\n• Communication status: Ship has responded / Awaiting response / Email sent to ship forces\n• In port status automatically included\n• Last contact date shown on separate line below notes\n• Pending install/deinstall ships show clean status with location and dates\n• Matches the professional format used in actual PA22 REAP Team EOD reports'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '• Professional EOD format: [Issue Label]: [Email excerpt]. [Topic]. [Status]\n• 15+ issue label categories: ATU Expired, BCR Issue, Systems Offline, Connection Lost, Waiting on NOC, REAP System Issue, Diode Issue, Drive Failure, Crypto Issue, SATCOM Issue, Phone Issue, REAP Install, Router/Switch Issue, and more\n• Email body excerpts: 140-char intelligent snippets with signature stripping\n• Quick notes integrated as topic tags with deduplication\n• Communication status: Ship has responded / Awaiting response / Email sent to ship forces\n• In port status automatically included\n• Last contact date shown on separate line below notes\n• Pending install/deinstall ships show clean status with location and dates\n• Matches the professional format used in actual PA22 REAP Team EOD reports\n• EOD table uses theme-aware colors — matches dark and light mode\n• Online/Offline status colors upgraded from pastel to vivid green/red\n• Section headers (Full Reap / Mini-Reap) use bold saturated blue/green'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🛡️ Email Filtering & Cleanup'),
@@ -2242,6 +2249,36 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         } catch(e) { return []; }
     });
     
+    // Sync blocked senders from Firebase (persists across devices/sessions)
+    useEffect(function() {
+        db.collection('settings').doc('blockedSenders').get().then(function(doc) {
+            if (doc.exists) {
+                var fbBlocked = (doc.data().list || []);
+                var localBlocked = []; try { localBlocked = JSON.parse(localStorage.getItem('ignoredEmailSenders') || '[]'); } catch(e) {}
+                // Merge: add any Firebase entries not in local
+                var merged = localBlocked.slice();
+                var changed = false;
+                fbBlocked.forEach(function(s) { if (merged.indexOf(s) === -1) { merged.push(s); changed = true; } });
+                // And push local-only entries to Firebase
+                if (merged.length > fbBlocked.length) {
+                    db.collection('settings').doc('blockedSenders').set({ list: merged }, { merge: true });
+                }
+                if (changed) {
+                    localStorage.setItem('ignoredEmailSenders', JSON.stringify(merged));
+                    // Re-clean email history with updated blocked list
+                    setEmailHistory(function(prev) {
+                        var filtered = prev.filter(function(h) {
+                            var sender = (h.fromEmail || '').toLowerCase();
+                            return !merged.some(function(ig) { return sender.indexOf(ig.toLowerCase()) !== -1; });
+                        });
+                        if (filtered.length < prev.length) localStorage.setItem('emailParseHistory', JSON.stringify(filtered));
+                        return filtered;
+                    });
+                }
+            }
+        });
+    }, []);
+
     // ===== INCOMING EMAIL QUEUE =====
     const [pendingEmails, setPendingEmails] = useState([]);
     const [showInbox, setShowInbox] = useState(false);
@@ -2622,46 +2659,131 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         var itemsToReject = item.items || [item];
         itemsToReject.forEach(function(singleItem) {
             db.collection('incomingEmails').doc(singleItem._docId).update({ processed: true, accepted: false, processedAt: new Date().toISOString() });
+            // Record rejection in Firebase so it persists across sessions
+            var rejId = singleItem._docId || singleItem.id || (singleItem.senderEmail + '_' + (singleItem.receivedAt || '').substring(0,16));
+            db.collection('rejectedEmails').doc(rejId).set({
+                rejectedAt: new Date().toISOString(),
+                subject: (singleItem.subject || '').substring(0, 100),
+                senderEmail: singleItem.senderEmail || singleItem.from || '',
+                reason: 'user-rejected'
+            });
+            // Also remove from acceptedEmails if it was previously accepted
+            db.collection('acceptedEmails').where('fromEmail', '==', (singleItem.senderEmail || singleItem.from || '')).get().then(function(snap) {
+                snap.forEach(function(doc) {
+                    var d = doc.data();
+                    var dSubj = ((d.result && d.result.emailSummary) || '').toLowerCase();
+                    var iSubj = (singleItem.subject || singleItem._cleanSubject || '').toLowerCase();
+                    // Match by subject similarity or exact sender+date
+                    if (dSubj.indexOf(iSubj.substring(0, 30)) !== -1 || (d.timestamp || '').substring(0, 16) === (singleItem.receivedAt || '').substring(0, 16)) {
+                        doc.ref.delete();
+                    }
+                });
+            });
+        });
+        // Also remove from local emailHistory state
+        var rejectSubjects = itemsToReject.map(function(r) { return (r.subject || r._cleanSubject || '').toLowerCase().substring(0, 30); });
+        var rejectSenders = itemsToReject.map(function(r) { return (r.senderEmail || r.from || '').toLowerCase(); });
+        setEmailHistory(function(prev) {
+            var filtered = prev.filter(function(h) {
+                var hSubj = ((h.result && h.result.emailSummary) || '').toLowerCase();
+                var hFrom = (h.fromEmail || '').toLowerCase();
+                return !rejectSenders.some(function(rs, idx) {
+                    return rs && hFrom === rs && hSubj.indexOf(rejectSubjects[idx]) !== -1;
+                });
+            });
+            localStorage.setItem('emailParseHistory', JSON.stringify(filtered));
+            return filtered;
         });
         logActivity('Rejected ' + itemsToReject.length + ' incoming email(s): ' + (item._cleanSubject || '').substring(0, 50));
         toast('Email dismissed', 'info');
     };
     
     // Sync accepted emails from Firebase — keeps all users in sync
+    // Helper: check if an email record is junk (used by sync + cleanup)
+    var isJunkHistoryEmail = function(h) {
+        var junkSubjects = ['end of day','eod report','eod status','daily ship checks','daily report','daily status','status report','end-of-day',
+            'missed call','voicemail','meeting accepted','meeting declined','meeting canceled','out of office','automatic reply',
+            'password expir','daily digest','weekly digest','undeliverable','delivery failure','teams chat','test email',
+            'sent a message in','mentioned you in','reacted to your','shared a file','liked your message','new activity in'];
+        var junkSenderPats = ['noreply','no-reply','donotreply','teams@','sharepoint','onedrive','flankspeed','servicedesk','helpdesk','calendar','newsletter','digest',
+            'mailer-daemon','postmaster','bounce','notification','microsoftteams','msteams','skype'];
+        var subj = ((h.result && h.result.emailSummary) || (h.emailText || '')).toLowerCase();
+        var sender = (h.fromEmail || '').toLowerCase();
+        if (junkSubjects.some(function(j) { return subj.indexOf(j) !== -1; })) return true;
+        if (junkSenderPats.some(function(j) { return sender.indexOf(j) !== -1; })) return true;
+        var ignoredSenders = []; try { ignoredSenders = JSON.parse(localStorage.getItem('ignoredEmailSenders') || '[]'); } catch(e) {}
+        if (ignoredSenders.some(function(ig) { return sender.indexOf(ig.toLowerCase()) !== -1; })) return true;
+        if (!h.shipId && !h.shipName) return true;
+        return false;
+    };
     useEffect(function() {
-        var unsub = db.collection('acceptedEmails').onSnapshot(function(snapshot) {
-            var firebaseEmails = [];
-            snapshot.forEach(function(doc) { firebaseEmails.push(doc.data()); });
-            if (firebaseEmails.length === 0) return;
-            
-            // Merge with localStorage + dedup
-            var local = [];
-            try { local = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e2) {}
-            var merged = local.slice();
-            var changed = false;
-            firebaseEmails.forEach(function(fe) {
-                if (!merged.some(function(m) { return m.id === fe.id; })) {
-                    merged.push(fe);
-                    changed = true;
+        // Load rejected email IDs first, then sync
+        db.collection('rejectedEmails').get().then(function(rejSnap) {
+            var rejectedIds = {};
+            var rejectedSenderSubjects = [];
+            rejSnap.forEach(function(doc) {
+                rejectedIds[doc.id] = true;
+                var d = doc.data();
+                if (d.senderEmail) rejectedSenderSubjects.push({ sender: (d.senderEmail || '').toLowerCase(), subject: (d.subject || '').toLowerCase().substring(0, 30) });
+            });
+
+            var unsub = db.collection('acceptedEmails').onSnapshot(function(snapshot) {
+                var firebaseEmails = [];
+                snapshot.forEach(function(doc) {
+                    var fe = doc.data();
+                    fe._fbDocId = doc.id;
+                    // Skip if this email was explicitly rejected
+                    if (rejectedIds[doc.id]) return;
+                    // Skip if sender+subject matches a rejection
+                    var feSender = (fe.fromEmail || '').toLowerCase();
+                    var feSubj = ((fe.result && fe.result.emailSummary) || '').toLowerCase();
+                    if (rejectedSenderSubjects.some(function(r) {
+                        return r.sender && feSender === r.sender && r.subject && feSubj.indexOf(r.subject) !== -1;
+                    })) {
+                        // Auto-clean: delete this from Firebase acceptedEmails since it was rejected
+                        doc.ref.delete();
+                        return;
+                    }
+                    // Skip if it's junk
+                    if (isJunkHistoryEmail(fe)) {
+                        doc.ref.delete(); // Clean junk from Firebase too
+                        return;
+                    }
+                    firebaseEmails.push(fe);
+                });
+                if (firebaseEmails.length === 0) return;
+
+                // Merge with localStorage + dedup
+                var local = [];
+                try { local = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e2) {}
+                var merged = local.slice();
+                var changed = false;
+                firebaseEmails.forEach(function(fe) {
+                    if (!merged.some(function(m) { return m.id === fe.id; })) {
+                        merged.push(fe);
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    // Dedup merged results
+                    var mSeen = {};
+                    merged = merged.filter(function(h) {
+                        if (isJunkHistoryEmail(h)) return false;
+                        var bodySnip = ((h.emailText || '') + (h.result && h.result.emailSummary ? h.result.emailSummary : '')).substring(0, 80);
+                        var key = (h.fromEmail || '') + '|' + bodySnip + '|' + (h.timestamp || '');
+                        if (mSeen[key]) return false;
+                        mSeen[key] = true;
+                        if (h.id) { if (mSeen['id_' + h.id]) return false; mSeen['id_' + h.id] = true; }
+                        return true;
+                    });
+                    merged.sort(function(a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+                    localStorage.setItem('emailParseHistory', JSON.stringify(merged));
+                    setEmailHistory(merged);
                 }
             });
-            if (changed) {
-                // Dedup merged results
-                var mSeen = {};
-                merged = merged.filter(function(h) {
-                    var bodySnip = ((h.emailText || '') + (h.result && h.result.emailSummary ? h.result.emailSummary : '')).substring(0, 80);
-                    var key = (h.fromEmail || '') + '|' + bodySnip + '|' + (h.timestamp || '');
-                    if (mSeen[key]) return false;
-                    mSeen[key] = true;
-                    if (h.id) { if (mSeen['id_' + h.id]) return false; mSeen['id_' + h.id] = true; }
-                    return true;
-                });
-                merged.sort(function(a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
-                localStorage.setItem('emailParseHistory', JSON.stringify(merged));
-                setEmailHistory(merged);
-            }
+            window.__acceptedEmailsUnsub = unsub;
         });
-        return function() { unsub(); };
+        return function() { if (window.__acceptedEmailsUnsub) window.__acceptedEmailsUnsub(); };
     }, []);
     
     const [emailHistoryImported, setEmailHistoryImported] = useState(false);
@@ -3772,15 +3894,23 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     var removed = hist.length - cleaned.length;
                                     localStorage.setItem('emailParseHistory', JSON.stringify(cleaned));
                                     setEmailHistory(cleaned);
-                                    // Also clean from Firebase acceptedEmails
+                                    // Also clean from Firebase acceptedEmails (includes blocked senders)
                                     db.collection('acceptedEmails').get().then(function(snap){
                                         var fbRemoved = 0;
                                         snap.forEach(function(doc){
                                             var d = doc.data();
                                             var subj = ((d.result && d.result.emailSummary)||'').toLowerCase();
                                             var sender = (d.fromEmail||'').toLowerCase();
-                                            if (junkSubjects.some(function(j){return subj.indexOf(j)!==-1;}) || junkSenders.some(function(j){return sender.indexOf(j)!==-1;}) || (!d.shipId && !d.shipName)) {
-                                                doc.ref.delete(); fbRemoved++;
+                                            var shouldRemove = false;
+                                            if (junkSubjects.some(function(j){return subj.indexOf(j)!==-1;})) shouldRemove = true;
+                                            if (junkSenders.some(function(j){return sender.indexOf(j)!==-1;})) shouldRemove = true;
+                                            if (ignoredSenders.some(function(ig){return sender.indexOf(ig.toLowerCase())!==-1;})) shouldRemove = true;
+                                            if (!d.shipId && !d.shipName) shouldRemove = true;
+                                            if (shouldRemove) {
+                                                doc.ref.delete();
+                                                // Also record rejection so it doesn't come back
+                                                db.collection('rejectedEmails').doc(doc.id).set({ rejectedAt: new Date().toISOString(), subject: subj.substring(0,100), senderEmail: sender, reason: 'clean-junk' });
+                                                fbRemoved++;
                                             }
                                         });
                                         toast('Cleaned '+removed+' local + '+fbRemoved+' Firebase junk emails','success');
@@ -3821,6 +3951,23 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                 if (!confirm('Block all emails from: ' + sender + '?\n\nThis will auto-reject future emails from this sender.')) return;
                                                 var ignored = []; try { ignored = JSON.parse(localStorage.getItem('ignoredEmailSenders') || '[]'); } catch(e){}
                                                 if (ignored.indexOf(sender) === -1) { ignored.push(sender); localStorage.setItem('ignoredEmailSenders', JSON.stringify(ignored)); }
+                                                // Also save to Firebase so blocked senders persist across devices
+                                                db.collection('settings').doc('blockedSenders').set({ list: ignored }, { merge: true });
+                                                // Remove ALL of this sender's emails from acceptedEmails in Firebase
+                                                db.collection('acceptedEmails').get().then(function(snap) {
+                                                    snap.forEach(function(doc) {
+                                                        if ((doc.data().fromEmail || '').toLowerCase().indexOf(sender) !== -1) {
+                                                            db.collection('rejectedEmails').doc(doc.id).set({ rejectedAt: new Date().toISOString(), senderEmail: sender, reason: 'blocked-sender' });
+                                                            doc.ref.delete();
+                                                        }
+                                                    });
+                                                });
+                                                // Remove from local history too
+                                                setEmailHistory(function(prev) {
+                                                    var filtered = prev.filter(function(h) { return (h.fromEmail || '').toLowerCase().indexOf(sender) === -1; });
+                                                    localStorage.setItem('emailParseHistory', JSON.stringify(filtered));
+                                                    return filtered;
+                                                });
                                                 rejectIncomingEmail(item);
                                                 toast('Blocked: ' + sender, 'info');
                                             }}, '\ud83d\udeab')
@@ -3851,6 +3998,20 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                             if (!sender || !confirm('Block all emails from: ' + sender + '?')) return;
                                             var ignored = []; try { ignored = JSON.parse(localStorage.getItem('ignoredEmailSenders') || '[]'); } catch(e){}
                                             if (ignored.indexOf(sender) === -1) { ignored.push(sender); localStorage.setItem('ignoredEmailSenders', JSON.stringify(ignored)); }
+                                            db.collection('settings').doc('blockedSenders').set({ list: ignored }, { merge: true });
+                                            db.collection('acceptedEmails').get().then(function(snap) {
+                                                snap.forEach(function(doc) {
+                                                    if ((doc.data().fromEmail || '').toLowerCase().indexOf(sender) !== -1) {
+                                                        db.collection('rejectedEmails').doc(doc.id).set({ rejectedAt: new Date().toISOString(), senderEmail: sender, reason: 'blocked-sender' });
+                                                        doc.ref.delete();
+                                                    }
+                                                });
+                                            });
+                                            setEmailHistory(function(prev) {
+                                                var filtered = prev.filter(function(h) { return (h.fromEmail || '').toLowerCase().indexOf(sender) === -1; });
+                                                localStorage.setItem('emailParseHistory', JSON.stringify(filtered));
+                                                return filtered;
+                                            });
                                             rejectIncomingEmail(item);
                                             toast('Blocked: ' + sender, 'info');
                                         }}, '\ud83d\udeab')
@@ -6592,44 +6753,44 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             {showEndOfDay && (() => {
                 const data = getEndOfDayData();
                 const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
-                const bc = '#1b1b2f';
-                const bd = '1px solid #333';
+                const bc = 'var(--bg-card)';
+                const bd = '1px solid var(--border)';
                 const renderRows = function(rows) { return rows.map(function(r, i) {
-                    var bg = i % 2 === 0 ? '#1b1b2f' : '#22223a';
+                    var bg = i % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-input)';
                     return React.createElement('tr', {key: i, style: {background: bg}},
-                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontWeight:700,fontSize:'14px',color:'#fff',whiteSpace:'nowrap'}}, r.name),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:700,fontSize:'13px',color: r.amUp ? '#4ade80' : '#f87171'}},
-                            r.am, r.amPing ? React.createElement('div', {style: {fontSize:'12px',color:'#9ca3af',marginTop:'2px'}}, r.amPing) : null),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:700,fontSize:'13px',color: r.pmUp ? '#4ade80' : '#f87171'}},
-                            r.pm, r.pmPing ? React.createElement('div', {style: {fontSize:'12px',color:'#9ca3af',marginTop:'2px'}}, r.pmPing) : null),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontSize:'13px',color:'#9ca3af'}}, r.files),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.diode==='Up'?'#4ade80':r.diode==='Down'||r.diode==='Output-down'?'#f87171':'#6b7280'}}, r.diode),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.phone==='Up'?'#4ade80':r.phone==='Down'?'#f87171':'#6b7280'}}, r.phone),
-                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontSize:'12px',color:'#d1d5db',lineHeight:'1.7',whiteSpace:'pre-wrap'}},
+                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontWeight:700,fontSize:'14px',color:'var(--text)',whiteSpace:'nowrap'}}, r.name),
+                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:700,fontSize:'13px',color: r.amUp ? '#00c853' : '#ff1744'}},
+                            r.am, r.amPing ? React.createElement('div', {style: {fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, r.amPing) : null),
+                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:700,fontSize:'13px',color: r.pmUp ? '#00c853' : '#ff1744'}},
+                            r.pm, r.pmPing ? React.createElement('div', {style: {fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, r.pmPing) : null),
+                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontSize:'13px',color:'var(--text-dim)'}}, r.files),
+                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.diode==='Up'?'#00c853':r.diode==='Down'||r.diode==='Output-down'?'#ff1744':'var(--text-muted)'}}, r.diode),
+                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.phone==='Up'?'#00c853':r.phone==='Down'?'#ff1744':'var(--text-muted)'}}, r.phone),
+                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontSize:'12px',color:'var(--text)',lineHeight:'1.7',whiteSpace:'pre-wrap'}},
                             r.notes,
-                            r.lastContactDate ? React.createElement('div', {style:{color:'#6b7280',fontSize:'11px',marginTop:'4px'}}, r.lastContactDate) : null
+                            r.lastContactDate ? React.createElement('div', {style:{color:'var(--text-muted)',fontSize:'11px',marginTop:'4px'}}, r.lastContactDate) : null
                         )
                     );
                 }); };
                 var secHead = function(label, bg) { return React.createElement('tr', null,
                     React.createElement('td', {colSpan:7, style:{padding:'10px 16px',background:bg,textAlign:'center',fontWeight:700,fontSize:'14px',color:'#fff',border:bd,letterSpacing:'1px'}}, label)
                 ); };
-                var thStyle = {padding:'10px 14px',background:'#2d2d44',border:bd,fontWeight:700,fontSize:'12px',color:'#9ca3af',textAlign:'center',letterSpacing:'0.5px'};
+                var thStyle = {padding:'10px 14px',background:'var(--bg-input)',border:bd,fontWeight:700,fontSize:'12px',color:'var(--text-dim)',textAlign:'center',letterSpacing:'0.5px'};
                 return (
                 React.createElement('div', {style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'},onClick:function(e){if(e.target===e.currentTarget)setShowEndOfDay(false)}},
-                    React.createElement('div', {style:{background:'#13132b',borderRadius:'12px',width:'100%',maxWidth:'1100px',maxHeight:'92vh',overflow:'auto',border:'1px solid #333'}},
-                        React.createElement('div', {style:{padding:'16px 24px',borderBottom:'1px solid #333',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'#13132b',zIndex:1}},
+                    React.createElement('div', {style:{background:'var(--bg-main)',borderRadius:'12px',width:'100%',maxWidth:'1100px',maxHeight:'92vh',overflow:'auto',border:'1px solid var(--border)'}},
+                        React.createElement('div', {style:{padding:'16px 24px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'var(--bg-main)',zIndex:1}},
                             React.createElement('div', null,
-                                React.createElement('div', {style:{fontSize:'16px',fontWeight:700,color:'#fff'}}, 'End of Day Status Report'),
-                                React.createElement('div', {style:{fontSize:'12px',color:'#6b7280',marginTop:'2px'}}, dateLabel)
+                                React.createElement('div', {style:{fontSize:'16px',fontWeight:700,color:'var(--text)'}}, 'End of Day Status Report'),
+                                React.createElement('div', {style:{fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, dateLabel)
                             ),
                             React.createElement('div', {style:{display:'flex',gap:'8px'}},
                                 React.createElement('button', {className:'btn btn-primary',style:{fontWeight:700,padding:'8px 20px'},onClick:copyEndOfDay}, '📋 Copy for Email'),
-                                React.createElement('button', {onClick:function(){setShowEndOfDay(false)},style:{background:'none',border:'1px solid #333',color:'#6b7280',fontSize:'16px',cursor:'pointer',borderRadius:'6px',width:'34px',height:'34px'}}, '✕')
+                                React.createElement('button', {onClick:function(){setShowEndOfDay(false)},style:{background:'none',border:'1px solid var(--border)',color:'var(--text-muted)',fontSize:'16px',cursor:'pointer',borderRadius:'6px',width:'34px',height:'34px'}}, '✕')
                             )
                         ),
                         React.createElement('div', {style:{padding:'16px 20px'},id:'eod-table-container'},
-                            React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',background:bc,color:'#e5e7eb',fontFamily:'Segoe UI, Arial, sans-serif'}},
+                            React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',background:bc,color:'var(--text)',fontFamily:'Segoe UI, Arial, sans-serif'}},
                                 React.createElement('thead', null,
                                     React.createElement('tr', null,
                                         React.createElement('th', {style:{...thStyle,textAlign:'left',minWidth:'70px'}}, ''),
@@ -6642,8 +6803,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                     )
                                 ),
                                 React.createElement('tbody', null,
-                                    data.fullReap.length > 0 ? [secHead('Full Reap','#1e3a5f')].concat(renderRows(data.fullReap)) : null,
-                                    data.miniReap.length > 0 ? [secHead('Mini-Reap','#1e5a3a')].concat(renderRows(data.miniReap)) : null
+                                    data.fullReap.length > 0 ? [secHead('Full Reap','#0d47a1')].concat(renderRows(data.fullReap)) : null,
+                                    data.miniReap.length > 0 ? [secHead('Mini-Reap','#1b5e20')].concat(renderRows(data.miniReap)) : null
                                 )
                             )
                         )
