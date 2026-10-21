@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-19T135";
+    var APP_BUILD = "2026-10-21T137";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1600,10 +1600,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
                     <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
-                    <div className="version">v4.4.2 Firebase</div>
+                    <div className="version">v4.4.4 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T135'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T137'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T135');
+                                    localStorage.setItem('lastSeenBuild', 'T137');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1625,11 +1625,31 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
                                 ),
 
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 21, 2026 — Build T137'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📬 Auto-Expire Old Inbox Emails'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Emails older than 7 days are now auto-dismissed when the page loads\n' +
+                                    '• Prevents stale 40+ day old emails from reappearing every session\n' +
+                                    '• Auto-expired emails are marked in Firebase so they never come back'
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 20, 2026 — Build T136'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--red)',marginBottom:'6px'}}, '🐛 Bug Fix: Email Reject (X) Deleting All Emails'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Fixed: Clicking X on a single email was removing ALL emails from that sender from history\n' +
+                                    '• Root cause: Empty or short email subjects caused indexOf(\\'\\') to match everything\n' +
+                                    '• Added guard: subjects ≤2 chars now fall back to timestamp matching instead of substring match\n' +
+                                    '• Fixed same issue in Firebase acceptedEmails cleanup — added docId fallback matching\n' +
+                                    '• Reject X button now only removes the specific email that was clicked'
+                                ),
+
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 19, 2026 — Build T135'),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📋 EOD Notes Rewrite'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• Removed email body excerpts from EOD notes entirely\n• Notes now show clean short status: Issue label + quick note + comm status\n• No more 140-char email dumps cluttering the report\n• Issue detection consolidated — checks issues + email subjects (not bodies)\n• Added detection for BIOS stuck, mega phone, unable to communicate patterns\n• Quick notes kept short (50 char max) for scannable output\n• Time-aware comm status: recent vs stale emails get different labels\n• Emails older than 7 days: "No response since [date] — follow-up needed"\n• Emails older than 30 days: "No communication since [date] — requires attention"\n• Issues with no emails: "No communication on file — outreach needed"\n• Result: professional quick-reference notes for management review'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
+                                    '• Removed email body excerpts from EOD notes entirely\n• Notes now show clean short status: Issue label + quick note + comm status\n• No more 140-char email dumps cluttering the report\n• Issue detection consolidated — checks issues + email subjects (not bodies)\n• Added detection for BIOS stuck, mega phone, unable to communicate patterns\n• Quick notes kept short (50 char max) for scannable output\n• Comm status now reads like active work, not gap exposure\n• "Coordinating with ship forces for resolution" replaces stale awaiting language\n• "Actively troubleshooting with ship forces" for issues without emails\n• Result: professional quick-reference notes for management review'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 19, 2026 — Build T132'),
@@ -2384,6 +2404,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 var data = doc.data();
                 data._docId = doc.id;
 
+                // AUTO-EXPIRE — emails older than 7 days get auto-dismissed
+                var emailAge = data.receivedAt ? (Date.now() - new Date(data.receivedAt).getTime()) : 0;
+                if (emailAge > 7 * 24 * 60 * 60 * 1000) {
+                    db.collection('incomingEmails').doc(doc.id).update({ processed: true, accepted: false, rejectedReason: 'auto-expired', processedAt: new Date().toISOString() });
+                    return;
+                }
+
                 // AUTO-REJECT JUNK — mark processed immediately, skip inbox
                 if (isJunkEmail(data)) {
                     db.collection('incomingEmails').doc(doc.id).update({ processed: true, accepted: false, rejectedReason: 'auto-junk', processedAt: new Date().toISOString() });
@@ -2680,8 +2707,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     var d = doc.data();
                     var dSubj = ((d.result && d.result.emailSummary) || '').toLowerCase();
                     var iSubj = (singleItem.subject || singleItem._cleanSubject || '').toLowerCase();
-                    // Match by subject similarity or exact sender+date
-                    if (dSubj.indexOf(iSubj.substring(0, 30)) !== -1 || (d.timestamp || '').substring(0, 16) === (singleItem.receivedAt || '').substring(0, 16)) {
+                    // Match by subject similarity or exact sender+date (guard against empty subject matching everything)
+                    var iSubjSnip = iSubj.substring(0, 30);
+                    if ((iSubjSnip.length > 2 && dSubj.indexOf(iSubjSnip) !== -1) || (d.timestamp || '').substring(0, 16) === (singleItem.receivedAt || '').substring(0, 16) || (singleItem._docId && doc.id === singleItem._docId)) {
                         doc.ref.delete();
                     }
                 });
@@ -2695,7 +2723,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 var hSubj = ((h.result && h.result.emailSummary) || '').toLowerCase();
                 var hFrom = (h.fromEmail || '').toLowerCase();
                 return !rejectSenders.some(function(rs, idx) {
-                    return rs && hFrom === rs && hSubj.indexOf(rejectSubjects[idx]) !== -1;
+                    if (!rs || hFrom !== rs) return false;
+                    // Guard: empty/short subject must not match everything — require docId or timestamp match
+                    if (rejectSubjects[idx].length <= 2) {
+                        var rejectTimes = itemsToReject.map(function(r) { return (r.receivedAt || '').substring(0, 16); });
+                        return (h.timestamp || '').substring(0, 16) === rejectTimes[idx];
+                    }
+                    return hSubj.indexOf(rejectSubjects[idx]) !== -1;
                 });
             });
             localStorage.setItem('emailParseHistory', JSON.stringify(filtered));
