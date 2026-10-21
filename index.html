@@ -1639,7 +1639,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--red)',marginBottom:'6px'}}, '🐛 Bug Fix: Email Reject (X) Deleting All Emails'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
                                     '• Fixed: Clicking X on a single email was removing ALL emails from that sender from history\n' +
-                                    '• Root cause: Empty or short email subjects caused indexOf(\\'\\') to match everything\n' +
+                                    '• Root cause: Empty or short email subjects caused indexOf("") to match everything\n' +
                                     '• Added guard: subjects ≤2 chars now fall back to timestamp matching instead of substring match\n' +
                                     '• Fixed same issue in Firebase acceptedEmails cleanup — added docId fallback matching\n' +
                                     '• Reject X button now only removes the specific email that was clicked'
