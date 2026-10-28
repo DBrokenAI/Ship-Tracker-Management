@@ -1630,11 +1630,11 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📧 End of Day Email + Excel Export'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
                                     '• New: "End of Day" button now generates Excel (.xlsx) matching REAP Status Report template\n' +
-                                    '• Excel auto-downloads with today\'s daily check data (AM/PM status, ping times, HDD space)\n' +
-                                    '• Opens Outlook with pre-formatted email: date header + report body\n' +
-                                    '• Excel file includes Full REAP and Mini REAP sections with formulas\n' +
-                                    '• Preview button (eye icon) still shows the visual report modal\n' +
-                                    '• "Send Email" button also available from the preview modal'
+                                    '• Excel auto-downloads with daily check data for Full REAP and Mini REAP ships\n' +
+                                    '• Opens Outlook new email with subject and full report body pre-filled — no pasting needed\n' +
+                                    '• Email body uses same format: date header, ship status table with AM/PM/Files/Diode/Phone/Notes\n' +
+                                    '• Preview modal with "Send Email" button also available via eye icon\n' +
+                                    '• Excel includes formulas for VOIP Y/N and Total Data columns'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 21, 2026 — Build T137'),
@@ -6226,161 +6226,111 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     };
     const exportStatus = () => { setShowEndOfDay(true); };
 
-    // ===== GENERATE EXCEL (.xlsx) MATCHING REAP STATUS REPORT TEMPLATE =====
-    const generateEodExcel = () => {
-        if (typeof XLSX === 'undefined') { toast('Excel library not loaded', 'error'); return null; }
-        var wb = XLSX.utils.book_new();
+    // ===== BUILD COLORED HTML TABLE FOR EOD REPORT =====
+    const buildEodHtml = function() {
+        var eodData = getEndOfDayData();
         var d = parseLocalDate(date);
-        var monthName = d.toLocaleDateString('en-US', {month:'long'});
-
-        var fullReapHulls = ['CG67','CG70','DDG54','DDG56','DDG62','DDG63'];
-        var miniReapHulls = ['DDG55','DDG57','DDG72','DDG77','DDG96','DDG98','DDG101','DDG103','DDG109','DDG111'];
-
-        var findShip = function(hull) { return ships.find(function(s) { return s.name === hull; }); };
-        var getShipCheck = function(hull) { var s = findShip(hull); return s ? getCheck(s.id) : {}; };
-
-        var data = [];
-        // Row 1-5: Header area
-        data.push([null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,'Date Legend:','WORKDAY']);
-        data.push([null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,'WEEKEND']);
-        data.push([null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,'HOLIDAY']);
-        data.push([]); data.push([]);
-
-        // Row 6: Date
-        data.push(['Date', d]);
-
-        // Row 7-8: Full REAP headers
-        data.push(['Full REAP','VOIP Connection (Yes/No)','StarPC Connection (Yes/No)',null,null,'DataPC Connection (Yes/No)',null,null,'Average Ping Times\n(ms)',null,'Hard Drive Available Space (GB)','Total Data Recorded on Ship (MB)','SPY Data Recorded (MB)','CND Data Recorded (MB)','WCS Data Recorded (MB)','Other Data Elements (MB)','Number of Files to Process','Number of Files Still in REAPZipQ']);
-        data.push(['Hull#','Y/N','AM','PM','Y/N','AM','PM','Y/N','AM','PM','Daily','Daily','Daily','Daily','Daily','Daily','Daily','Daily']);
-
-        // Rows 9-14: Full REAP ships
-        fullReapHulls.forEach(function(hull, idx) {
-            var c = getShipCheck(hull);
-            var am = isTruthy(c.statusAM) ? 'Yes' : '';
-            var pm = isTruthy(c.statusPM) ? 'Yes' : '';
-            var r = 9 + idx; // 1-indexed row for formulas
-            data.push([hull, null, am, pm, null, null, null, null, parseInt(c.pingAM)||0, parseInt(c.pingPM)||0, parseInt(c.hdSpace)||0, null, 0, 0, 0, 0, 0, 0]);
+        var dateLabel = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+        var h = '';
+        h += '<div style="font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:#222;">';
+        h += '<p style="font-size:15px;font-weight:bold;margin:0 0 4px 0;">' + dateLabel + '</p>';
+        h += '<p style="margin:0 0 8px 0;">&nbsp;</p>';
+        h += '<p style="margin:0 0 12px 0;">*** No New Data ***</p>';
+        h += '<table style="width:100%;border-collapse:collapse;border:1px solid #bbb;">';
+        h += '<tr style="background:#e0e0e0;">';
+        var cols = ['','AM','PM','Files','Diode','Phone','Notes'];
+        cols.forEach(function(col) {
+            h += '<th style="padding:8px 12px;border:1px solid #bbb;font-size:12px;text-align:' + (col==='Notes'||col===''?'left':'center') + ';font-weight:bold;color:#444;">' + col + '</th>';
         });
-
-        // Row 15: blank
-        data.push([]);
-
-        // Row 16-17: Mini REAP headers
-        data.push(['Mini REAP','VOIP Connection (Yes/No)','Primary PC  Connection (Yes/No)',null,null,'Alternate PC Connection (Yes/No)',null,null,'Average Ping Times\n(ms)',null,'Hard Drive Available Space (GB)','Total Data Recorded on Ship (MB)','Data From Media (MB)','Data From Data Diode (MB)',null,null,'Number of Files to Process','Number of Files Still in Outbox']);
-        data.push(['Hull#','Y/N','AM','PM','Y/N','AM','PM','Y/N','AM','PM','Daily','Daily','Daily','Daily','Daily','Daily','Daily','Daily']);
-
-        // Rows 18-27: Mini REAP ships
-        miniReapHulls.forEach(function(hull, idx) {
-            var c = getShipCheck(hull);
-            var am = isTruthy(c.statusAM) ? 'Yes' : '';
-            var pm = isTruthy(c.statusPM) ? 'Yes' : '';
-            data.push([hull, null, am, pm, null, null, null, null, parseInt(c.pingAM)||0, parseInt(c.pingPM)||0, parseInt(c.hdSpace)||0, null, 0, 0, 0, 0, 0, 0]);
-        });
-
-        // Row 28: Comments
-        data.push(['Comments']);
-
-        var ws = XLSX.utils.aoa_to_sheet(data);
-
-        // Add formulas — Full REAP rows 9-14
-        for (var i = 9; i <= 14; i++) {
-            ws[XLSX.utils.encode_cell({r:i-1,c:4})] = {t:'s',f:'IF(OR(C'+i+'="Yes",D'+i+'="Yes"),"Yes","No")'};
-            ws[XLSX.utils.encode_cell({r:i-1,c:7})] = {t:'s',f:'IF(OR(F'+i+'="Yes",G'+i+'="Yes"),"Yes","No")'};
-            ws[XLSX.utils.encode_cell({r:i-1,c:11})] = {t:'n',f:'SUM(M'+i+':P'+i+')'};
-        }
-        // Mini REAP rows 18-27
-        for (var j = 18; j <= 27; j++) {
-            ws[XLSX.utils.encode_cell({r:j-1,c:4})] = {t:'s',f:'IF(OR(C'+j+'="Yes",D'+j+'="Yes"),"Yes","No")'};
-            ws[XLSX.utils.encode_cell({r:j-1,c:7})] = {t:'s',f:'IF(OR(F'+j+'="Yes",G'+j+'="Yes"),"Yes","No")'};
-            ws[XLSX.utils.encode_cell({r:j-1,c:11})] = {t:'n',f:'SUM(M'+j+':P'+j+')'};
-        }
-
-        // Column widths
-        ws['!cols'] = [{wch:10},{wch:8},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6},{wch:8},{wch:8},{wch:8},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14},{wch:14}];
-
-        // Merge cells for section headers (matching template)
-        ws['!merges'] = [
-            {s:{r:6,c:2},e:{r:6,c:4}},  // StarPC header merge
-            {s:{r:6,c:5},e:{r:6,c:7}},  // DataPC header merge
-            {s:{r:6,c:8},e:{r:6,c:9}},  // Ping header merge
-            {s:{r:15,c:2},e:{r:15,c:4}}, // PrimaryPC header merge
-            {s:{r:15,c:5},e:{r:15,c:7}}, // AltPC header merge
-            {s:{r:15,c:8},e:{r:15,c:9}}  // Ping header merge
-        ];
-
-        XLSX.utils.book_append_sheet(wb, ws, monthName);
-
-        var fileName = 'REAP_Status_Report_' + date + '.xlsx';
-        XLSX.writeFile(wb, fileName);
-        return fileName;
+        h += '</tr>';
+        var addSection = function(rows, label, bg) {
+            h += '<tr><td colspan="7" style="padding:8px 14px;background:' + bg + ';text-align:center;font-weight:bold;font-size:14px;color:#fff;border:1px solid #bbb;letter-spacing:1px;">' + label + '</td></tr>';
+            rows.forEach(function(r, i) {
+                var rowBg = i % 2 === 0 ? '#ffffff' : '#f5f5f5';
+                var amC = r.amUp ? '#00a844' : '#d32f2f';
+                var pmC = r.pmUp ? '#00a844' : '#d32f2f';
+                var diC = r.diode==='Up' ? '#00a844' : r.diode==='Down'||r.diode==='Output-down' ? '#d32f2f' : '#888';
+                var phC = r.phone==='Up' ? '#00a844' : r.phone==='Down' ? '#d32f2f' : '#888';
+                h += '<tr style="background:' + rowBg + ';">';
+                h += '<td style="padding:8px 12px;border:1px solid #bbb;font-weight:bold;font-size:13px;">' + r.name + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + amC + ';">' + r.am + (r.amPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + r.amPing + '</span>' : '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + pmC + ';">' + r.pm + (r.pmPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + r.pmPing + '</span>' : '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;color:#555;">' + (r.files || '0') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + diC + ';">' + (r.diode || '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + phC + ';">' + (r.phone || '') + '</td>';
+                h += '<td style="padding:8px 12px;border:1px solid #bbb;font-size:12px;line-height:1.6;">' + (r.notes || '') + (r.lastContactDate ? '<br><span style="color:#888;font-size:11px;">' + r.lastContactDate + '</span>' : '') + '</td>';
+                h += '</tr>';
+            });
+        };
+        if (eodData.fullReap.length > 0) addSection(eodData.fullReap, 'Full Reap', '#0d47a1');
+        if (eodData.miniReap.length > 0) addSection(eodData.miniReap, 'Mini-Reap', '#1b5e20');
+        h += '</table></div>';
+        return h;
     };
 
-    // ===== SEND EOD EMAIL — generates Excel + opens Outlook =====
-    const sendEodEmail = () => {
-        // Step 1 - Generate and download Excel
-        var fileName = generateEodExcel();
-
-        // Step 2 - Build email body
+    // ===== SEND EOD EMAIL — generates colored .eml file with Excel attached =====
+    const sendEodEmail = function() {
+        var reportHtml = buildEodHtml();
         var d = parseLocalDate(date);
-        var dateHeader = d.toLocaleDateString('en-US', {day:'numeric',month:'long',year:'numeric'});
-        // Capitalize day: "28 October 2026"
-        dateHeader = d.getDate() + '  ' + d.toLocaleDateString('en-US', {month:'long'}) + ' ' + d.getFullYear();
-
-        var eodData = getEndOfDayData();
-        var bodyLines = [];
-        bodyLines.push(dateHeader);
-        bodyLines.push('');
-        bodyLines.push('*** No New Data ***');
-        bodyLines.push('');
-        bodyLines.push('--- REAP End of Day Status Report ---');
-        bodyLines.push('');
-
-        // Full REAP table
-        if (eodData.fullReap.length > 0) {
-            bodyLines.push('FULL REAP');
-            bodyLines.push('Ship      AM         PM         HDD    Diode  Phone  Notes');
-            bodyLines.push('--------  ---------  ---------  -----  -----  -----  -----');
-            eodData.fullReap.forEach(function(r) {
-                var amStr = (r.am + (r.amPing ? ' ('+r.amPing+')' : '')).padEnd(9);
-                var pmStr = (r.pm + (r.pmPing ? ' ('+r.pmPing+')' : '')).padEnd(9);
-                bodyLines.push(r.name.padEnd(10) + amStr + '  ' + pmStr + '  ' + (r.files||'0').toString().padEnd(5) + '  ' + (r.diode||'').padEnd(5) + '  ' + (r.phone||'').padEnd(5) + '  ' + (r.notes||''));
-            });
-            bodyLines.push('');
-        }
-
-        // Mini REAP table
-        if (eodData.miniReap.length > 0) {
-            bodyLines.push('MINI REAP');
-            bodyLines.push('Ship      AM         PM         HDD    Diode  Phone  Notes');
-            bodyLines.push('--------  ---------  ---------  -----  -----  -----  -----');
-            eodData.miniReap.forEach(function(r) {
-                var amStr = (r.am + (r.amPing ? ' ('+r.amPing+')' : '')).padEnd(9);
-                var pmStr = (r.pm + (r.pmPing ? ' ('+r.pmPing+')' : '')).padEnd(9);
-                bodyLines.push(r.name.padEnd(10) + amStr + '  ' + pmStr + '  ' + (r.files||'0').toString().padEnd(5) + '  ' + (r.diode||'').padEnd(5) + '  ' + (r.phone||'').padEnd(5) + '  ' + (r.notes||''));
-            });
-            bodyLines.push('');
-        }
-
-        var body = bodyLines.join('\n');
+        var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var dateHeader = monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
         var subject = 'REAP Status Report - ' + dateHeader;
+        var monthName = monthNames[d.getMonth()];
 
-        // Step 3 - Copy body to clipboard for reliable paste
-        navigator.clipboard.writeText(body).catch(function(){});
+        // -- Build colored Excel as HTML-format .xls --
+        var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+        excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+        excelHtml += '<x:Name>' + monthName + '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
+        excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+        excelHtml += '<body>' + reportHtml + '</body></html>';
 
-        // 4) Open Outlook via mailto (body truncated if too long for URL)
-        var mailBody = encodeURIComponent(body);
-        var mailUrl = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + mailBody;
-        // mailto: URL limit ~32KB on Outlook — should be fine for our report
-        if (mailUrl.length > 32000) {
-            // Fallback: open with subject only, body is on clipboard
-            mailUrl = 'mailto:?subject=' + encodeURIComponent(subject);
-            toast('Report copied to clipboard — paste into email body. Excel downloaded!', 'success');
-        } else {
-            toast('Outlook opened! Attach the downloaded Excel file: ' + (fileName || 'REAP_Status_Report.xlsx'), 'success');
-        }
-        window.open(mailUrl, '_self');
+        // Base64 encode Excel for MIME attachment
+        var excelBase64 = btoa(unescape(encodeURIComponent(excelHtml)));
+        var excelB64Lines = excelBase64.match(/.{1,76}/g).join('\r\n');
+        var excelFileName = 'REAP_Status_Report_' + date + '.xls';
 
-        logActivity('Sent end-of-day email for ' + date);
+        // -- Build email HTML body --
+        var emailHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>';
+        emailHtml += '<body style="font-family:Segoe UI,Arial,sans-serif;">' + reportHtml + '</body></html>';
+
+        // -- Build MIME .eml with X-Unsent:1 so Outlook opens in compose mode --
+        var boundary = '----=_Part_' + Date.now();
+        var eml = '';
+        eml += 'X-Unsent: 1\r\n';
+        eml += 'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=\r\n';
+        eml += 'MIME-Version: 1.0\r\n';
+        eml += 'Content-Type: multipart/mixed;\r\n boundary="' + boundary + '"\r\n';
+        eml += '\r\n';
+        // Part 1: HTML body
+        eml += '--' + boundary + '\r\n';
+        eml += 'Content-Type: text/html; charset=UTF-8\r\n';
+        eml += 'Content-Transfer-Encoding: 8bit\r\n';
+        eml += '\r\n';
+        eml += emailHtml + '\r\n';
+        eml += '\r\n';
+        // Part 2: Excel attachment
+        eml += '--' + boundary + '\r\n';
+        eml += 'Content-Type: application/vnd.ms-excel;\r\n name="' + excelFileName + '"\r\n';
+        eml += 'Content-Disposition: attachment;\r\n filename="' + excelFileName + '"\r\n';
+        eml += 'Content-Transfer-Encoding: base64\r\n';
+        eml += '\r\n';
+        eml += excelB64Lines + '\r\n';
+        eml += '\r\n';
+        eml += '--' + boundary + '--\r\n';
+
+        // Download the .eml file
+        var blob = new Blob([eml], {type: 'message/rfc822'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'REAP_Report_' + date + '.eml';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast('Email file downloaded! Double-click to open in Outlook, add recipients, and send.', 'success');
+        logActivity('Generated EOD email for ' + date);
     };
 
     const getEndOfDayData = () => {
