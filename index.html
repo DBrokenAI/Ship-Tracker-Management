@@ -6227,9 +6227,9 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     const exportStatus = () => { setShowEndOfDay(true); };
 
     // ===== BUILD COLORED HTML TABLE FOR EOD REPORT =====
-    const buildEodHtml = function() {
-        var eodData = getEndOfDayData();
-        var d = parseLocalDate(date);
+    // Can take optional eodData + dateStr to rebuild from saved logs
+    const buildEodHtmlFromData = function(eodData, dateStr) {
+        var d = parseLocalDate(dateStr);
         var dateLabel = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
         var h = '';
         h += '<div style="font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:#222;">';
@@ -6267,30 +6267,92 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         h += '</table></div>';
         return h;
     };
-
-    // ===== GENERATE COLORED EXCEL (.xls) =====
-    const generateEodExcel = function() {
-        var reportHtml = buildEodHtml();
-        var d = parseLocalDate(date);
-        var monthName = d.toLocaleDateString('en-US', {month:'long'});
-        var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
-        excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-        excelHtml += '<x:Name>' + monthName + '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
-        excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
-        excelHtml += '<body>' + reportHtml + '</body></html>';
-        var blob = new Blob([excelHtml], {type: 'application/vnd.ms-excel'});
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'REAP_Status_Report_' + date + '.xls';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        return a.download;
+    const buildEodHtml = function() {
+        return buildEodHtmlFromData(getEndOfDayData(), date);
     };
 
-    // ===== SEND EOD EMAIL — downloads Excel, copies colored report, opens Outlook =====
+    // ===== SAVE EOD SNAPSHOT TO FIREBASE =====
+    const saveEodLog = function(dateStr, eodData) {
+        var logEntry = {
+            date: dateStr,
+            savedAt: new Date().toISOString(),
+            fullReap: eodData.fullReap.map(function(r) {
+                return { name: r.name, am: r.am, amPing: r.amPing, pm: r.pm, pmPing: r.pmPing,
+                    files: r.files, diode: r.diode, phone: r.phone, notes: r.notes,
+                    lastContactDate: r.lastContactDate, amUp: r.amUp, pmUp: r.pmUp };
+            }),
+            miniReap: eodData.miniReap.map(function(r) {
+                return { name: r.name, am: r.am, amPing: r.amPing, pm: r.pm, pmPing: r.pmPing,
+                    files: r.files, diode: r.diode, phone: r.phone, notes: r.notes,
+                    lastContactDate: r.lastContactDate, amUp: r.amUp, pmUp: r.pmUp };
+            })
+        };
+        db.collection('eodLogs').doc(dateStr).set(logEntry).catch(function(err) {
+            console.error('Failed to save EOD log:', err);
+        });
+    };
+
+    // ===== GENERATE CUMULATIVE COLORED EXCEL (.xls) =====
+    // Fetches all past EOD logs from Firebase + today, builds one Excel with all days
+    const generateEodExcel = function(callback) {
+        var todayData = getEndOfDayData();
+        // Fetch all historical EOD logs from Firebase
+        db.collection('eodLogs').orderBy('date', 'asc').get().then(function(snapshot) {
+            var allLogs = [];
+            snapshot.forEach(function(doc) {
+                var d = doc.data();
+                // Skip today if already saved - we use fresh live data for today
+                if (d.date !== date) {
+                    allLogs.push(d);
+                }
+            });
+            // Add today's live data at the end
+            allLogs.push({ date: date, fullReap: todayData.fullReap, miniReap: todayData.miniReap });
+
+            // Build Excel HTML with all days stacked
+            var bodyHtml = '';
+            allLogs.forEach(function(log, idx) {
+                if (idx > 0) bodyHtml += '<br style="mso-data-placement:same-cell;"><br>';
+                bodyHtml += buildEodHtmlFromData(log, log.date);
+            });
+
+            var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+            excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+            excelHtml += '<x:Name>REAP Status Log</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
+            excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+            excelHtml += '<body>' + bodyHtml + '</body></html>';
+            var blob = new Blob([excelHtml], {type: 'application/vnd.ms-excel'});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'REAP_Status_Log_' + date + '.xls';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            if (callback) callback(a.download);
+        }).catch(function(err) {
+            console.error('Failed to fetch EOD logs:', err);
+            // Fallback: just export today
+            var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+            excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+            excelHtml += '<x:Name>REAP Status Log</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
+            excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+            excelHtml += '<body>' + buildEodHtml() + '</body></html>';
+            var blob = new Blob([excelHtml], {type: 'application/vnd.ms-excel'});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'REAP_Status_Log_' + date + '.xls';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            if (callback) callback(a.download);
+        });
+    };
+
+    // ===== SEND EOD EMAIL — saves log, downloads cumulative Excel, copies report, opens Outlook =====
     const sendEodEmail = function() {
         var reportHtml = buildEodHtml();
         var d = parseLocalDate(date);
@@ -6298,19 +6360,21 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         var dateHeader = monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
         var subject = 'REAP Status Report - ' + dateHeader;
 
-        // Step 1 - Generate and download colored Excel
-        var fileName = generateEodExcel();
+        // Step 1 - Save today's EOD snapshot to Firebase for cumulative log
+        var todayData = getEndOfDayData();
+        saveEodLog(date, todayData);
 
-        // Step 2 - Copy colored HTML report to clipboard as rich text
+        // Step 2 - Generate and download cumulative colored Excel
+        generateEodExcel();
+
+        // Step 3 - Copy colored HTML report to clipboard as rich text
         var fullHtml = '<html><body style="font-family:Segoe UI,Arial,sans-serif;">' + reportHtml + '</body></html>';
-        var copyDone = false;
         if (navigator.clipboard && navigator.clipboard.write) {
             var htmlBlob = new Blob([fullHtml], { type: 'text/html' });
             var textEl = document.createElement('div');
             textEl.innerHTML = reportHtml;
             var plainBlob = new Blob([textEl.innerText || textEl.textContent], { type: 'text/plain' });
             navigator.clipboard.write([new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': plainBlob })]).catch(function() {});
-            copyDone = true;
         } else {
             // Fallback: render hidden div + execCommand copy
             var tmp = document.createElement('div');
@@ -6326,14 +6390,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             document.execCommand('copy');
             sel.removeAllRanges();
             document.body.removeChild(tmp);
-            copyDone = true;
         }
 
-        // Step 2 - Open Outlook compose via mailto with subject pre-filled
+        // Step 4 - Open Outlook compose via mailto with subject pre-filled
         var mailUrl = 'mailto:?subject=' + encodeURIComponent(subject);
         window.open(mailUrl, '_self');
 
-        toast('Excel downloaded + colored report copied! Ctrl+V in Outlook to paste, then attach the .xls file.', 'success');
+        toast('EOD saved! Excel log downloading + report copied. Ctrl+V in Outlook, then attach the .xls.', 'success');
         logActivity('Generated EOD email for ' + date);
     };
 
