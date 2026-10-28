@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-28T138";
+    var APP_BUILD = "2026-10-28T139";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1600,10 +1600,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
                     <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
-                    <div className="version">v4.5.0 Firebase</div>
+                    <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T138'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T139'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T138');
+                                    localStorage.setItem('lastSeenBuild', 'T139');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1625,16 +1625,16 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
                                 ),
 
-                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 28, 2026 — Build T138'),
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 28, 2026 — Build T139'),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📧 End of Day Email + Excel Export'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• New: "End of Day" button now generates Excel (.xlsx) matching REAP Status Report template\n' +
-                                    '• Excel auto-downloads with daily check data for Full REAP and Mini REAP ships\n' +
-                                    '• Opens Outlook new email with subject and full report body pre-filled — no pasting needed\n' +
-                                    '• Email body uses same format: date header, ship status table with AM/PM/Files/Diode/Phone/Notes\n' +
-                                    '• Preview modal with "Send Email" button also available via eye icon\n' +
-                                    '• Excel includes formulas for VOIP Y/N and Total Data columns'
+                                    '• New: "End of Day" auto-downloads colored .xls spreadsheet with same styled table\n' +
+                                    '• Auto-copies colored HTML report to clipboard and opens Outlook compose\n' +
+                                    '• Colored report: green Online/red Offline text, blue Full Reap / green Mini-Reap section headers\n' +
+                                    '• Subject pre-filled as "REAP Status Report - [date]", just Ctrl+V to paste the formatted report\n' +
+                                    '• Excel uses HTML-as-XLS approach so colors and formatting carry over to the spreadsheet\n' +
+                                    '• Preview modal with eye icon still available for on-screen review'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 21, 2026 — Build T137'),
@@ -6268,68 +6268,72 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         return h;
     };
 
-    // ===== SEND EOD EMAIL — generates colored .eml file with Excel attached =====
+    // ===== GENERATE COLORED EXCEL (.xls) =====
+    const generateEodExcel = function() {
+        var reportHtml = buildEodHtml();
+        var d = parseLocalDate(date);
+        var monthName = d.toLocaleDateString('en-US', {month:'long'});
+        var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+        excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+        excelHtml += '<x:Name>' + monthName + '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
+        excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+        excelHtml += '<body>' + reportHtml + '</body></html>';
+        var blob = new Blob([excelHtml], {type: 'application/vnd.ms-excel'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'REAP_Status_Report_' + date + '.xls';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return a.download;
+    };
+
+    // ===== SEND EOD EMAIL — downloads Excel, copies colored report, opens Outlook =====
     const sendEodEmail = function() {
         var reportHtml = buildEodHtml();
         var d = parseLocalDate(date);
         var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         var dateHeader = monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
         var subject = 'REAP Status Report - ' + dateHeader;
-        var monthName = monthNames[d.getMonth()];
 
-        // -- Build colored Excel as HTML-format .xls --
-        var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
-        excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-        excelHtml += '<x:Name>' + monthName + '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
-        excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
-        excelHtml += '<body>' + reportHtml + '</body></html>';
+        // Step 1 - Generate and download colored Excel
+        var fileName = generateEodExcel();
 
-        // Base64 encode Excel for MIME attachment
-        var excelBase64 = btoa(unescape(encodeURIComponent(excelHtml)));
-        var excelB64Lines = excelBase64.match(/.{1,76}/g).join('\r\n');
-        var excelFileName = 'REAP_Status_Report_' + date + '.xls';
+        // Step 2 - Copy colored HTML report to clipboard as rich text
+        var fullHtml = '<html><body style="font-family:Segoe UI,Arial,sans-serif;">' + reportHtml + '</body></html>';
+        var copyDone = false;
+        if (navigator.clipboard && navigator.clipboard.write) {
+            var htmlBlob = new Blob([fullHtml], { type: 'text/html' });
+            var textEl = document.createElement('div');
+            textEl.innerHTML = reportHtml;
+            var plainBlob = new Blob([textEl.innerText || textEl.textContent], { type: 'text/plain' });
+            navigator.clipboard.write([new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': plainBlob })]).catch(function() {});
+            copyDone = true;
+        } else {
+            // Fallback: render hidden div + execCommand copy
+            var tmp = document.createElement('div');
+            tmp.innerHTML = reportHtml;
+            tmp.style.position = 'fixed';
+            tmp.style.left = '-9999px';
+            document.body.appendChild(tmp);
+            var range = document.createRange();
+            range.selectNodeContents(tmp);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand('copy');
+            sel.removeAllRanges();
+            document.body.removeChild(tmp);
+            copyDone = true;
+        }
 
-        // -- Build email HTML body --
-        var emailHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>';
-        emailHtml += '<body style="font-family:Segoe UI,Arial,sans-serif;">' + reportHtml + '</body></html>';
+        // Step 2 - Open Outlook compose via mailto with subject pre-filled
+        var mailUrl = 'mailto:?subject=' + encodeURIComponent(subject);
+        window.open(mailUrl, '_self');
 
-        // -- Build MIME .eml with X-Unsent:1 so Outlook opens in compose mode --
-        var boundary = '----=_Part_' + Date.now();
-        var eml = '';
-        eml += 'X-Unsent: 1\r\n';
-        eml += 'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=\r\n';
-        eml += 'MIME-Version: 1.0\r\n';
-        eml += 'Content-Type: multipart/mixed;\r\n boundary="' + boundary + '"\r\n';
-        eml += '\r\n';
-        // Part 1: HTML body
-        eml += '--' + boundary + '\r\n';
-        eml += 'Content-Type: text/html; charset=UTF-8\r\n';
-        eml += 'Content-Transfer-Encoding: 8bit\r\n';
-        eml += '\r\n';
-        eml += emailHtml + '\r\n';
-        eml += '\r\n';
-        // Part 2: Excel attachment
-        eml += '--' + boundary + '\r\n';
-        eml += 'Content-Type: application/vnd.ms-excel;\r\n name="' + excelFileName + '"\r\n';
-        eml += 'Content-Disposition: attachment;\r\n filename="' + excelFileName + '"\r\n';
-        eml += 'Content-Transfer-Encoding: base64\r\n';
-        eml += '\r\n';
-        eml += excelB64Lines + '\r\n';
-        eml += '\r\n';
-        eml += '--' + boundary + '--\r\n';
-
-        // Download the .eml file
-        var blob = new Blob([eml], {type: 'message/rfc822'});
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'REAP_Report_' + date + '.eml';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        toast('Email file downloaded! Double-click to open in Outlook, add recipients, and send.', 'success');
+        toast('Excel downloaded + colored report copied! Ctrl+V in Outlook to paste, then attach the .xls file.', 'success');
         logActivity('Generated EOD email for ' + date);
     };
 
