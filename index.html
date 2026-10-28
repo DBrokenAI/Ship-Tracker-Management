@@ -432,7 +432,7 @@ const hashPassword = (password) => {
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-21T137";
+    var APP_BUILD = "2026-10-28T138";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1600,10 +1600,10 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
                     <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
-                    <div className="version">v4.4.4 Firebase</div>
+                    <div className="version">v4.5.0 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T137'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T138'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1614,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T137');
+                                    localStorage.setItem('lastSeenBuild', 'T138');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1623,6 +1623,18 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 28, 2026 — Build T138'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📧 End of Day Email + Excel Export'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• New: "End of Day" button now generates Excel (.xlsx) matching REAP Status Report template\n' +
+                                    '• Excel auto-downloads with today\'s daily check data (AM/PM status, ping times, HDD space)\n' +
+                                    '• Opens Outlook with pre-formatted email: date header + report body\n' +
+                                    '• Excel file includes Full REAP and Mini REAP sections with formulas\n' +
+                                    '• Preview button (eye icon) still shows the visual report modal\n' +
+                                    '• "Send Email" button also available from the preview modal'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 21, 2026 — Build T137'),
@@ -6213,7 +6225,164 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         toast(`Copied ${copied} entries from yesterday`, 'success');
     };
     const exportStatus = () => { setShowEndOfDay(true); };
-    
+
+    // ===== GENERATE EXCEL (.xlsx) MATCHING REAP STATUS REPORT TEMPLATE =====
+    const generateEodExcel = () => {
+        if (typeof XLSX === 'undefined') { toast('Excel library not loaded', 'error'); return null; }
+        var wb = XLSX.utils.book_new();
+        var d = parseLocalDate(date);
+        var monthName = d.toLocaleDateString('en-US', {month:'long'});
+
+        var fullReapHulls = ['CG67','CG70','DDG54','DDG56','DDG62','DDG63'];
+        var miniReapHulls = ['DDG55','DDG57','DDG72','DDG77','DDG96','DDG98','DDG101','DDG103','DDG109','DDG111'];
+
+        var findShip = function(hull) { return ships.find(function(s) { return s.name === hull; }); };
+        var getShipCheck = function(hull) { var s = findShip(hull); return s ? getCheck(s.id) : {}; };
+
+        var data = [];
+        // Row 1-5: Header area
+        data.push([null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,'Date Legend:','WORKDAY']);
+        data.push([null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,'WEEKEND']);
+        data.push([null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,'HOLIDAY']);
+        data.push([]); data.push([]);
+
+        // Row 6: Date
+        data.push(['Date', d]);
+
+        // Row 7-8: Full REAP headers
+        data.push(['Full REAP','VOIP Connection (Yes/No)','StarPC Connection (Yes/No)',null,null,'DataPC Connection (Yes/No)',null,null,'Average Ping Times\n(ms)',null,'Hard Drive Available Space (GB)','Total Data Recorded on Ship (MB)','SPY Data Recorded (MB)','CND Data Recorded (MB)','WCS Data Recorded (MB)','Other Data Elements (MB)','Number of Files to Process','Number of Files Still in REAPZipQ']);
+        data.push(['Hull#','Y/N','AM','PM','Y/N','AM','PM','Y/N','AM','PM','Daily','Daily','Daily','Daily','Daily','Daily','Daily','Daily']);
+
+        // Rows 9-14: Full REAP ships
+        fullReapHulls.forEach(function(hull, idx) {
+            var c = getShipCheck(hull);
+            var am = isTruthy(c.statusAM) ? 'Yes' : '';
+            var pm = isTruthy(c.statusPM) ? 'Yes' : '';
+            var r = 9 + idx; // 1-indexed row for formulas
+            data.push([hull, null, am, pm, null, null, null, null, parseInt(c.pingAM)||0, parseInt(c.pingPM)||0, parseInt(c.hdSpace)||0, null, 0, 0, 0, 0, 0, 0]);
+        });
+
+        // Row 15: blank
+        data.push([]);
+
+        // Row 16-17: Mini REAP headers
+        data.push(['Mini REAP','VOIP Connection (Yes/No)','Primary PC  Connection (Yes/No)',null,null,'Alternate PC Connection (Yes/No)',null,null,'Average Ping Times\n(ms)',null,'Hard Drive Available Space (GB)','Total Data Recorded on Ship (MB)','Data From Media (MB)','Data From Data Diode (MB)',null,null,'Number of Files to Process','Number of Files Still in Outbox']);
+        data.push(['Hull#','Y/N','AM','PM','Y/N','AM','PM','Y/N','AM','PM','Daily','Daily','Daily','Daily','Daily','Daily','Daily','Daily']);
+
+        // Rows 18-27: Mini REAP ships
+        miniReapHulls.forEach(function(hull, idx) {
+            var c = getShipCheck(hull);
+            var am = isTruthy(c.statusAM) ? 'Yes' : '';
+            var pm = isTruthy(c.statusPM) ? 'Yes' : '';
+            data.push([hull, null, am, pm, null, null, null, null, parseInt(c.pingAM)||0, parseInt(c.pingPM)||0, parseInt(c.hdSpace)||0, null, 0, 0, 0, 0, 0, 0]);
+        });
+
+        // Row 28: Comments
+        data.push(['Comments']);
+
+        var ws = XLSX.utils.aoa_to_sheet(data);
+
+        // Add formulas — Full REAP rows 9-14
+        for (var i = 9; i <= 14; i++) {
+            ws[XLSX.utils.encode_cell({r:i-1,c:4})] = {t:'s',f:'IF(OR(C'+i+'="Yes",D'+i+'="Yes"),"Yes","No")'};
+            ws[XLSX.utils.encode_cell({r:i-1,c:7})] = {t:'s',f:'IF(OR(F'+i+'="Yes",G'+i+'="Yes"),"Yes","No")'};
+            ws[XLSX.utils.encode_cell({r:i-1,c:11})] = {t:'n',f:'SUM(M'+i+':P'+i+')'};
+        }
+        // Mini REAP rows 18-27
+        for (var j = 18; j <= 27; j++) {
+            ws[XLSX.utils.encode_cell({r:j-1,c:4})] = {t:'s',f:'IF(OR(C'+j+'="Yes",D'+j+'="Yes"),"Yes","No")'};
+            ws[XLSX.utils.encode_cell({r:j-1,c:7})] = {t:'s',f:'IF(OR(F'+j+'="Yes",G'+j+'="Yes"),"Yes","No")'};
+            ws[XLSX.utils.encode_cell({r:j-1,c:11})] = {t:'n',f:'SUM(M'+j+':P'+j+')'};
+        }
+
+        // Column widths
+        ws['!cols'] = [{wch:10},{wch:8},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6},{wch:8},{wch:8},{wch:8},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14},{wch:14}];
+
+        // Merge cells for section headers (matching template)
+        ws['!merges'] = [
+            {s:{r:6,c:2},e:{r:6,c:4}},  // StarPC header merge
+            {s:{r:6,c:5},e:{r:6,c:7}},  // DataPC header merge
+            {s:{r:6,c:8},e:{r:6,c:9}},  // Ping header merge
+            {s:{r:15,c:2},e:{r:15,c:4}}, // PrimaryPC header merge
+            {s:{r:15,c:5},e:{r:15,c:7}}, // AltPC header merge
+            {s:{r:15,c:8},e:{r:15,c:9}}  // Ping header merge
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, monthName);
+
+        var fileName = 'REAP_Status_Report_' + date + '.xlsx';
+        XLSX.writeFile(wb, fileName);
+        return fileName;
+    };
+
+    // ===== SEND EOD EMAIL — generates Excel + opens Outlook =====
+    const sendEodEmail = () => {
+        // 1) Generate and download Excel
+        var fileName = generateEodExcel();
+
+        // 2) Build email body
+        var d = parseLocalDate(date);
+        var dateHeader = d.toLocaleDateString('en-US', {day:'numeric',month:'long',year:'numeric'});
+        // Capitalize day: "28 October 2026"
+        dateHeader = d.getDate() + '  ' + d.toLocaleDateString('en-US', {month:'long'}) + ' ' + d.getFullYear();
+
+        var eodData = getEndOfDayData();
+        var bodyLines = [];
+        bodyLines.push(dateHeader);
+        bodyLines.push('');
+        bodyLines.push('*** No New Data ***');
+        bodyLines.push('');
+        bodyLines.push('--- REAP End of Day Status Report ---');
+        bodyLines.push('');
+
+        // Full REAP table
+        if (eodData.fullReap.length > 0) {
+            bodyLines.push('FULL REAP');
+            bodyLines.push('Ship      AM         PM         HDD    Diode  Phone  Notes');
+            bodyLines.push('--------  ---------  ---------  -----  -----  -----  -----');
+            eodData.fullReap.forEach(function(r) {
+                var amStr = (r.am + (r.amPing ? ' ('+r.amPing+')' : '')).padEnd(9);
+                var pmStr = (r.pm + (r.pmPing ? ' ('+r.pmPing+')' : '')).padEnd(9);
+                bodyLines.push(r.name.padEnd(10) + amStr + '  ' + pmStr + '  ' + (r.files||'0').toString().padEnd(5) + '  ' + (r.diode||'').padEnd(5) + '  ' + (r.phone||'').padEnd(5) + '  ' + (r.notes||''));
+            });
+            bodyLines.push('');
+        }
+
+        // Mini REAP table
+        if (eodData.miniReap.length > 0) {
+            bodyLines.push('MINI REAP');
+            bodyLines.push('Ship      AM         PM         HDD    Diode  Phone  Notes');
+            bodyLines.push('--------  ---------  ---------  -----  -----  -----  -----');
+            eodData.miniReap.forEach(function(r) {
+                var amStr = (r.am + (r.amPing ? ' ('+r.amPing+')' : '')).padEnd(9);
+                var pmStr = (r.pm + (r.pmPing ? ' ('+r.pmPing+')' : '')).padEnd(9);
+                bodyLines.push(r.name.padEnd(10) + amStr + '  ' + pmStr + '  ' + (r.files||'0').toString().padEnd(5) + '  ' + (r.diode||'').padEnd(5) + '  ' + (r.phone||'').padEnd(5) + '  ' + (r.notes||''));
+            });
+            bodyLines.push('');
+        }
+
+        var body = bodyLines.join('\n');
+        var subject = 'REAP Status Report - ' + dateHeader;
+
+        // 3) Copy body to clipboard for reliable paste
+        navigator.clipboard.writeText(body).catch(function(){});
+
+        // 4) Open Outlook via mailto (body truncated if too long for URL)
+        var mailBody = encodeURIComponent(body);
+        var mailUrl = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + mailBody;
+        // mailto: URL limit ~32KB on Outlook — should be fine for our report
+        if (mailUrl.length > 32000) {
+            // Fallback: open with subject only, body is on clipboard
+            mailUrl = 'mailto:?subject=' + encodeURIComponent(subject);
+            toast('Report copied to clipboard — paste into email body. Excel downloaded!', 'success');
+        } else {
+            toast('Outlook opened! Attach the downloaded Excel file: ' + (fileName || 'REAP_Status_Report.xlsx'), 'success');
+        }
+        window.open(mailUrl, '_self');
+
+        logActivity('Sent end-of-day email for ' + date);
+    };
+
     const getEndOfDayData = () => {
         const dashSorted = [...ships].sort((a, b) => {
             if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
@@ -6563,7 +6732,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <div style={{width:'1px',height:'20px',background:'var(--border)'}}></div>
                         <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600}}>Export:</span>
                         <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(16,185,129,0.1)',border:'1px solid var(--green)',color:'var(--green)'}} onClick={exportForExcel}>📊 Excel</button>
-                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(59,130,246,0.1)',border:'1px solid var(--blue)',color:'var(--blue)'}} onClick={exportStatus}>📧 End of Day</button>
+                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(59,130,246,0.1)',border:'1px solid var(--blue)',color:'var(--blue)'}} onClick={sendEodEmail}>📧 End of Day</button>
+                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 8px',color:'var(--text-muted)'}} onClick={exportStatus} title="Preview EOD report">👁</button>
                         <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(245,158,11,0.1)',border:'1px solid var(--amber)',color:'var(--amber)'}} onClick={exportMorningReport}>☀️ Morning</button>
                     </div>
                 </div>
@@ -6775,7 +6945,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                 React.createElement('div', {style:{fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, dateLabel)
                             ),
                             React.createElement('div', {style:{display:'flex',gap:'8px'}},
-                                React.createElement('button', {className:'btn btn-primary',style:{fontWeight:700,padding:'8px 20px'},onClick:copyEndOfDay}, '📋 Copy for Email'),
+                                React.createElement('button', {className:'btn btn-primary',style:{fontWeight:700,padding:'8px 20px'},onClick:sendEodEmail}, '📧 Send Email'),
+                                React.createElement('button', {className:'btn btn-secondary',style:{fontWeight:600,padding:'8px 16px'},onClick:copyEndOfDay}, '📋 Copy'),
                                 React.createElement('button', {onClick:function(){setShowEndOfDay(false)},style:{background:'none',border:'1px solid var(--border)',color:'var(--text-muted)',fontSize:'16px',cursor:'pointer',borderRadius:'6px',width:'34px',height:'34px'}}, '✕')
                             )
                         ),
