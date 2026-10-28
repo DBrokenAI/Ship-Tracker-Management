@@ -6317,10 +6317,10 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
 
     // ===== SEND EOD EMAIL — generates Excel + opens Outlook =====
     const sendEodEmail = () => {
-        // 1) Generate and download Excel
+        // Step 1 - Generate and download Excel
         var fileName = generateEodExcel();
 
-        // 2) Build email body
+        // Step 2 - Build email body
         var d = parseLocalDate(date);
         var dateHeader = d.toLocaleDateString('en-US', {day:'numeric',month:'long',year:'numeric'});
         // Capitalize day: "28 October 2026"
@@ -6364,7 +6364,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         var body = bodyLines.join('\n');
         var subject = 'REAP Status Report - ' + dateHeader;
 
-        // 3) Copy body to clipboard for reliable paste
+        // Step 3 - Copy body to clipboard for reliable paste
         navigator.clipboard.writeText(body).catch(function(){});
 
         // 4) Open Outlook via mailto (body truncated if too long for URL)
