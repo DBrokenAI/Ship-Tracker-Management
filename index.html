@@ -259,6 +259,70 @@
         .ship-drawer.open { transform: translateX(0); }
         .ship-drawer-close { position: sticky; top: 0; float: right; z-index: 2; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); cursor: pointer; font-size: 14px; }
         .ship-drawer-close:hover { color: var(--text); border-color: var(--primary); }
+        /* Top tab bar (replaces the sidebar) */
+        .app { flex-direction: column; }
+        .main { margin-left: 0 !important; }
+        .topbar { position: sticky; top: 0; z-index: 102; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 8px 20px; background: var(--sidebar); border-bottom: 1px solid var(--border); }
+        .topbar-logo { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); letter-spacing: 1.5px; white-space: nowrap; min-width: 0; }
+        .topnav { display: flex; gap: 2px; }
+        .topnav-btn { position: relative; width: 84px; padding: 7px 0 6px; border-radius: 10px; border: none; background: transparent; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; white-space: nowrap; }
+        .topnav-btn svg { width: 20px; height: 20px; }
+        .topnav-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+        .topnav-btn.active { background: var(--bg-card); color: var(--primary); box-shadow: inset 0 0 0 1px var(--border); }
+        .topnav-btn .badge-count { position: absolute; top: 2px; right: 12px; background: var(--red); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 8px; }
+        .topnav-btn .nav-dot { top: 5px; right: 24px; }
+        .topbar-right { justify-self: end; display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .topbar-right > .sidebar-meta { order: 0; margin-top: 0; flex-direction: column; align-items: flex-end; gap: 3px; }
+        .topbar-right > .topbar-link { order: 1; }
+        .topbar-right > div:not(.sidebar-meta) { order: 2; }
+        .topbar-link { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); color: var(--text-dim); text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .topbar-link svg { width: 14px; height: 14px; }
+        .topbar-link:hover { color: var(--text); border-color: var(--primary); }
+        .topbar .user-chip { width: auto; max-width: 190px; }
+        .topbar .user-menu { top: 100%; bottom: auto; left: auto; right: 0; width: 230px; margin: 6px 0 0; }
+        @media (max-width: 1600px) { .topbar-link span, .topbar .user-chip-name { display: none; } }
+        @media (max-width: 1380px) { .topnav-btn { width: 70px; font-size: 10px; } }
+        @media (max-width: 1100px) { .topbar { grid-template-columns: auto minmax(0, 1fr) auto; } .topbar-logo span { display: none; } .topnav { justify-content: center; } .topnav-btn { width: 46px; } .topnav-btn > span:not(.badge-count):not(.nav-dot) { display: none; } }
+
+        /* Dashboard: status ring + offline + open issues, then all ships */
+        .dash-top { display: grid; grid-template-columns: 320px minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+        .dash-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+        .dash-ring { align-items: center; justify-content: center; gap: 12px; }
+        .dash-ring svg { width: 190px; height: 190px; font-family: 'Outfit', sans-serif; }
+        .dash-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 12px; color: var(--text-dim); }
+        .dash-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; box-sizing: border-box; }
+        .dash-panel-head { display: flex; align-items: center; gap: 10px; }
+        .dash-panel-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+        .dash-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dash-panel-count { margin-left: auto; font-size: 26px; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+        .dash-item { text-align: left; width: 100%; padding: 11px 14px; border-radius: 12px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text); font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 3px; transition: border-color .15s; }
+        .dash-item:hover { border-color: var(--primary); }
+        .dash-item-top { display: flex; align-items: center; gap: 8px; }
+        .dash-item-top strong { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .dash-item-age { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+        .dash-item-text { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-tag-urgent { font-size: 9px; font-weight: 800; letter-spacing: .6px; padding: 2px 6px; border-radius: 4px; background: var(--red-glow); color: var(--red); }
+        .dash-empty { padding: 18px; text-align: center; color: var(--green); font-size: 13px; background: var(--bg-input); border-radius: 12px; }
+        .dash-more { background: none; border: none; color: var(--primary); font-family: inherit; font-size: 12px; cursor: pointer; align-self: flex-start; padding: 2px 0; }
+        .dash-all-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+        .dash-all-title { margin: 0; font-size: 16px; font-weight: 700; }
+        .dash-all-title span { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: 4px; }
+        .dash-filters { margin: 0; }
+        .ship-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+        .ship-tile { text-align: left; border-radius: 10px; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0; transition: border-color .15s, transform .15s; color: var(--text); }
+        .ship-tile:hover { transform: translateY(-1px); border-color: var(--border-focus); }
+        .ship-tile.st-off { background: var(--red-glow); border-color: rgba(255,82,82,0.45); }
+        .ship-tile.st-iss { background: var(--amber-glow); border-color: rgba(255,179,0,0.4); }
+        .ship-tile.st-nc { opacity: .7; }
+        .ship-tile.st-pend { border-style: dashed; }
+        .ship-tile.selected { box-shadow: 0 0 0 2px var(--primary); }
+        .ship-tile-top { display: flex; align-items: baseline; gap: 6px; }
+        .ship-tile .ship-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
+        .ship-tile-type { margin-left: auto; font-size: 9px; color: var(--text-muted); letter-spacing: .5px; text-transform: uppercase; }
+        .ship-tile-port { font-size: 11px; color: var(--text-muted); }
+        .ship-tile-note { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+        .st-off .ship-tile-note { color: var(--red); } .st-iss .ship-tile-note { color: var(--amber); } .st-on .ship-tile-note { color: var(--green); }
+        @media (max-width: 1200px) { .dash-top { grid-template-columns: 1fr 1fr; } .dash-ring { grid-column: 1 / -1; } }
         @media (max-width: 1200px) { .attn-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fleet-row { grid-template-columns: 110px 48px 150px minmax(0, 1fr) 100px; } .fleet-row > .fleet-port { display: none; } }
         .detail-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; overflow: hidden; max-width: 100%; box-sizing: border-box; }
         .section-title { font-size: 10px; font-weight: 600; color: var(--primary); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
@@ -343,7 +407,7 @@
         
         /* Print Styles */
         @media print {
-            .sidebar, .notif-banner, .btn, .nav-btn, .toast-container { display: none !important; }
+            .sidebar, .topbar, .notif-banner, .btn, .nav-btn, .toast-container { display: none !important; }
             .main { margin-left: 0 !important; padding: 20px !important; }
             .card { break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
             body { background: #fff; color: #000; }
@@ -529,7 +593,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T154";
+    var APP_BUILD = "2026-10-29T155";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1864,13 +1928,11 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         const saved = localStorage.getItem('currentPage');
         return saved ? parseInt(saved) : 0;
     });
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
     
     // Persist page to localStorage
     useEffect(() => {
         localStorage.setItem('currentPage', page.toString());
     }, [page]);
-    const toggleSidebar = () => { const v = !sidebarCollapsed; setSidebarCollapsed(v); localStorage.setItem('sidebarCollapsed', v); };
     // Shared data - syncs across all users via Firebase
     const [ships, setShips, shipsLoading] = useFirestore('ships', defaultShips);
     const [issues, setIssues] = useFirestore('issues', defaultIssues);
@@ -2043,14 +2105,19 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
     return (
         <div className="app">
-            <nav className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-                <div className="sidebar-header"><div className="logo" style={{display:'flex',alignItems:'center',gap:'8px'}}><svg width="28" height="16" viewBox="0 0 120 60" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 42 L15 38 L105 38 L115 42 L108 45 L12 45 Z" fill="currentColor" fillOpacity="0.15"/><path d="M5 42 L15 38 L105 38 L115 42"/><path d="M15 38 L8 35 L5 42"/><path d="M105 38 L112 35 L115 42"/><path d="M18 38 L18 35 L102 35 L102 38"/><circle cx="28" cy="33" r="4"/><path d="M28 33 L28 26"/><path d="M52 35 L52 22 L72 22 L72 35"/><path d="M62 22 L62 10"/><path d="M76 35 L76 26 L88 26 L88 35"/><path d="M82 26 L82 18"/></svg>SHIP TRACKER</div><div className="logo-sub">Pro Edition</div></div>
-                <div className="nav-section">
-                    <div className="nav-title">Reports</div>
-                    <a className="nav-btn" href="https://app.mil.powerbigov.us/groups/723e47dd-9fb2-45ba-9c59-fb38242cbc66/reports/ef93b590-8da1-4e3c-a3ef-80a577f44e1c?ctid=e3333e00-c877-4b87-b6ad-45e942de1750&pbi_source=linkShare" target="_blank" rel="noopener noreferrer" title="Opens Power BI in a new tab" style={{textDecoration:'none'}}><Icon name="report"/><span>BI Dashboard ↗</span></a>
-                </div>
-                {sections.map(s => (<div key={s.title} className="nav-section"><div className="nav-title">{s.title}</div>{s.items.map(id => { const item = navItems.find(n => n.id === id); return (<button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}><Icon name={item.icon}/><span>{item.label}</span>{item.badge > 0 && <span className="badge-count">{item.badge}</span>}{item.dot && <span className={`nav-dot nav-dot-${item.dot}`}></span>}</button>); })}</div>))}
-                <div className="sidebar-footer">
+            <header className="topbar">
+                <div className="topbar-logo"><svg width="28" height="16" viewBox="0 0 120 60" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 42 L15 38 L105 38 L115 42 L108 45 L12 45 Z" fill="currentColor" fillOpacity="0.15"/><path d="M5 42 L15 38 L105 38 L115 42"/><path d="M15 38 L8 35 L5 42"/><path d="M105 38 L112 35 L115 42"/><path d="M18 38 L18 35 L102 35 L102 38"/><circle cx="28" cy="33" r="4"/><path d="M28 33 L28 26"/><path d="M52 35 L52 22 L72 22 L72 35"/><path d="M62 22 L62 10"/><path d="M76 35 L76 26 L88 26 L88 35"/><path d="M82 26 L82 18"/></svg><span>SHIP TRACKER</span></div>
+                <nav className="topnav" aria-label="Main">
+                    {navItems.map(item => (
+                        <button key={item.id} type="button" data-testid={'nav-' + item.id} className={'topnav-btn' + (page === item.id ? ' active' : '')} aria-current={page === item.id ? 'page' : undefined} onClick={() => setPage(item.id)} title={item.label}>
+                            <Icon name={item.icon}/><span>{item.label}</span>
+                            {item.badge > 0 && <span className="badge-count">{item.badge}</span>}
+                            {item.dot && <span className={'nav-dot nav-dot-' + item.dot}></span>}
+                        </button>
+                    ))}
+                </nav>
+                <div className="topbar-right">
+                    <a className="topbar-link" href="https://app.mil.powerbigov.us/groups/723e47dd-9fb2-45ba-9c59-fb38242cbc66/reports/ef93b590-8da1-4e3c-a3ef-80a577f44e1c?ctid=e3333e00-c877-4b87-b6ad-45e942de1750&pbi_source=linkShare" target="_blank" rel="noopener noreferrer" title="Opens the Power BI dashboard in a new tab"><Icon name="report"/><span>BI ↗</span></a>
                     {/* Account button + menu */}
                     <div style={{position:'relative'}}>
                         {userMenu && <div onClick={() => setUserMenu(false)} style={{position:'fixed',inset:0,zIndex:150}}/>}
@@ -2078,7 +2145,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                             <span style={{width:'7px',height:'7px',borderRadius:'50%',background:'var(--primary)',display:'inline-block',animation:'pulse 2s infinite'}}></span>
                             {activeUsers.length} online
                             {showOnlineTooltip && activeUsers.length > 0 && (
-                                <div style={{position:'absolute',bottom:'100%',left:'0',marginBottom:'8px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'8px',padding:'8px 12px',boxShadow:'0 4px 12px rgba(0,0,0,0.3)',zIndex:100,minWidth:'120px'}}>
+                                <div style={{position:'absolute',top:'100%',right:'0',marginTop:'8px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'8px',padding:'8px 12px',boxShadow:'0 4px 12px rgba(0,0,0,0.3)',zIndex:100,minWidth:'120px'}}>
                                     <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'6px',fontWeight:600}}>Users Online</div>
                                     {activeUsers.map(u => (
                                         <div key={u.username} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:'var(--text)',marginBottom:'4px'}}>
@@ -2092,7 +2159,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T154'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T155'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2103,16 +2170,23 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T154');
+                                    localStorage.setItem('lastSeenBuild', 'T155');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
                             }, 'Build ' + String(window.__APP_BUILD || '').split('T').pop()),
                             React.createElement('div', {id:'changelogOverlay', onClick:function(){document.getElementById('changelogDrop').style.display='none';document.getElementById('changelogOverlay').style.display='none';}, style:{display:'none',position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:199}}),
-                            React.createElement('div', {id:'changelogDrop', style:{display:'none',position:'fixed',bottom:'50px',left:'210px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px',boxShadow:'0 12px 40px rgba(0,0,0,0.5)',zIndex:200,maxHeight:'600px',overflowY:'auto',width:'520px'}},
+                            React.createElement('div', {id:'changelogDrop', style:{display:'none',position:'fixed',top:'72px',right:'20px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px',boxShadow:'0 12px 40px rgba(0,0,0,0.5)',zIndex:200,maxHeight:'600px',overflowY:'auto',width:'520px'}},
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T155'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🧭 Top Tabs + New Dashboard'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• New look: the left sidebar is gone. Every page is now a tab across the top of the screen, centered, with an icon above each name\n• The account button (Admin Panel, Change Password, Suggest Improvement, Light or Dark mode, Log out) moved to the top right and its menu now drops down\n• Users online, the Build number and What’s new moved to the top right too. The Power BI link is a BI button next to them\n• On smaller screens the tab names shrink, then only the icons show\n• Dashboard redesigned again: a status ring shows how many ships are online today, split into clear, with issue, offline and not checked\n• Next to the ring: an Offline list (with URGENT tags and how many days in a row each ship has been offline) and an Open issues list (urgent first, with how long each has been open)\n• Click any ship in those lists to open its details\n• The ship table is replaced by an All ships grid: one tile per ship, red if offline, amber if it has an open issue, grey if not checked yet. Offline ships come first, then urgent, then other issues, then hull number\n• Activate (pending install) and Back (in port) buttons are on the tiles. Reorder still works\n• Removed email and contact tracking from the Dashboard: no Contact due tile, no New emails tile, no Updated Today filter. Needs attention now means offline or open issue only. The inbox still appears when new emails need filing\n• Removed the Fleet today bar (the ring replaces it)\n• The new email banner no longer covers the top of the screen. The What’s new panel now opens from the top right'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T154'),
@@ -2334,10 +2408,9 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     })()}
                     </div>
                 </div>
-                <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarCollapsed ? '▶' : '◀'}</button>
-            </nav>
+            </header>
             
-            <main className="main" style={sidebarCollapsed ? {marginLeft:'60px'} : {}}>
+            <main className="main">
                 {isAdmin && new Date().getDay() === 5 && (
                     <div style={{background:'linear-gradient(135deg, var(--primary-glow) 0%, var(--bg-card) 100%)',border:'2px solid var(--primary)',borderRadius:'12px',padding:'16px 20px',marginBottom:'16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                         <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
@@ -3880,11 +3953,10 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         return am || pm ? { state: 'online', label: 'Online', am, pm } : { state: 'offline', label: 'Offline', am, pm };
     };
     const attn = useMemo(() => {
-        const r = { online: [], offline: [], unchecked: [], pending: [], contact: [], issueShips: new Set() };
+        const r = { online: [], offline: [], unchecked: [], pending: [], issueShips: new Set() };
         ships.forEach(s => {
             const t = shipToday(s);
             r[t.state === 'pending' ? 'pending' : t.state].push(s);
-            if (t.state !== 'pending') { const st = getEmailStatus(s, issues).status; if (st === 'OVERDUE' || st === 'DUE') r.contact.push(s); }
         });
         const shipIds = new Set(ships.map(s => s.id));
         r.issues = issues.filter(i => !i.resolved && shipIds.has(i.shipId))
@@ -3893,10 +3965,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         r.urgent = r.issues.filter(i => i.threat === 'Urgent').length;
         r.ids = {
             offline: new Set(r.offline.map(x => x.id)),
-            contact: new Set(r.contact.map(x => x.id)),
             issues: r.issueShips
         };
-        r.ids.attention = new Set([...r.ids.offline, ...r.ids.contact, ...r.ids.issues]);
+        r.ids.attention = new Set([...r.ids.offline, ...r.ids.issues]);
         return r;
     }, [ships, dailyChecks, issues, today]);
 
@@ -3942,9 +4013,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             const ai = issues.filter(i => i.shipId === a.id && !i.resolved), bi = issues.filter(i => i.shipId === b.id && !i.resolved);
             const au = ai.some(i => i.threat === 'Urgent') ? 2 : ai.some(i => i.threat === 'Mild') ? 1 : 0;
             const bu = bi.some(i => i.threat === 'Urgent') ? 2 : bi.some(i => i.threat === 'Mild') ? 1 : 0;
+            const ao = shipToday(a).state === 'offline' ? 1 : 0, bo = shipToday(b).state === 'offline' ? 1 : 0;
+            if (bo !== ao) return bo - ao;
             if (bu !== au) return bu - au;
-            const ae = getEmailStatus(a, issues), be = getEmailStatus(b, issues);
-            if (be.days !== ae.days) return be.days - ae.days;
             return hullNum(a.name) - hullNum(b.name);
         });
     }, [ships, issues, globalSearch, typeFilter, today, dashShipOrder, attn]);
@@ -4518,50 +4589,69 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 </div>
             </div>
             
-            {/* Needs attention — click a tile to filter the ship list */}
-            <div className="attn-row">
-                {[
-                    { key: 'offline', title: 'Offline today', value: attn.offline.length, tone: attn.offline.length ? 'red' : 'ok',
-                      line: attn.offline.length ? attn.offline.slice(0, 4).map(x => x.name).join(', ') + (attn.offline.length > 4 ? ' +' + (attn.offline.length - 4) : '') : 'No ship reported offline',
-                      sub: attn.unchecked.length ? attn.unchecked.length + ' not checked yet' : 'All ships checked' },
-                    { key: 'issues', title: 'Open issues', value: attn.issues.length, tone: attn.urgent ? 'red' : attn.issues.length ? 'amber' : 'ok',
-                      line: attn.issues.length ? (attn.issues[0].title || attn.issues[0].details || 'Issue') + ' \u00B7 ' + ((ships.find(x => x.id === attn.issues[0].shipId) || {}).name || '') : 'No open issues',
-                      sub: attn.urgent ? attn.urgent + ' urgent' : attn.issues.length ? 'None urgent' : '' },
-                    { key: 'contact', title: 'Contact due', value: attn.contact.length, tone: attn.contact.length ? 'amber' : 'ok',
-                      line: attn.contact.length ? attn.contact.slice(0, 4).map(x => x.name).join(', ') + (attn.contact.length > 4 ? ' +' + (attn.contact.length - 4) : '') : 'Everyone contacted on time',
-                      sub: attn.contact.length ? 'Overdue or due today' : '' },
-                    { key: 'emails', title: 'New emails', value: pendingEmails.length, tone: pendingEmails.length ? 'blue' : 'ok',
-                      line: pendingEmails.length ? 'Waiting to be filed to a ship' : 'Inbox all caught up',
-                      sub: pendingEmails.length ? 'Click to open the inbox' : '' },
-                ].map(t => (
-                    <button key={t.key} type="button" data-testid={'tile-' + t.key}
-                        className={'attn-tile tone-' + t.tone + (typeFilter === t.key ? ' active' : '')}
-                        onClick={() => {
-                            if (t.key === 'emails') { const el = document.getElementById('dash-inbox'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-                            setTypeFilter(typeFilter === t.key ? 'all' : t.key);
-                        }}>
-                        <div className="attn-title">{t.title}</div>
-                        <div className="attn-value">{t.value === 0 && t.tone === 'ok' ? <span>0 <small>✓</small></span> : t.value}</div>
-                        <div className="attn-line" title={t.line}>{t.line}</div>
-                        {t.sub && <div className="attn-sub">{t.sub}</div>}
-                    </button>
-                ))}
-            </div>
-
-            {/* Fleet today */}
+            {/* Today: status ring, offline ships and open issues. Click a ship to open its details */}
             {(() => {
+                const issueOnline = attn.online.filter(s => attn.issueShips.has(s.id)).length;
+                const clear = attn.online.length - issueOnline;
+                const counted = attn.online.length + attn.offline.length + attn.unchecked.length;
+                const R = 82, C = 2 * Math.PI * R;
+                let acc = 0;
                 const segs = [
-                    { n: attn.online.length, label: 'online', cls: 'seg-online' },
-                    { n: attn.offline.length, label: 'offline', cls: 'seg-offline' },
-                    { n: attn.unchecked.length, label: 'not checked', cls: 'seg-unchecked' },
-                    { n: attn.pending.length, label: 'pending install/deinstall', cls: 'seg-pending' },
-                ];
-                const total = segs.reduce((a, x) => a + x.n, 0) || 1;
+                    { n: clear, color: 'var(--green)', label: 'clear' },
+                    { n: issueOnline, color: 'var(--amber)', label: 'with issue' },
+                    { n: attn.offline.length, color: 'var(--red)', label: 'offline' },
+                    { n: attn.unchecked.length, color: 'var(--text-muted)', label: 'not checked' },
+                ].filter(x => x.n > 0);
+                const arcs = segs.map(x => { const len = x.n / (counted || 1) * C; const a = { ...x, dash: len + ' ' + C, off: -acc }; acc += len; return a; });
+                const shipName = id => (ships.find(x => x.id === id) || {}).name || '';
+                const daysAgo = d => { if (!d) return ''; const n = Math.floor((new Date() - new Date(d)) / 86400000); return n <= 0 ? 'today' : n === 1 ? '1 day' : n + ' days'; };
+                const offlineDays = s => {
+                    const cs = dailyChecks.filter(c => c.shipId === s.id && c.date <= today).sort((a, b) => a.date < b.date ? 1 : -1);
+                    let n = 0;
+                    for (const c of cs) { if (String(c.pingAM == null ? '' : c.pingAM).trim() || String(c.pingPM == null ? '' : c.pingPM).trim()) break; n++; }
+                    return n;
+                };
+                const issueList = attn.issues.slice(0, 5);
                 return (
-                    <div className="fleet-bar-wrap" title="Online = an AM or PM ping was entered today">
-                        <div className="fleet-bar-label">Fleet today</div>
-                        <div className="fleet-bar">{segs.filter(x => x.n).map(x => <div key={x.cls} className={'fleet-seg ' + x.cls} style={{width: (x.n / total * 100) + '%'}}/>)}</div>
-                        <div className="fleet-bar-legend">{segs.filter(x => x.n).map(x => <span key={x.cls}><i className={'fleet-dot ' + x.cls}/>{x.n} {x.label}</span>)}</div>
+                    <div className="dash-top">
+                        <div className="dash-panel dash-ring" data-testid="dash-ring">
+                            <svg viewBox="0 0 200 200" role="img" aria-label={attn.online.length + ' of ' + counted + ' ships online today'}>
+                                <circle cx="100" cy="100" r={R} fill="none" stroke="var(--bg-input)" strokeWidth="18"/>
+                                {arcs.map(a => <circle key={a.label} cx="100" cy="100" r={R} fill="none" stroke={a.color} strokeWidth="18" strokeDasharray={a.dash} strokeDashoffset={a.off} transform="rotate(-90 100 100)"/>)}
+                                <text x="100" y="98" textAnchor="middle" fill="var(--text)" fontSize="42" fontWeight="800">{attn.online.length}/{counted}</text>
+                                <text x="100" y="124" textAnchor="middle" fill="var(--text-muted)" fontSize="14">{attn.online.length + attn.offline.length === 0 && counted > 0 ? 'checks not entered' : 'online today'}</text>
+                            </svg>
+                            <div className="dash-legend">
+                                {segs.map(x => <span key={x.label}><i style={{background: x.color}}/>{x.n} {x.label}</span>)}
+                                {attn.pending.length > 0 && <span><i style={{border: '1.5px dashed var(--text-muted)'}}/>{attn.pending.length} pending</span>}
+                            </div>
+                        </div>
+                        <div className="dash-panel" data-testid="dash-offline">
+                            <div className="dash-panel-head"><i className="dash-dot" style={{background: 'var(--red)'}}/><h2>Offline</h2><span className="dash-panel-count" style={{color: 'var(--red)'}}>{attn.offline.length}</span></div>
+                            {attn.offline.length === 0 ? <div className="dash-empty">✓ No ships offline</div> : attn.offline.map(s => {
+                                const top = attn.issues.find(i => i.shipId === s.id);
+                                const d = offlineDays(s);
+                                return (
+                                    <button key={s.id} type="button" className="dash-item" onClick={() => setSel(s)}>
+                                        <span className="dash-item-top"><strong>{s.name}</strong>{top && top.threat === 'Urgent' && <span className="dash-tag-urgent">URGENT</span>}<span className="dash-item-age">{d > 1 ? d + ' days in a row' : 'today'}</span></span>
+                                        <span className="dash-item-text">{top ? (top.title || top.details || 'Open issue') : 'No ping today'}{s.location ? ' · ' + s.location : ''}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="dash-panel" data-testid="dash-issues">
+                            <div className="dash-panel-head"><i className="dash-dot" style={{background: 'var(--amber)'}}/><h2>Open issues</h2><span className="dash-panel-count" style={{color: 'var(--amber)'}}>{attn.issues.length}</span></div>
+                            {attn.issues.length === 0 ? <div className="dash-empty">✓ No open issues</div> : issueList.map(i => {
+                                const s = ships.find(x => x.id === i.shipId);
+                                return (
+                                    <button key={i.id} type="button" className="dash-item" onClick={() => s && setSel(s)}>
+                                        <span className="dash-item-top"><strong>{shipName(i.shipId)}</strong>{i.threat === 'Urgent' && <span className="dash-tag-urgent">URGENT</span>}<span className="dash-item-age">{daysAgo(i.created)}</span></span>
+                                        <span className="dash-item-text">{i.title || i.details || 'Issue'}</span>
+                                    </button>
+                                );
+                            })}
+                            {attn.issues.length > issueList.length && <button type="button" className="dash-more" onClick={() => setTypeFilter('issues')}>+{attn.issues.length - issueList.length} more · show those ships</button>}
+                        </div>
                     </div>
                 );
             })()}
@@ -4569,7 +4659,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             <div id="dash-inbox">
                 {/* Green email notification banner — fixed to top */}
                 {pendingEmails.length > 0 && (
-                    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:100,background:'var(--green-glow)',borderBottom:'1px solid var(--green)',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px'}}>
+                    <div style={{marginBottom:'12px',borderRadius:'10px',background:'var(--green-glow)',border:'1px solid var(--green)',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px'}}>
                         <span style={{fontSize:'16px'}}>📬</span>
                         <span style={{color:'var(--green)',fontWeight:700,fontSize:'14px'}}>There {pendingEmails.length === 1 ? 'is' : 'are'} {pendingEmails.length} new email{pendingEmails.length > 1 ? 's' : ''} to review</span>
                     </div>
@@ -4748,62 +4838,43 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 })()}
             </div>
 
-            <div className="filters">
-                <button className={`filter-btn ${typeFilter === 'all' ? 'active' : ''}`} onClick={() => setTypeFilter('all')}>All Ships</button>
-                <button className={`filter-btn ${typeFilter === 'Full REAP' ? 'active' : ''}`} onClick={() => setTypeFilter('Full REAP')}>Full REAP ({chartData.fullReap})</button>
-                <button className={`filter-btn ${typeFilter === 'Mini REAP' ? 'active' : ''}`} onClick={() => setTypeFilter('Mini REAP')}>Mini REAP ({chartData.miniReap})</button>
-                <button className={`filter-btn ${typeFilter === 'attention' ? 'active' : ''}`} onClick={() => setTypeFilter(typeFilter === 'attention' ? 'all' : 'attention')}>⚠ Needs attention ({attn.ids.attention.size})</button>
-                {['offline', 'issues', 'contact'].includes(typeFilter) && <button className="filter-btn active" onClick={() => setTypeFilter('all')} title="Clear filter">{{ offline: 'Offline today', issues: 'Open issues', contact: 'Contact due' }[typeFilter]} ✕</button>}
-                <button className={`filter-btn ${typeFilter === 'updated' ? 'active' : ''}`} style={{background: typeFilter === 'updated' ? 'var(--green)' : 'transparent', borderColor: 'var(--green)', color: typeFilter === 'updated' ? '#fff' : 'var(--green)'}} onClick={() => setTypeFilter(typeFilter === 'updated' ? 'all' : 'updated')}>✓ Updated Today ({ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length})</button>
-            </div>
-            
             <div className="dash-grid dash-grid-v2">
                 <div className="card">
-                    <div className="card-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>🚢 Fleet <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>{dashReorder ? <><button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px',background:'var(--primary)',color:'#000',fontWeight:700}} onClick={() => setDashReorder(false)}>✓ Done</button><button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 8px'}} onClick={resetDashOrder}>↩ Reset</button></> : <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setDashReorder(true)}>↕ Reorder</button>}<span style={{fontWeight:'normal',color:'var(--text-muted)',fontSize:'11px'}}>{sorted.length} ships</span></span></div>
-                    <div className="ship-list">
-                        <div className="fleet-row fleet-head"><span>SHIP</span><span>TYPE</span><span>TODAY</span><span>TOP ISSUE</span><span>LAST CONTACT</span><span>HOMEPORT</span></div>
+                    <div className="dash-all-head">
+                        <h2 className="dash-all-title">All ships<span>{sorted.length}</span></h2>
+                        <div className="filters dash-filters">
+                            <button className={'filter-btn' + (typeFilter === 'all' ? ' active' : '')} onClick={() => setTypeFilter('all')}>All</button>
+                            <button className={'filter-btn' + (typeFilter === 'Full REAP' ? ' active' : '')} onClick={() => setTypeFilter('Full REAP')}>Full REAP ({chartData.fullReap})</button>
+                            <button className={'filter-btn' + (typeFilter === 'Mini REAP' ? ' active' : '')} onClick={() => setTypeFilter('Mini REAP')}>Mini REAP ({chartData.miniReap})</button>
+                            <button className={'filter-btn' + (typeFilter === 'attention' ? ' active' : '')} onClick={() => setTypeFilter(typeFilter === 'attention' ? 'all' : 'attention')}>⚠ Needs attention ({attn.ids.attention.size})</button>
+                            {['offline', 'issues'].includes(typeFilter) && <button className="filter-btn active" onClick={() => setTypeFilter('all')} title="Clear filter">{{ offline: 'Offline', issues: 'Open issues' }[typeFilter]} ✕</button>}
+                        </div>
+                        <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>{dashReorder ? <><button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px',background:'var(--primary)',color:'#000',fontWeight:700}} onClick={() => setDashReorder(false)}>✓ Done</button><button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 8px'}} onClick={resetDashOrder}>↩ Reset</button></> : <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setDashReorder(true)}>↕ Reorder</button>}</span>
+                    </div>
+                    <div className="ship-tiles">
                         {sorted.length === 0 && <div className="fleet-empty">No ships match this filter.</div>}
                         {sorted.map(ship => {
                             const si = issues.filter(i => i.shipId === ship.id && !i.resolved);
-                            const hasU = si.some(i => i.threat === 'Urgent'), hasM = si.some(i => i.threat === 'Mild');
-                            const es = getEmailStatus(ship, issues);
-                            const todayCheck = dailyChecks.find(c => c.shipId === ship.id && c.date === today);
-                            const isOnline = todayCheck ? (todayCheck.statusAM && todayCheck.statusPM) : null;
-                            const isInPort = ship.inPort && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
-                            const isPending = ship.pendingInstall;
-                            const isDeinstall = ship.pendingDeinstall;
-                            const topIssue = si.length > 0 ? si.sort((a,b) => a.threat === 'Urgent' ? -1 : 1)[0] : null;
-                            // Real last contact from email history
-                            const shipEmails = emailHistory.filter(h => h.shipId === ship.id);
-                            const realLastContact = shipEmails.length > 0 ? shipEmails.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0].timestamp : ship.lastContact;
-                            const updatedToday = realLastContact && fmtDateInput(realLastContact) === today;
-                            const daysSinceContact = realLastContact ? Math.floor((new Date() - new Date(realLastContact)) / 86400000) : 999;
+                            const topIssue = si.find(i => i.threat === 'Urgent') || si[0];
                             const t = shipToday(ship);
-                            const issueText = topIssue ? (topIssue.title || topIssue.details || 'Issue') : '';
-                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
-                                className={'fleet-row' + (sel?.id === ship.id ? ' selected' : '') + (t.state === 'offline' ? ' is-offline' : '') + (hasU ? ' is-urgent' : '')}
-                                style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : undefined}}>
-                                <span className="ship-name">{dashReorder && <span style={{color:'var(--text-muted)',marginRight:'6px',cursor:'grab'}}>⋮⋮</span>}{ship.name}{updatedToday && <span className="fleet-today-tag" title="Contacted today">✓</span>}</span>
-                                <span className="ship-type">{ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type}</span>
-                                <span className={'fleet-today state-' + t.state}>
-                                    {t.state !== 'pending' && <><i className={'ping-dot' + (t.am ? ' on' : '')} title={t.am ? 'AM ping entered' : 'No AM ping'}/><i className={'ping-dot' + (t.pm ? ' on' : '')} title={t.pm ? 'PM ping entered' : 'No PM ping'}/></>}
-                                    <span>{t.label}</span>
-                                    {isPending && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button>}
-                                </span>
-                                <span className="fleet-issue" title={issueText}>
-                                    {topIssue ? <><i className={'sev-dot ' + (topIssue.threat === 'Urgent' ? 'sev-urgent' : 'sev-mild')}/><span className="fleet-issue-text">{issueText}</span>{si.length > 1 && <span className="fleet-more">+{si.length - 1}</span>}</> : <span className="fleet-none">—</span>}
-                                </span>
-                                <span className="fleet-contact">
-                                    {ship.waitingReply ? <span style={{color:'var(--blue)'}}>⏳ Waiting reply</span>
-                                     : isPending ? <span className="fleet-none">Not installed</span>
-                                     : isDeinstall ? <span style={{color:'var(--red)'}}>Removal{ship.deinstallDate ? ' ' + fmtDate(ship.deinstallDate) : ''}</span>
-                                     : realLastContact ? <span className="tip" data-tip={fmtDate(realLastContact)} style={{color: daysSinceContact > 7 ? 'var(--red)' : daysSinceContact > 3 ? 'var(--amber)' : 'var(--text-dim)', fontWeight: daysSinceContact > 7 ? 600 : 400}}>{relTime(realLastContact)}</span>
-                                     : <span className="fleet-none">Never</span>}
-                                </span>
-                                <span className="fleet-port">
-                                    {isInPort ? <><span style={{color:'var(--blue)'}}>⚓ Back {fmtDate(ship.inPortUntil)}</span><button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button></> : (ship.location || '—')}
-                                </span>
-                            </div>);
+                            const isInPort = ship.inPort && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
+                            const st = t.state === 'pending' ? 'pend' : t.state === 'offline' ? 'off' : si.length ? 'iss' : t.state === 'unchecked' ? 'nc' : 'on';
+                            const note = t.state === 'pending' ? t.label : topIssue ? (topIssue.title || topIssue.details || 'Open issue') : isInPort ? '⚓ In port until ' + fmtDate(ship.inPortUntil) : t.label;
+                            return (
+                                <div key={ship.id} role="button" tabIndex={0} data-testid={'ship-tile-' + ship.name}
+                                    className={'ship-tile st-' + st + (sel?.id === ship.id ? ' selected' : '')}
+                                    onClick={() => setSel(ship)} onKeyDown={e => { if (e.key === 'Enter') setSel(ship); }}
+                                    draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
+                                    style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, outline: dashDragOver === ship.id && dashDragShip !== ship.id ? '2px solid var(--primary)' : undefined}}>
+                                    <div className="ship-tile-top"><span className="ship-name">{dashReorder && <span style={{color:'var(--text-muted)',marginRight:'4px'}}>⋮⋮</span>}{ship.name}</span><span className="ship-tile-type">{ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type}</span></div>
+                                    <div className="ship-tile-port">{ship.location || '—'}</div>
+                                    <div className="ship-tile-note" title={note}>
+                                        <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{note}</span>
+                                        {ship.pendingInstall && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button>}
+                                        {isInPort && !ship.pendingInstall && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button>}
+                                    </div>
+                                </div>
+                            );
                         })}
                     </div>
                 </div>
