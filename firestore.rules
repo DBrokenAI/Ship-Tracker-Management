@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// Ship Tracker Pro — Firestore security rules
+// Deploy: Firebase console → Firestore Database → Rules (paste + Publish),
+//         or `npx firebase-tools deploy --only firestore:rules`
+//
+// Note: if several `match` blocks cover a document, access is granted if ANY allows it,
+// so there is deliberately no catch-all `/{collection}/{doc}` rule here.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function myDocPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function me() { return get(myDocPath()).data; }
+    function approved() { return signedIn() && exists(myDocPath()) && me().status == 'approved'; }
+    function admin() { return approved() && me().isAdmin == true; }
+
+    // ---- Users ----
+    match /users/{uid} {
+      allow read: if approved() || (signedIn() && request.auth.uid == uid);
+
+      // Self-registration: only as a pending, non-admin user whose username matches their login
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['username', 'usernameLower', 'status', 'isAdmin', 'requestedAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.isAdmin == false
+        && request.resource.data.usernameLower == request.resource.data.username.lower()
+        && request.resource.data.usernameLower + '@ship-checker.firebaseapp.com' == request.auth.token.email;
+
+      // Admins manage accounts; everyone else may only stamp their own lastLogin
+      allow update: if admin()
+        || (approved() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLogin']));
+      allow delete: if admin();
+    }
+
+    // ---- Presence (doc id = username) ----
+    match /presence/{name} {
+      allow read: if approved();
+      allow write: if approved() && name.lower() == me().usernameLower;
+    }
+
+    // ---- Settings ----
+    // vbaCode / vbaConfig are what every coworker's Outlook macro installs, so only admins may change them.
+    match /settings/{docId} {
+      // TEMPORARY: public read of the VBA docs so the current Outlook macro (which does not sign in) keeps updating.
+      // Remove the `docId in [...]` part once the macro authenticates.
+      allow read: if approved() || docId in ['vbaConfig', 'vbaCode'];
+      allow write: if (docId in ['vbaConfig', 'vbaCode'] && admin())
+                   || (!(docId in ['vbaConfig', 'vbaCode']) && approved());
+    }
+
+    // ---- Emails captured by the Outlook macro ----
+    match /incomingEmails/{docId} {
+      allow read, update, delete: if approved();
+      // TEMPORARY: the current Outlook macro posts emails without signing in. Create-only, no reads.
+      // Change to `allow create: if approved();` once the macro authenticates.
+      allow create: if true;
+    }
+
+    // ---- Shared team data: any approved user ----
+    match /ships/{docId}          { allow read, write: if approved(); }
+    match /issues/{docId}         { allow read, write: if approved(); }
+    match /dailyChecks/{docId}    { allow read, write: if approved(); }
+    match /installs/{docId}       { allow read, write: if approved(); }
+    match /parts/{docId}          { allow read, write: if approved(); }
+    match /activityLog/{docId}    { allow read, write: if approved(); }
+    match /suggestions/{docId}    { allow read, write: if approved(); }
+    match /quickNotes/{docId}     { allow read, write: if approved(); }
+    match /acceptedEmails/{docId} { allow read, write: if approved(); }
+    match /rejectedEmails/{docId} { allow read, write: if approved(); }
+    match /eodLogs/{docId}        { allow read, write: if approved(); }
+    match /pocContacts/{docId}    { allow read, write: if approved(); }
+    match /config/{docId}         { allow read, write: if approved(); }
+  }
+}

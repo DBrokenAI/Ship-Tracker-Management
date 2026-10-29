@@ -408,6 +408,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <script>
 // Firebase Configuration
@@ -416,23 +417,48 @@ const firebaseConfig = JSON.parse(atob("eyJhcGlLZXkiOiJBSXphU3lBMkhTZnRvZFRIRHEz
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
 
-// Simple hash function for passwords
-const hashPassword = (password) => {
-    let hash = 0;
-    for (let i = 0; i < password.length; i++) {
-        const char = password.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return 'h' + Math.abs(hash).toString(16);
+// Firebase Auth needs an email; usernames map to an address on the project's own domain (never emailed)
+const USERNAME_RE = /^[A-Za-z0-9._-]{2,32}$/;
+const usernameToEmail = (username) => username.trim().toLowerCase() + '@ship-checker.firebaseapp.com';
+const authErrorMessage = (err) => {
+    const code = (err && err.code) || '';
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-email') return 'Invalid username or password.';
+    if (code === 'auth/email-already-in-use') return 'That username is already taken.';
+    if (code === 'auth/weak-password') return 'Password must be at least 8 characters.';
+    if (code === 'auth/too-many-requests') return 'Too many failed attempts. Try again in a few minutes.';
+    if (code === 'auth/network-request-failed') return 'Network error. Check your connection.';
+    if (code === 'auth/operation-not-allowed' || code === 'auth/configuration-not-found') return 'Sign-in is not enabled yet. Contact admin.';
+    console.error('Auth error:', err);
+    return 'Something went wrong. Please try again.';
 };
+// Change the signed-in user's own password (Firebase requires the current one for this)
+const changeMyPassword = () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const current = prompt('Current password:');
+    if (current === null) return;
+    const next = prompt('New password (min 8 characters):');
+    if (next === null) return;
+    if (next.length < 8) { alert('Password must be at least 8 characters.'); return; }
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, current);
+    user.reauthenticateWithCredential(cred)
+        .then(() => user.updatePassword(next))
+        .then(() => alert('Password changed.'))
+        .catch(err => alert(authErrorMessage(err)));
+};
+
+// Escape text before inserting it into HTML strings (innerHTML, document.write, exported reports)
+const escHtml = (v) => String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 </script>
 
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-28T139";
+    var APP_BUILD = "2026-10-29T140";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -667,89 +693,56 @@ const useStorage = (key, init) => {
 };
 
 // ===== AUTHENTICATION =====
-function LoginPage({ onLogin, users, loginAttempts, setLoginAttempts }) {
+function LoginPage({ authMessage }) {
     const [mode, setMode] = useState('login');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    // Messages pushed from AuthWrapper (pending approval, deactivated, etc.)
+    useEffect(() => { if (authMessage) { setError(authMessage.text); setSuccess(''); } }, [authMessage]);
 
     const handleLogin = (e) => {
         e.preventDefault();
-        setError('');
-        if (!username.trim() || !password.trim()) { setError('Please enter username and password'); return; }
-        
-        // Check for lockout
-        const attemptKey = username.toLowerCase();
-        const attempts = loginAttempts[attemptKey] || { count: 0, lockedUntil: null };
-        if (attempts.lockedUntil && new Date() < new Date(attempts.lockedUntil)) {
-            const mins = Math.ceil((new Date(attempts.lockedUntil) - new Date()) / 60000);
-            setError(`Account locked. Try again in ${mins} minute${mins > 1 ? 's' : ''}.`);
-            return;
-        }
-        
-        const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-        if (!user) { 
-            // Track failed attempt
-            const newAttempts = { ...loginAttempts, [attemptKey]: { count: (attempts.count || 0) + 1, lockedUntil: null } };
-            if (newAttempts[attemptKey].count >= 5) {
-                newAttempts[attemptKey].lockedUntil = new Date(Date.now() + 15 * 60000).toISOString(); // 15 min lockout
-                setError('Too many failed attempts. Account locked for 15 minutes.');
-            } else {
-                setError(`User not found. ${5 - newAttempts[attemptKey].count} attempts remaining.`);
-            }
-            setLoginAttempts(newAttempts);
-            localStorage.setItem('loginAttempts', JSON.stringify(newAttempts));
-            return; 
-        }
-        if (user.status === 'pending') { setError('Your account is pending approval.'); return; }
-        if (user.status === 'denied') { setError('Your access was denied. Contact admin.'); return; }
-        if (user.status === 'deactivated') { setError('Your account has been deactivated. Contact admin.'); return; }
-        
-        const newHash = hashPassword(password);
-        if (user.passwordHash !== newHash) {
-            // Track failed attempt
-            const newAttempts = { ...loginAttempts, [attemptKey]: { count: (attempts.count || 0) + 1, lockedUntil: null } };
-            if (newAttempts[attemptKey].count >= 5) {
-                newAttempts[attemptKey].lockedUntil = new Date(Date.now() + 15 * 60000).toISOString();
-                setError('Too many failed attempts. Account locked for 15 minutes.');
-            } else {
-                setError(`Invalid password. ${5 - newAttempts[attemptKey].count} attempts remaining.`);
-            }
-            setLoginAttempts(newAttempts);
-            localStorage.setItem('loginAttempts', JSON.stringify(newAttempts));
-            return;
-        }
-        
-        // Successful login - clear attempts and record login
-        const newAttempts = { ...loginAttempts };
-        delete newAttempts[attemptKey];
-        setLoginAttempts(newAttempts);
-        localStorage.setItem('loginAttempts', JSON.stringify(newAttempts));
-        
-        // Record last login
-        const lastLogin = user.lastLogin || null;
-        const loginRecord = { timestamp: new Date().toISOString(), sessionStart: Date.now() };
-        db.collection('users').doc(user.id).update({ lastLogin: loginRecord });
-        
-        localStorage.setItem('shipTrackerUser', JSON.stringify({ username: user.username, isAdmin: user.isAdmin, lastLogin, sessionStart: loginRecord.sessionStart }));
-        onLogin(user, lastLogin);
+        setError(''); setSuccess('');
+        if (!username.trim() || !password) { setError('Please enter username and password'); return; }
+        if (!USERNAME_RE.test(username.trim())) { setError('Invalid username or password.'); return; }
+        setBusy(true);
+        // Firebase checks the password server-side; AuthWrapper takes over via onAuthStateChanged
+        auth.signInWithEmailAndPassword(usernameToEmail(username), password)
+            .catch(err => setError(authErrorMessage(err)))
+            .finally(() => setBusy(false));
     };
 
     const handleRegister = (e) => {
         e.preventDefault();
         setError(''); setSuccess('');
-        if (!username.trim() || !password.trim()) { setError('Please fill in all fields'); return; }
+        const name = username.trim();
+        if (!name || !password) { setError('Please fill in all fields'); return; }
+        if (!USERNAME_RE.test(name)) { setError('Username must be 2-32 characters: letters, numbers, dot, dash or underscore.'); return; }
         if (password !== confirmPassword) { setError('Passwords do not match'); return; }
-        if (password.length < 4) { setError('Password must be at least 4 characters'); return; }
-        if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) { setError('Username already exists'); return; }
-        const newUser = { id: 'U' + Date.now(), username: username.trim(), passwordHash: hashPassword(password), status: 'pending', isAdmin: false, requestedAt: new Date().toISOString() };
-        db.collection('users').doc(newUser.id).set(newUser);
-        setSuccess('Access request submitted! Please wait for admin approval.');
-        setUsername(''); setPassword(''); setConfirmPassword(''); setMode('login');
+        if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
+        setBusy(true);
+        window.__registering = true;
+        auth.createUserWithEmailAndPassword(usernameToEmail(name), password)
+            .then(cred => db.collection('users').doc(cred.user.uid).set({
+                username: name,
+                usernameLower: name.toLowerCase(),
+                status: 'pending',
+                isAdmin: false,
+                requestedAt: new Date().toISOString()
+            }))
+            .then(() => auth.signOut())
+            .then(() => {
+                setSuccess('Access request submitted! Please wait for admin approval.');
+                setUsername(''); setPassword(''); setConfirmPassword(''); setMode('login');
+            })
+            .catch(err => { setError(authErrorMessage(err)); auth.signOut().catch(() => {}); })
+            .finally(() => { window.__registering = false; setBusy(false); });
     };
-
     return (
         <div style={{minHeight:'100vh',background:'var(--bg-deep)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
             <div style={{width:'100%',maxWidth:'400px'}}>
@@ -810,14 +803,14 @@ function LoginPage({ onLogin, users, loginAttempts, setLoginAttempts }) {
                         <form onSubmit={handleLogin}>
                             <div style={{marginBottom:'16px'}}><label style={{display:'block',fontSize:'12px',color:'var(--text-dim)',marginBottom:'6px'}}>Username</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} style={{width:'100%',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'14px'}} placeholder="Enter username"/></div>
                             <div style={{marginBottom:'24px'}}><label style={{display:'block',fontSize:'12px',color:'var(--text-dim)',marginBottom:'6px'}}>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={{width:'100%',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'14px'}} placeholder="Enter password"/></div>
-                            <button type="submit" style={{width:'100%',padding:'14px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>Login</button>
+                            <button type="submit" disabled={busy} style={{width:'100%',padding:'14px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:600,cursor:'pointer',opacity: busy ? 0.6 : 1}}>{busy ? 'Signing in…' : 'Login'}</button>
                         </form>
                     ) : (
                         <form onSubmit={handleRegister}>
                             <div style={{marginBottom:'16px'}}><label style={{display:'block',fontSize:'12px',color:'var(--text-dim)',marginBottom:'6px'}}>Username</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} style={{width:'100%',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'14px'}} placeholder="Choose username"/></div>
                             <div style={{marginBottom:'16px'}}><label style={{display:'block',fontSize:'12px',color:'var(--text-dim)',marginBottom:'6px'}}>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={{width:'100%',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'14px'}} placeholder="Create password"/></div>
                             <div style={{marginBottom:'24px'}}><label style={{display:'block',fontSize:'12px',color:'var(--text-dim)',marginBottom:'6px'}}>Confirm Password</label><input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={{width:'100%',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'14px'}} placeholder="Confirm password"/></div>
-                            <button type="submit" style={{width:'100%',padding:'14px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:600,cursor:'pointer'}}>Request Access</button>
+                            <button type="submit" disabled={busy} style={{width:'100%',padding:'14px',background:'var(--primary)',color:'#000',border:'none',borderRadius:'8px',fontSize:'14px',fontWeight:600,cursor:'pointer',opacity: busy ? 0.6 : 1}}>{busy ? 'Submitting…' : 'Request Access'}</button>
                             <p style={{fontSize:'11px',color:'var(--text-muted)',textAlign:'center',marginTop:'12px'}}>Your request will be sent to admin for approval</p>
                         </form>
                     )}
@@ -827,7 +820,7 @@ function LoginPage({ onLogin, users, loginAttempts, setLoginAttempts }) {
     );
 }
 
-function AdminPanel({ users, onClose }) {
+function AdminPanel({ users, currentUid, onClose }) {
     const pending = users.filter(u => u.status === 'pending');
     const approved = users.filter(u => u.status === 'approved');
     const denied = users.filter(u => u.status === 'denied');
@@ -836,7 +829,15 @@ function AdminPanel({ users, onClose }) {
     const deny = (u) => db.collection('users').doc(u.id).update({ status: 'denied', deniedAt: new Date().toISOString() });
     const deactivate = (u) => { if (confirm(`Deactivate ${u.username}?`)) db.collection('users').doc(u.id).update({ status: 'deactivated', deactivatedAt: new Date().toISOString() }); };
     const del = (u) => { if (!u.isAdmin && confirm(`Permanently delete ${u.username}?`)) db.collection('users').doc(u.id).delete(); };
-    const resetPw = (u) => { const p = prompt(`New password for ${u.username}:`); if (p && p.length >= 4) { db.collection('users').doc(u.id).update({ passwordHash: hashPassword(p) }); alert('Password reset!'); } };
+    // Passwords live in Firebase Auth now; admins can't set someone else's from the browser
+    const resetPw = (u) => alert(`To reset ${u.username}'s password:\n\n1. Firebase console → Authentication → Users\n2. Delete ${usernameToEmail(u.username)}\n3. Delete their account here (🗑)\n4. They submit "Request Access" again and you approve it.`);
+    const isSelf = (u) => u.id === currentUid;
+    // Accounts from the old homemade login (they carry a password hash and can no longer sign in)
+    const legacy = users.filter(u => u.passwordHash !== undefined);
+    const removeLegacy = () => {
+        if (!confirm(`Delete ${legacy.length} old-style account record(s)? Those people need to "Request Access" again.`)) return;
+        legacy.forEach(u => db.collection('users').doc(u.id).delete());
+    };
     const [onlineList, setOnlineList] = useState([]);
     const [showCleanup, setShowCleanup] = useState(false);
     useEffect(() => { const unsub = db.collection('presence').onSnapshot(snap => { const now = Date.now(); setOnlineList(snap.docs.map(d => d.data()).filter(u => now - u.lastSeen < 120000).map(u => u.username)); }); return () => unsub(); }, []);
@@ -893,6 +894,12 @@ function AdminPanel({ users, onClose }) {
                             <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'6px',textAlign:'center'}}>Keeps the most active account per duplicate. Admins never deleted.</div>
                         </div>
                     )}
+                    {legacy.length > 0 && (
+                        <div style={{marginBottom:'24px',padding:'14px 16px',borderRadius:'12px',background:'var(--amber-glow)',border:'1px solid var(--amber)',display:'flex',alignItems:'center',gap:'12px'}}>
+                            <div style={{flex:1,fontSize:'12px'}}><b>{legacy.length} old-style account record(s)</b> from before the secure login. They can't sign in and still contain old password hashes. Delete them once everyone has re-requested access.</div>
+                            <button onClick={removeLegacy} style={{padding:'8px 14px',background:'var(--amber)',color:'#000',border:'none',borderRadius:'8px',fontSize:'11px',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>Delete old records</button>
+                        </div>
+                    )}
                     {pending.length > 0 && <div style={{marginBottom:'24px'}}><h3 style={{fontSize:'13px',color:'var(--amber)',marginBottom:'12px',display:'flex',alignItems:'center',gap:'8px'}}><span style={{background:'var(--amber)',color:'#000',padding:'2px 10px',borderRadius:'10px',fontSize:'11px',fontWeight:700}}>{pending.length}</span> Pending Approval</h3>
                         {pending.map(u => (<div key={u.id} style={{background:'var(--amber-glow)',border:'1px solid var(--amber)',borderRadius:'10px',padding:'14px 16px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontWeight:700,fontSize:'14px'}}>{u.username}</div><div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'2px'}}>Requested: {new Date(u.requestedAt).toLocaleDateString()}</div></div><div style={{display:'flex',gap:'8px'}}><button onClick={() => approve(u)} style={{padding:'8px 16px',background:'var(--green)',color:'#000',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>✓ Approve</button><button onClick={() => deny(u)} style={{padding:'8px 16px',background:'var(--red)',color:'#fff',border:'none',borderRadius:'8px',fontSize:'12px',fontWeight:700,cursor:'pointer'}}>✕ Deny</button></div></div>))}</div>}
                     <div style={{marginBottom:'24px'}}><h3 style={{fontSize:'13px',color:'var(--green)',marginBottom:'12px'}}>✓ Active Users ({approved.length})</h3>
@@ -913,6 +920,7 @@ function AdminPanel({ users, onClose }) {
                                         </div>
                                         <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'3px'}}>Last active: {getLastActive(u)}{u.lastLogin?.timestamp && ` • ${new Date(u.lastLogin.timestamp).toLocaleDateString()}`}</div>
                                     </div>
+                                    {u.isAdmin && isSelf(u) && <button onClick={changeMyPassword} className="tip" data-tip="Change my password" style={{padding:'6px 10px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',color:'var(--text-dim)',flexShrink:0}}>🔑</button>}
                                     {!u.isAdmin && (<div style={{display:'flex',gap:'6px',flexShrink:0}}>
                                         <button onClick={() => resetPw(u)} className="tip" data-tip="Reset password" style={{padding:'6px 10px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',color:'var(--text-dim)'}}>🔑</button>
                                         <button onClick={() => deactivate(u)} className="tip" data-tip="Deactivate" style={{padding:'6px 10px',background:'var(--amber-glow)',border:'1px solid var(--amber)',borderRadius:'6px',fontSize:'11px',cursor:'pointer',color:'var(--amber)'}}>⏸</button>
@@ -1022,25 +1030,101 @@ function VBAConfigPanel() {
 }
 
 function AuthWrapper() {
-    const [currentUser, setCurrentUser] = useState(() => { try { return JSON.parse(localStorage.getItem('shipTrackerUser')); } catch { return null; } });
-    const [users, setUsers] = useState(() => {
-        try { const s = localStorage.getItem('fb_users'); if (s) return JSON.parse(s); } catch {}
-        const admin = { id: 'UADMIN001', username: 'DBrown', passwordHash: hashPassword('admin123'), status: 'approved', isAdmin: true, createdAt: new Date().toISOString() };
-        localStorage.setItem('fb_users', JSON.stringify([admin]));
-        return [admin];
-    });
+    // authState: 'loading' until Firebase reports whether someone is signed in
+    const [authState, setAuthState] = useState('loading');
+    const [authUser, setAuthUser] = useState(null);   // Firebase Auth user
+    const [myDoc, setMyDoc] = useState(null);         // users/{uid} document
+    const [authMessage, setAuthMessage] = useState(null); // { text } — new object each time so repeats still show
+    const [users, setUsers] = useState([]);
     const [showAdmin, setShowAdmin] = useState(false);
-    const [loginAttempts, setLoginAttempts] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('loginAttempts') || '{}'); } catch { return {}; }
-    });
     const [sessionWarning, setSessionWarning] = useState(false);
-    const init = useRef(false);
     const lastActivity = useRef(Date.now());
-    
+    const session = useRef(null); // { sessionStart, lastLogin }
+
     // Session timeout: 8 hours
     const SESSION_TIMEOUT = 8 * 60 * 60 * 1000;
     const WARNING_BEFORE = 5 * 60 * 1000; // 5 min warning
-    
+
+    const isApproved = !!myDoc && myDoc.status === 'approved';
+    const isAdmin = isApproved && myDoc.isAdmin === true;
+    // Memoized so App's [currentUser] effects (presence, login log) don't re-run every render
+    const currentUser = useMemo(() => {
+        if (!authUser || !isApproved) return null;
+        if (!session.current) {
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem('shipTrackerSession')); } catch {}
+            session.current = saved && saved.uid === authUser.uid ? saved : { uid: authUser.uid, sessionStart: Date.now(), lastLogin: myDoc.lastLogin || null };
+            localStorage.setItem('shipTrackerSession', JSON.stringify(session.current));
+        }
+        return { uid: authUser.uid, username: myDoc.username, isAdmin, lastLogin: session.current.lastLogin, sessionStart: session.current.sessionStart };
+    }, [authUser, isApproved, isAdmin, myDoc && myDoc.username]);
+
+    const logout = (reason) => {
+        if (currentUser?.username) {
+            db.collection('presence').doc(currentUser.username).delete().catch(() => {});
+        }
+        localStorage.removeItem('shipTrackerSession');
+        session.current = null;
+        setSessionWarning(false);
+        setShowAdmin(false);
+        auth.signOut().catch(() => {});
+        if (reason) console.log('Logout:', reason);
+    };
+
+    // Firebase Auth state
+    useEffect(() => auth.onAuthStateChanged(user => {
+        setAuthUser(user);
+        setMyDoc(null);
+        if (user) setAuthMessage(null);
+        if (!user) { session.current = null; setAuthState('signedOut'); }
+        else setAuthState('checking');
+    }), []);
+
+    // Watch the signed-in user's own record — status/role always come from Firestore, never localStorage
+    useEffect(() => {
+        if (!authUser) return;
+        const ref = db.collection('users').doc(authUser.uid);
+        return ref.onSnapshot(doc => {
+            if (window.__registering) return; // LoginPage is creating this doc and will sign out
+            if (!doc.exists) {
+                // Auth account exists but its access request was never saved — recreate it
+                const name = (authUser.email || '').split('@')[0];
+                ref.set({ username: name, usernameLower: name.toLowerCase(), status: 'pending', isAdmin: false, requestedAt: new Date().toISOString() }).catch(() => {});
+                setAuthMessage({ text: 'Your account is pending approval.' });
+                auth.signOut();
+                return;
+            }
+            const data = { id: doc.id, ...doc.data() };
+            if (data.status !== 'approved') {
+                const msgs = { pending: 'Your account is pending approval.', denied: 'Your access was denied. Contact admin.', deactivated: 'Your account has been deactivated. Contact admin.' };
+                setAuthMessage({ text: msgs[data.status] || 'Your account is not approved.' });
+                logout('Account not approved');
+                return;
+            }
+            setMyDoc(data);
+            setAuthState('ready');
+        }, err => {
+            console.error('User record error:', err);
+            setAuthMessage({ text: 'Could not load your account. Try again.' });
+            auth.signOut();
+        });
+    }, [authUser]);
+
+    // Record the login once per Firebase sign-in
+    useEffect(() => {
+        if (!currentUser) return;
+        const ref = db.collection('users').doc(currentUser.uid);
+        ref.update({ lastLogin: { timestamp: new Date().toISOString(), sessionStart: currentUser.sessionStart } }).catch(() => {});
+    }, [currentUser?.uid]);
+
+    // Everyone approved can see the user list (activity log, presence); admins manage it
+    useEffect(() => {
+        if (!isApproved) { setUsers([]); return; }
+        return db.collection('users').onSnapshot(snap => {
+            setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }, err => console.error('Users listener error:', err));
+    }, [isApproved]);
+
     // Track user activity
     useEffect(() => {
         if (!currentUser) return;
@@ -1054,21 +1138,20 @@ function AuthWrapper() {
             window.removeEventListener('click', updateActivity);
         };
     }, [currentUser]);
-    
+
     // Check session timeout
     useEffect(() => {
         if (!currentUser) return;
         const checkSession = () => {
-            const sessionStart = currentUser.sessionStart || Date.now();
-            const elapsed = Date.now() - sessionStart;
+            const elapsed = Date.now() - (currentUser.sessionStart || Date.now());
             const inactive = Date.now() - lastActivity.current;
-            
+
             // Auto-logout after 8 hours total session OR 2 hours inactivity
             if (elapsed > SESSION_TIMEOUT || inactive > 2 * 60 * 60 * 1000) {
                 logout('Session expired');
                 return;
             }
-            
+
             // Show warning 5 min before timeout
             if (elapsed > SESSION_TIMEOUT - WARNING_BEFORE || inactive > 2 * 60 * 60 * 1000 - WARNING_BEFORE) {
                 setSessionWarning(true);
@@ -1078,44 +1161,15 @@ function AuthWrapper() {
         return () => clearInterval(interval);
     }, [currentUser]);
 
-    useEffect(() => {
-        const correctAdminHash = hashPassword('admin123');
-        const unsub = db.collection('users').onSnapshot((snap) => {
-            if (!snap.empty) {
-                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                // Ensure admin user has correct password hash
-                const adminUser = list.find(u => u.username.toLowerCase() === 'dbrown');
-                if (adminUser && adminUser.passwordHash !== correctAdminHash) {
-                    console.log('Fixing admin password hash...');
-                    db.collection('users').doc(adminUser.id).update({ passwordHash: correctAdminHash });
-                }
-                setUsers(list);
-                localStorage.setItem('fb_users', JSON.stringify(list));
-            } else if (!init.current) {
-                init.current = true;
-                const admin = { id: 'UADMIN001', username: 'DBrown', passwordHash: correctAdminHash, status: 'approved', isAdmin: true, createdAt: new Date().toISOString() };
-                db.collection('users').doc(admin.id).set(admin);
-            }
-        });
-        return () => unsub();
-    }, []);
-
-    const logout = (reason) => { 
-        // Clean up presence document
-        if (currentUser?.username) {
-            db.collection('presence').doc(currentUser.username).delete().catch(() => {});
-        }
-        localStorage.removeItem('shipTrackerUser'); 
-        setCurrentUser(null); 
-        setSessionWarning(false);
-        if (reason) console.log('Logout:', reason);
-    };
     const pending = users.filter(u => u.status === 'pending').length;
 
+    if (authState === 'loading' || (authState === 'checking' && !authMessage)) {
+        return <div style={{minHeight:'100vh',background:'var(--bg-deep)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-muted)',fontSize:'13px'}}>Signing in…</div>;
+    }
     if (currentUser) return (
         <>
-            <App currentUser={currentUser} onLogout={() => logout('User logout')} isAdmin={currentUser.isAdmin} pendingCount={pending} onOpenAdminPanel={() => setShowAdmin(true)} allUsers={users}/>
-            {showAdmin && currentUser.isAdmin && <AdminPanel users={users} onClose={() => setShowAdmin(false)}/>}
+            <App currentUser={currentUser} onLogout={() => logout('User logout')} isAdmin={isAdmin} pendingCount={pending} onOpenAdminPanel={() => setShowAdmin(true)} allUsers={users}/>
+            {showAdmin && isAdmin && <AdminPanel users={users} currentUid={currentUser.uid} onClose={() => setShowAdmin(false)}/>}
             {sessionWarning && (
                 <div style={{position:'fixed',bottom:'20px',right:'20px',padding:'16px 20px',background:'var(--amber-glow)',border:'2px solid var(--amber)',borderRadius:'12px',zIndex:10000,boxShadow:'0 4px 20px rgba(0,0,0,0.3)'}}>
                     <div style={{fontWeight:600,color:'var(--amber)',marginBottom:'8px'}}>⚠️ Session Expiring Soon</div>
@@ -1125,7 +1179,7 @@ function AuthWrapper() {
             )}
         </>
     );
-    return <LoginPage onLogin={(u, lastLogin) => setCurrentUser({ username: u.username, isAdmin: u.isAdmin, lastLogin, sessionStart: Date.now() })} users={users} loginAttempts={loginAttempts} setLoginAttempts={setLoginAttempts}/>;
+    return <LoginPage authMessage={authMessage}/>;
 }
 
 
@@ -1599,11 +1653,12 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
                         <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
                     </div>
+                    <button onClick={changeMyPassword} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',margin:'6px 0'}}>🔑 Change Password</button>
                     <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T139'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T140'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1614,7 +1669,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T139');
+                                    localStorage.setItem('lastSeenBuild', 'T140');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1623,6 +1678,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T140'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--red)',marginBottom:'6px'}}, '🔒 Secure Login'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Login now uses Firebase Authentication — passwords are checked by Google, not the browser\n• Everyone (including admin) must Request Access once and be re-approved\n• Database access enforced server-side by Firestore security rules (new firestore.rules file)\n• Pending, denied and deactivated users are blocked from all data, not just the login screen\n• Deactivating a user now logs them out immediately\n• Admin rights are read from the database — editing browser storage no longer grants admin\n• Removed the hardcoded admin123 password and the code that reset the admin password on every load\n• Removed the old weak password hash and the browser-only login lockout (Firebase rate-limits instead)\n• Only admins can push VBA updates to coworkers’ Outlook\n• New: 🔑 Change Password button in the sidebar (and on the admin’s own row in Admin Panel)\n• Minimum password length raised from 4 to 8 characters\n• Usernames limited to letters, numbers, dot, dash, underscore (2-32 characters)\n• Admin Panel: banner to delete old-style account records once everyone has re-registered\n• Admin Panel: password reset for others now shows the Firebase console steps\n• Security fix: End of Day report (email, clipboard, Excel) now escapes ship names and notes\n• Security fix: base Print page now escapes contact names, roles, phones and emails\n• Print button shows a message instead of crashing when pop-ups are blocked\n• Login and Request Access buttons show progress and can’t be double-clicked\n• Added Firebase Hosting config (firebase.json, .firebaserc) and SECURITY-SETUP.md cutover guide'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 28, 2026 — Build T139'),
@@ -6252,13 +6314,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 var diC = r.diode==='Up' ? '#00a844' : r.diode==='Down'||r.diode==='Output-down' ? '#d32f2f' : '#888';
                 var phC = r.phone==='Up' ? '#00a844' : r.phone==='Down' ? '#d32f2f' : '#888';
                 h += '<tr style="background:' + rowBg + ';">';
-                h += '<td style="padding:8px 12px;border:1px solid #bbb;font-weight:bold;font-size:13px;">' + r.name + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + amC + ';">' + r.am + (r.amPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + r.amPing + '</span>' : '') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + pmC + ';">' + r.pm + (r.pmPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + r.pmPing + '</span>' : '') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;color:#555;">' + (r.files || '0') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + diC + ';">' + (r.diode || '') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + phC + ';">' + (r.phone || '') + '</td>';
-                h += '<td style="padding:8px 12px;border:1px solid #bbb;font-size:12px;line-height:1.6;">' + (r.notes || '') + (r.lastContactDate ? '<br><span style="color:#888;font-size:11px;">' + r.lastContactDate + '</span>' : '') + '</td>';
+                h += '<td style="padding:8px 12px;border:1px solid #bbb;font-weight:bold;font-size:13px;">' + escHtml(r.name) + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + amC + ';">' + escHtml(r.am) + (r.amPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + escHtml(r.amPing) + '</span>' : '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + pmC + ';">' + escHtml(r.pm) + (r.pmPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + escHtml(r.pmPing) + '</span>' : '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;color:#555;">' + escHtml(r.files || '0') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + diC + ';">' + escHtml(r.diode || '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + phC + ';">' + escHtml(r.phone || '') + '</td>';
+                h += '<td style="padding:8px 12px;border:1px solid #bbb;font-size:12px;line-height:1.6;">' + escHtml(r.notes || '') + (r.lastContactDate ? '<br><span style="color:#888;font-size:11px;">' + escHtml(r.lastContactDate) + '</span>' : '') + '</td>';
                 h += '</tr>';
             });
         };
@@ -7937,13 +7999,14 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
                             )}
                             <button className="btn btn-sm btn-secondary" onClick={() => {
                                 const win = window.open('','','width=900,height=700');
+                                if (!win) { toast('Allow pop-ups to print', 'error'); return; }
                                 win.document.write('<html><head><title>' + site.abbr + ' - Base Reference</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#222}h2{margin:0 0 4px}h4{margin:12px 0 6px;color:#555}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}.card{padding:10px;border:1px solid #ccc;border-radius:6px;font-size:12px}.card b{display:block;margin-bottom:4px}.route{padding:12px;background:#f0f0f0;border-radius:6px;margin:12px 0;font-size:13px}@media print{body{margin:10px}}</style></head><body>');
                                 win.document.write('<h2>🗺️ ' + site.abbr + ' — ' + site.name + '</h2>');
                                 win.document.write('<p style="font-size:12px;color:#666;margin:4px 0 12px">Base reference — print & bring onsite.</p>');
                                 if (pocs.filter(p=>p.name).length > 0) {
                                     win.document.write('<h4>👤 Contacts</h4>');
                                     pocs.filter(p=>p.name).forEach(p => {
-                                        win.document.write('<div style="font-size:12px;margin:4px 0"><b>' + p.name + '</b> — ' + p.role + (p.phone ? ' | 📞 ' + p.phone : '') + (p.email ? ' | ✉️ ' + p.email : '') + '</div>');
+                                        win.document.write('<div style="font-size:12px;margin:4px 0"><b>' + escHtml(p.name) + '</b> — ' + escHtml(p.role) + (p.phone ? ' | 📞 ' + escHtml(p.phone) : '') + (p.email ? ' | ✉️ ' + escHtml(p.email) : '') + '</div>');
                                     });
                                 }
                                 win.document.write('<h4>🧭 Directions</h4>');
