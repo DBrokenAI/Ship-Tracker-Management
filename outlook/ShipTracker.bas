@@ -14,11 +14,12 @@
 
 Const MY_NAME = "CHANGE_ME"
 Const FIREBASE_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/incomingEmails"
-Const CURRENT_VERSION = "3.7"
+Const CURRENT_VERSION = "3.8"
 Const VBA_CODE_URL = ""
 ' End of Day email button
 Const FIREBASE_WEB_KEY = "AIzaSyA2HSftodTHDq3CJbeN7O4i0u4cADawJwI"   ' public web key (same as the website)
 Const EOD_DOC_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/eodLogs/"
+Const LINK_DOC_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/outlookLinks/"
 
 ' ★★★ CHANGE THIS TO YOUR TEAMS/SHAREPOINT CONFIG FILE URL ★★★
 'Config is now loaded from Firebase - no URL needed
@@ -1417,7 +1418,8 @@ End Function
 '   File > Options > Quick Access Toolbar > Choose commands from: Macros
 '   > Project1.ThisOutlookSession.CreateEodEmail > Add > OK
 ' FIRST USE (once per PC):
-'   Click the button and sign in with your Ship Tracker username and password.
+'   In Ship Tracker: Daily Checks > End of Day arrow > Link Outlook (one-time),
+'   then click the button and type the 8-character code.
 ' ============================================
 
 Public Sub CreateEodEmail()
@@ -1443,7 +1445,7 @@ Public Sub CreateEodEmail()
     If http.Status = 401 Or http.Status = 403 Then
         DeleteShipTrackerLink
         MsgBox "Ship Tracker didn't accept this login (your account may not be approved)." & vbCrLf & vbCrLf & _
-               "Click EOD Email to sign in again.", _
+               "Click EOD Email again to link it with a new code.", _
                vbExclamation, "Ship Tracker"
         Exit Sub
     End If
@@ -1498,7 +1500,7 @@ Failed:
     MsgBox "EOD Email failed: " & Err.Description, vbCritical, "Ship Tracker"
 End Sub
 
-' Returns a fresh sign-in token for Ship Tracker, asking for the login the first time ("" = cancelled/failed)
+' Returns a fresh sign-in token for Ship Tracker, linking Outlook the first time ("" = cancelled/failed)
 Private Function GetShipTrackerToken() As String
     On Error Resume Next
     GetShipTrackerToken = ""
@@ -1508,65 +1510,53 @@ Private Function GetShipTrackerToken() As String
     Dim refreshToken As String
     refreshToken = GetSetting("ShipTracker", "Auth", "RefreshToken", "")
 
-    If refreshToken <> "" Then
-        ' Normal case: renew the login saved on this PC
-        Set http = CreateObject("MSXML2.XMLHTTP.6.0")
-        http.Open "POST", "https://securetoken.googleapis.com/v1/token?key=" & FIREBASE_WEB_KEY, False
-        http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
-        http.Send "grant_type=refresh_token&refresh_token=" & refreshToken
-        If http.Status = 200 Then
-            resp = http.responseText
-            Dim renewed As String: renewed = ExtractJsonString(resp, "refresh_token")
-            If renewed <> "" Then SaveSetting "ShipTracker", "Auth", "RefreshToken", renewed
-            GetShipTrackerToken = ExtractJsonString(resp, "id_token")
+    If refreshToken = "" Then
+        ' First time on this PC: exchange a short link code from the website for this user's login
+        Dim code As String
+        code = InputBox("Link Outlook to Ship Tracker (one time on this PC):" & vbCrLf & vbCrLf & _
+               "1. In Ship Tracker open Daily Checks" & vbCrLf & _
+               "2. Click the arrow next to End of Day > Link Outlook (one-time)" & vbCrLf & _
+               "3. Type the 8-character code here", "Ship Tracker")
+        code = UCase(Replace(Replace(Replace(Trim(code), "-", ""), " ", ""), vbTab, ""))
+        If code = "" Then Exit Function
+        If Len(code) <> 8 Then
+            MsgBox "The link code has 8 characters (like K7PQ-2XMB). Click EOD Email to try again.", vbExclamation, "Ship Tracker"
             Exit Function
         End If
-        ' Saved login stopped working (password changed, account removed...) - sign in again below
-        DeleteShipTrackerLink
+
+        Set http = CreateObject("MSXML2.XMLHTTP.6.0")
+        http.Open "GET", LINK_DOC_URL & code, False
+        http.Send
+        If http.Status <> 200 Then
+            MsgBox "That link code didn't work. It may be mistyped or more than 10 minutes old." & vbCrLf & vbCrLf & _
+                   "In Ship Tracker: Daily Checks > arrow next to End of Day > Link Outlook, then click EOD Email again.", _
+                   vbExclamation, "Ship Tracker"
+            Exit Function
+        End If
+        refreshToken = ExtractFirestoreField(http.responseText, "refreshToken")
+        If refreshToken = "" Then
+            MsgBox "That link code didn't contain a login. Create a new one in Ship Tracker and try again.", vbExclamation, "Ship Tracker"
+            Exit Function
+        End If
     End If
 
-    ' First time on this PC: sign in with the Ship Tracker username + password
-    Dim userName As String
-    userName = Trim(InputBox("Sign in to Ship Tracker (one time on this PC)." & vbCrLf & vbCrLf & _
-               "Ship Tracker username:", "Ship Tracker"))
-    If userName = "" Then Exit Function
-    Dim pw As String
-    pw = InputBox("Ship Tracker password for " & userName & ":" & vbCrLf & vbCrLf & _
-         "Outlook can't hide what you type in this box. Your password goes only to the Ship Tracker sign-in and is never saved.", _
-         "Ship Tracker")
-    If pw = "" Then Exit Function
-
-    Dim body As String
-    body = "{""email"":""" & JsonEscape(LCase(userName) & "@ship-checker.firebaseapp.com") & _
-           """,""password"":""" & JsonEscape(pw) & """,""returnSecureToken"":true}"
-    pw = ""
+    ' Renew the login (works for a just-linked PC and for every later click)
     Set http = CreateObject("MSXML2.XMLHTTP.6.0")
-    http.Open "POST", "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" & FIREBASE_WEB_KEY, False
-    http.setRequestHeader "Content-Type", "application/json"
-    http.Send body
-    body = ""
+    http.Open "POST", "https://securetoken.googleapis.com/v1/token?key=" & FIREBASE_WEB_KEY, False
+    http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
+    http.Send "grant_type=refresh_token&refresh_token=" & refreshToken
 
-    resp = http.responseText
     If http.Status <> 200 Then
-        If InStr(resp, "INVALID_LOGIN_CREDENTIALS") > 0 Or InStr(resp, "INVALID_PASSWORD") > 0 Or _
-           InStr(resp, "EMAIL_NOT_FOUND") > 0 Or InStr(resp, "INVALID_EMAIL") > 0 Then
-            MsgBox "Wrong Ship Tracker username or password. Click EOD Email to try again.", vbExclamation, "Ship Tracker"
-        ElseIf InStr(resp, "TOO_MANY_ATTEMPTS") > 0 Then
-            MsgBox "Too many sign-in attempts. Wait a few minutes, then try again.", vbExclamation, "Ship Tracker"
-        Else
-            MsgBox "Couldn't sign in to Ship Tracker (HTTP " & http.Status & ").", vbExclamation, "Ship Tracker"
-        End If
+        DeleteShipTrackerLink
+        MsgBox "Outlook's link to Ship Tracker stopped working (for example after a password change)." & vbCrLf & vbCrLf & _
+               "Click EOD Email again to link it with a new code.", vbExclamation, "Ship Tracker"
         Exit Function
     End If
 
-    Dim saved As String: saved = ExtractJsonString(resp, "refreshToken")
-    If saved <> "" Then SaveSetting "ShipTracker", "Auth", "RefreshToken", saved
-    GetShipTrackerToken = ExtractJsonString(resp, "idToken")
-End Function
-
-' Escape a value for a JSON string
-Private Function JsonEscape(s As String) As String
-    JsonEscape = Replace(Replace(s, "\", "\\"), """", "\""")
+    resp = http.responseText
+    Dim renewed As String: renewed = ExtractJsonString(resp, "refresh_token")
+    If renewed <> "" Then SaveSetting "ShipTracker", "Auth", "RefreshToken", renewed
+    GetShipTrackerToken = ExtractJsonString(resp, "id_token")
 End Function
 
 Private Sub DeleteShipTrackerLink()

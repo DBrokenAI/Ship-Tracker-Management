@@ -59,6 +59,20 @@ service cloud.firestore {
       allow create: if true;
     }
 
+    // ---- Outlook link codes (EOD Email button) ----
+    // The website creates a short code holding this login's session; Outlook reads it once by
+    // typing the exact code. No listing by others, expires after 10 minutes.
+    match /outlookLinks/{code} {
+      allow get: if resource.data.expiresAt > request.time;
+      allow list, delete: if approved() && resource.data.uid == request.auth.uid;
+      allow create: if approved()
+        && request.resource.data.keys().hasOnly(['refreshToken', 'uid', 'expiresAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.refreshToken is string
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt < request.time + duration.value(15, 'm');
+    }
+
     // ---- Shared team data: any approved user ----
     match /ships/{docId}          { allow read, write: if approved(); }
     match /issues/{docId}         { allow read, write: if approved(); }

@@ -458,7 +458,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T148";
+    var APP_BUILD = "2026-10-29T149";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1684,7 +1684,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T148'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T149'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1695,7 +1695,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T148');
+                                    localStorage.setItem('lastSeenBuild', 'T149');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1704,6 +1704,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T149'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔒 Link Outlook Without a Password'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Outlook macro v3.8: your password is never typed into Outlook. Ship Tracker shows a short 8-character code instead (Daily Checks, End of Day ▾, Link Outlook) that you type into Outlook once\n• New Link Outlook window shows the code in large letters with a Copy button and the time it expires\n• Link codes expire after 10 minutes, only work by typing the exact code, and making a new code cancels your older one\n• Removed the username and password prompt from the Outlook macro\n• Database security rules updated to allow link codes (needs publishing in Firebase)'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T148'),
@@ -6739,6 +6746,25 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         });
     };
 
+    // ===== LINK OUTLOOK — short one-time code so nobody types a password into Outlook =====
+    const [linkCode, setLinkCode] = useState(null);   // { code, expires } while the dialog is open
+    const linkOutlook = () => {
+        const u = auth.currentUser;
+        if (!u) { toast('Please log in again first.', 'error'); return; }
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O or 1/I mix-ups
+        const bytes = crypto.getRandomValues(new Uint8Array(8));
+        const code = Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
+        const expires = Date.now() + 10 * 60000;
+        const links = db.collection('outlookLinks');
+        // Remove this user's older codes first, then create the new one
+        links.where('uid', '==', u.uid).get()
+            .then(snap => Promise.all(snap.docs.map(d => d.ref.delete())))
+            .catch(() => {})
+            .then(() => links.doc(code).set({ refreshToken: u.refreshToken, uid: u.uid, expiresAt: firebase.firestore.Timestamp.fromMillis(expires) }))
+            .then(() => setLinkCode({ code, expires }))
+            .catch(err => { console.error('Link Outlook failed:', err); toast('Could not create a link code: ' + err.message, 'error'); });
+    };
+
     // Keep the finished email saved so the Outlook "EOD Email" button can build it in one click
     const lastEodSaved = useRef('');
     useEffect(() => {
@@ -6961,6 +6987,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                 { label: '👁 Preview report', onClick: exportStatus },
                                 { label: '📋 Copy report only', onClick: copyEndOfDay },
                                 { label: '📊 Download Excel only', onClick: downloadEodExcel },
+                                { label: '🔗 Link Outlook (one-time)', onClick: linkOutlook },
                             ]}/>
                         <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(245,158,11,0.1)',border:'1px solid var(--amber)',color:'var(--amber)'}} onClick={exportMorningReport}>☀️ Morning</button>
                     </div>
@@ -7133,6 +7160,21 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <div className="btn-group">
                             <button className="btn btn-primary" onClick={parseBulkPaste}>Apply Values</button>
                             <button className="btn btn-secondary" onClick={() => setBulkPasteModal(false)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Link Outlook code */}
+            {linkCode && (
+                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}} onClick={e => { if (e.target === e.currentTarget) setLinkCode(null); }}>
+                    <div data-testid="link-outlook" style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px',width:'100%',maxWidth:'420px',textAlign:'center'}}>
+                        <div style={{fontSize:'16px',fontWeight:800,marginBottom:'6px'}}>🔗 Link Outlook</div>
+                        <div style={{fontSize:'12px',color:'var(--text-dim)',marginBottom:'16px'}}>In Outlook, click <b>EOD Email</b> and type this code:</div>
+                        <div data-testid="link-code" style={{fontFamily:'JetBrains Mono, Consolas, monospace',fontSize:'30px',fontWeight:800,letterSpacing:'4px',color:'var(--primary)',padding:'12px',background:'var(--bg-input)',borderRadius:'10px',marginBottom:'10px',userSelect:'all'}}>{linkCode.code.slice(0, 4)}-{linkCode.code.slice(4)}</div>
+                        <div style={{fontSize:'11px',color:'var(--text-muted)',marginBottom:'16px'}}>Works once you type it in Outlook · expires at {new Date(linkCode.expires).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
+                        <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
+                            <button className="btn btn-secondary" onClick={() => navigator.clipboard.writeText(linkCode.code).then(() => toast('Code copied', 'success'), () => {})}>📋 Copy code</button>
+                            <button className="btn btn-primary" onClick={() => setLinkCode(null)}>Done</button>
                         </div>
                     </div>
                 </div>
