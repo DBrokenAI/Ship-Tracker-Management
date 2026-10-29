@@ -458,7 +458,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T151";
+    var APP_BUILD = "2026-10-29T152";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1285,9 +1285,190 @@ const reapRowValues = (ship, check) => {
     };
 };
 
+// ---- Ship list per day block ----
+// Rewrites each block's Full REAP / Mini REAP rows to Ship Tracker's ships: unused rows are
+// hidden, missing rows are added (copies of a template ship row) and everything below shifts.
+const REF_IN_FORMULA = /(\$?)([A-Z]{1,3})(\$?)(\d+)(?![\d(])/g;
+// Shift row numbers in a formula / range list. Leaves quoted text and other-sheet refs alone.
+const shiftFormulaRows = (text, map) => {
+    const masks = [];
+    const mask = (s) => { masks.push(s); return '\u0001' + (masks.length - 1) + '\u0001'; };
+    let t = String(text)
+        .replace(/&quot;[\s\S]*?&quot;|"[^"]*"/g, mask)
+        .replace(/(?:'[^']+'|[A-Za-z_][\w.]*)!\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?/g, mask);
+    t = t.replace(REF_IN_FORMULA, (m, d1, col, d2, row, off, str) => {
+        const prev = off > 0 ? str[off - 1] : '';
+        if (prev && /[A-Za-z0-9_.]/.test(prev)) return m;   // part of a function or name, not a cell
+        return d1 + col + d2 + map(Number(row));
+    });
+    return t.replace(/\u0001(\d+)\u0001/g, (m, i) => masks[Number(i)]);
+};
+// Apply a row-number mapping to every reference inside a chunk of sheet XML
+const shiftXmlRows = (xml, map) => xml
+    .replace(/(<row\b[^>]*?\sr=")(\d+)"/g, (m, a, n) => a + map(Number(n)) + '"')
+    .replace(/(<c\b[^>]*?\sr=")([A-Z]+)(\d+)"/g, (m, a, col, n) => a + col + map(Number(n)) + '"')
+    .replace(/(\s(?:ref|sqref)=")([^"]*)"/g, (m, a, v) => a + shiftFormulaRows(v, map) + '"')
+    .replace(/(<f\b[^>]*>)([^<]*)(<\/f>)/g, (m, a, v, b) => a + shiftFormulaRows(v, map) + b)
+    .replace(/(<formula>)([^<]*)(<\/formula>)/g, (m, a, v, b) => a + shiftFormulaRows(v, map) + b)
+    .replace(/(<xm:f>)([^<]*)(<\/xm:f>)/g, (m, a, v, b) => a + shiftFormulaRows(v, map) + b)
+    .replace(/(<xm:sqref>)([^<]*)(<\/xm:sqref>)/g, (m, a, v, b) => a + shiftFormulaRows(v, map) + b);
+
+// Make sure a row holding a ship has the template's Y/N + total formulas and default zeros.
+// Only fills what is missing; cells already holding a formula (incl. shared ones) are left alone.
+// modelRow: a good ship row from the same section, used for cell styles.
+const completeShipRow = (rowXml, r, modelRow) => {
+    const attrs = (tag) => { const o = {}; tag.replace(/([\w:]+)="([^"]*)"/g, (m, k, v) => { o[k] = v; return m; }); return o; };
+    const open = rowXml.match(/<row\b[^>]*?>/)[0];
+    let body = rowXml.slice(open.length, rowXml.length - '</row>'.length);
+    const cellRe = (ref) => new RegExp('<c r="' + ref + '"[^>]*?(?:/>|>[\\s\\S]*?</c>)');
+    const modelStyle = (col) => { const m = modelRow && modelRow.match(new RegExp('<c r="' + col + '\\d+"[^>]*>')); return m ? attrs(m[0]).s : null; };
+    const put = (col, inner, needs) => {
+        const ref = col + r;
+        const old = body.match(cellRe(ref));
+        if (old && !needs(old[0])) return;
+        const s = old ? attrs(old[0].match(/<c\b[^>]*>/)[0]).s : modelStyle(col);
+        const cell = '<c r="' + ref + '"' + (s != null ? ' s="' + s + '"' : '') + '>' + inner + '</c>';
+        if (old) { body = body.replace(cellRe(ref), cell); return; }
+        const target = colNum(col);
+        const re = /<c r="([A-Z]+)\d+"/g; let m, at = body.length;
+        while ((m = re.exec(body))) { if (colNum(m[1]) > target) { at = m.index; break; } }
+        body = body.slice(0, at) + cell + body.slice(at);
+    };
+    const noFormula = (c) => !/<f\b/.test(c);
+    const noValue = (c) => !/<f\b|<v>|<is>/.test(c);
+    put('E', '<f>IF(OR(C' + r + '="Yes",D' + r + '="Yes"),"Yes","No")</f>', noFormula);
+    put('H', '<f>IF(OR(F' + r + '="Yes",G' + r + '="Yes"),"Yes","No")</f>', noFormula);
+    put('L', '<f>SUM(M' + r + ':P' + r + ')</f>', noFormula);
+    ['I', 'J', 'K', 'M', 'N', 'O', 'P', 'Q', 'R'].forEach(col => put(col, '<v>0</v>', noValue));
+    return open + body + '</row>';
+};
+
+// Add Yes/No dropdowns to ship rows that the template left without them.
+// Copies the dropdown definitions that cover the model row (B = VOIP list, C/D/F/G = connection list).
+// modelRows: candidate rows to copy dropdowns from (first one that has them wins)
+const addMissingDropdowns = (tailXml, shipRows, modelRows) => {
+    const dvs = tailXml.match(/<dataValidation\b[^>]*>[\s\S]*?<\/dataValidation>/g) || [];
+    // Parse each dropdown's ranges once
+    const ranges = dvs.map(dv => ((dv.match(/\ssqref="([^"]*)"/) || [])[1] || '').split(/\s+/).filter(Boolean).map(rg => {
+        const [s, e] = rg.split(':');
+        const p = (x) => ({ c: colNum(x.match(/[A-Z]+/)[0]), r: Number(x.match(/\d+/)[0]) });
+        const S = p(s), E = p(e || s);
+        return { c1: S.c, c2: E.c, r1: S.r, r2: E.r };
+    }));
+    const covers = (i, col, row) => { const c = colNum(col); return ranges[i].some(g => c >= g.c1 && c <= g.c2 && row >= g.r1 && row <= g.r2); };
+    const add = {};   // index of dv -> extra ranges
+    ['B', 'C', 'D', 'F', 'G'].forEach(col => {
+        let i = -1;
+        for (const m of modelRows) { i = dvs.findIndex((dv, k) => covers(k, col, m)); if (i >= 0) break; }
+        if (i < 0) return;
+        shipRows.forEach(r => {
+            if (!dvs.some((dv, k) => covers(k, col, r))) (add[i] = add[i] || []).push(col + r);
+        });
+    });
+    Object.keys(add).forEach(i => {
+        const dv = dvs[i];
+        const updated = dv.replace(/(\ssqref=")([^"]*)"/, (m, a, v) => a + v + ' ' + add[i].join(' ') + '"');
+        tailXml = tailXml.replace(dv, updated);
+    });
+    return tailXml;
+};
+
+// sections: { 'Full REAP': ['CG67', ...], 'Mini REAP': [...] } in report order
+const restructureReapSheet = (xml, shared, sections) => {
+    const attrs = (tag) => { const o = {}; tag.replace(/([\w:]+)="([^"]*)"/g, (m, k, v) => { o[k] = v; return m; }); return o; };
+    const sdStart = xml.indexOf('<sheetData>'), sdEnd = xml.indexOf('</sheetData>');
+    if (sdStart < 0 || sdEnd < 0) return xml;
+    const head = xml.slice(0, sdStart + '<sheetData>'.length), tail = xml.slice(sdEnd);
+    const rowsXml = xml.slice(sdStart + '<sheetData>'.length, sdEnd).match(/<row\b[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g) || [];
+    const rows = rowsXml.map(rx => {
+        const r = Number(attrs(rx.match(/<row\b[^>]*>/)[0]).r);
+        const a = rx.match(new RegExp('<c r="A' + r + '"[^>]*?(?:/>|>([\\s\\S]*?)</c>)'));
+        let text = '';
+        if (a && a[1] != null) {
+            const ca = attrs(a[0].match(/<c\b[^>]*>/)[0]);
+            const v = (a[1].match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+            const is = (a[1].match(/<t[^>]*>([\s\S]*?)<\/t>/) || [])[1];
+            text = ca.t === 's' && v != null ? shared[Number(v)] : xmlUnesc(is != null ? is : (v || ''));
+        }
+        return { r, xml: rx, text: String(text || '').trim() };
+    });
+    const byNum = {}; rows.forEach(x => { byNum[x.r] = x; });
+    const label = (x) => x.text.toLowerCase();
+
+    // Find every section's ship slots: rows after its "Hull#" row up to the next title row
+    const plans = [];   // { slots: [row numbers], names: [...] }
+    rows.forEach((x, i) => {
+        const names = sections[x.text];
+        if (!names) return;
+        const hull = rows.slice(i + 1, i + 4).find(y => label(y) === 'hull#');
+        if (!hull) return;
+        const slots = [];
+        for (let r = hull.r + 1; byNum[r] && !['full reap', 'mini reap', 'comments', 'date'].includes(label(byNum[r])); r++) slots.push(r);
+        if (slots.length) plans.push({ slots, names });
+    });
+    if (!plans.length) return xml;
+
+    // Rows to add after each section's first slot (copies of its second slot row)
+    const inserts = plans.map(p => ({ after: p.slots[0], copyOf: p.slots[1] || p.slots[0], count: Math.max(0, p.names.length - p.slots.length) }))
+        .filter(x => x.count > 0).sort((a, b) => a.after - b.after);
+    const map = (n) => { let add = 0; for (const ins of inserts) if (ins.after < n) add += ins.count; return n + add; };
+
+    // Final row -> ship name (or null = hide)
+    const finalName = {}, finalModel = {};
+    plans.forEach(p => {
+        const start = map(p.slots[0]);
+        const total = p.slots.length + Math.max(0, p.names.length - p.slots.length);
+        p.model = p.slots[1] || p.slots[0];
+        p.shipRows = [];
+        for (let i = 0; i < total; i++) {
+            finalName[start + i] = i < p.names.length ? p.names[i] : null;
+            if (i < p.names.length) { finalModel[start + i] = byNum[p.model].xml; p.shipRows.push(start + i); }
+        }
+    });
+    // Ship rows get the template's formulas/zeros even if they landed on a spare template row
+    const finishRow = (rx, r) => { const out = setRowShip(rx, r); return finalModel[r] ? completeShipRow(out, r, finalModel[r]) : out; };
+
+    const setRowShip = (rx, r) => {
+        if (!(r in finalName)) return rx;
+        const name = finalName[r];
+        let open = rx.match(/<row\b[^>]*?\/?>/)[0];
+        const selfClosing = open.endsWith('/>');
+        let body = selfClosing ? '' : rx.slice(open.length, rx.length - '</row>'.length);
+        open = open.replace(/\s+hidden="[^"]*"/, '');
+        if (selfClosing) open = open.slice(0, -2) + '>';
+        if (name == null) open = open.slice(0, -1) + ' hidden="1">';
+        const aRe = new RegExp('<c r="A' + r + '"[^>]*?(?:/>|>[\\s\\S]*?</c>)');
+        const old = body.match(aRe);
+        const s = old ? attrs(old[0].match(/<c\b[^>]*>/)[0]).s : null;
+        const sAttr = s != null ? ' s="' + s + '"' : '';
+        const cell = name == null ? '<c r="A' + r + '"' + sAttr + '/>' : '<c r="A' + r + '"' + sAttr + ' t="inlineStr"><is><t>' + xmlEsc(name) + '</t></is></c>';
+        body = old ? body.replace(aRe, cell) : cell + body;
+        return open + body + '</row>';
+    };
+
+    const out = [];
+    rows.forEach(x => {
+        const nr = map(x.r);
+        out.push(finishRow(shiftXmlRows(x.xml, map), nr));
+        inserts.filter(ins => ins.after === x.r).forEach(ins => {
+            const src = byNum[ins.copyOf].xml;
+            if (/<f\b[^>]*\bref="/.test(src)) throw new Error('Template row ' + ins.copyOf + ' holds a shared formula master; cannot copy it');
+            for (let j = 1; j <= ins.count; j++) {
+                const target = nr + j;
+                const copyMap = (n) => (n === ins.copyOf ? target : map(n));
+                out.push(finishRow(shiftXmlRows(src, copyMap), target));
+            }
+        });
+    });
+    let newTail = shiftXmlRows(tail, map);
+    newTail = addMissingDropdowns(newTail, [].concat(...plans.map(p => p.shipRows)), plans.map(p => map(p.model)));
+    return shiftXmlRows(head, map) + out.join('') + newTail;
+};
+
 // entries: { 'YYYY-MM-DD': { HULLKEY: {B:'Yes', C:'No', I: 237, ...}, ... }, ... }
 // Returns { buffer, placed, unmatched } — unmatched lists hulls the template has no row for.
-const fillReapWorkbook = async (JSZip, templateBuffer, entries) => {
+// sections (optional): Ship Tracker ship names per section, applied to every day block of every month
+const fillReapWorkbook = async (JSZip, templateBuffer, entries, sections) => {
     const zip = await JSZip.loadAsync(templateBuffer);
     const read = (p) => zip.file(p).async('string');
     const attrs = (tag) => { const o = {}; tag.replace(/([\w:]+)="([^"]*)"/g, (m, k, v) => { o[k] = v; return m; }); return o; };
@@ -1310,6 +1491,22 @@ const fillReapWorkbook = async (JSZip, templateBuffer, entries) => {
         (ss.match(/<si>[\s\S]*?<\/si>/g) || []).forEach(si => {
             shared.push(xmlUnesc((si.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || []).map(t => t.replace(/<[^>]+>/g, '')).join('')));
         });
+    }
+
+    // Ship list: rewrite every month's day blocks to Ship Tracker's ships
+    if (sections) {
+        for (const month of REAP_MONTHS) {
+            const p = sheetPath[month];
+            if (p && zip.file(p)) zip.file(p, restructureReapSheet(await read(p), shared, sections));
+        }
+        // Row numbers moved, so drop Excel's formula calculation cache (Excel rebuilds it)
+        if (zip.file('xl/calcChain.xml')) {
+            zip.remove('xl/calcChain.xml');
+            const rels = await read('xl/_rels/workbook.xml.rels');
+            zip.file('xl/_rels/workbook.xml.rels', rels.replace(/<Relationship\b[^>]*calcChain[^>]*\/>/g, ''));
+            const ct = await read('[Content_Types].xml');
+            zip.file('[Content_Types].xml', ct.replace(/<Override\b[^>]*calcChain[^>]*\/>/g, ''));
+        }
     }
 
     const placed = [], unmatched = new Set();
@@ -1821,7 +2018,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T151'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T152'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1832,7 +2029,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T151');
+                                    localStorage.setItem('lastSeenBuild', 'T152');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1841,6 +2038,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T152'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🚢 Excel Uses Ship Tracker’s Ship List'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• The Excel attachment now lists exactly the ships in Ship Tracker in every day block, replacing the template’s built-in hull list\n• Adding or removing a ship in Ship Tracker updates the Excel automatically. Nobody edits the ship list by hand\n• Ships are in hull-number order like the template: CG first, then DDG, numbers ascending\n• Unused template rows are hidden. If Ship Tracker has more ships than the template has rows, rows are added in the template’s style and everything below moves down correctly (dates, merged cells, dropdowns, weekend shading)\n• Every ship row gets the Y/N and Total Data formulas and the Yes/No dropdowns, including rows where the template was missing them (January 5, and the DDG77 rows in February)\n• Pending install and pending deinstall ships stay listed with N/A until they are removed from Ship Tracker'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T151'),
@@ -6674,7 +6878,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             (entries[c.date] = entries[c.date] || {})[reapHullKey(s.name)] = reapRowValues(s, c);
         });
         return Promise.all([loadJsZip(), loadReapTemplate(year)]).then(function(res) {
-            return fillReapWorkbook(res[0], res[1].slice(0), entries);
+            // Ship Tracker's current ships, in hull order like the template: CG first, then DDG, numbers ascending
+            var hullOrder = function(a, b) {
+                var pa = String(a.name).toUpperCase().replace(/[^A-Z]/g, ''), pb = String(b.name).toUpperCase().replace(/[^A-Z]/g, '');
+                return pa === pb ? hullNum(a.name) - hullNum(b.name) : (pa < pb ? -1 : 1);
+            };
+            var namesOf = function(type) { return ships.filter(function(s) { return s.type === type; }).sort(hullOrder).map(function(s) { return s.name; }); };
+            return fillReapWorkbook(res[0], res[1].slice(0), entries, { 'Full REAP': namesOf('Full REAP'), 'Mini REAP': namesOf('Mini REAP') });
         }).then(function(out) {
             if (out.unmatched.length) console.warn('Ships not in the REAP Status Report template:', out.unmatched.join(', '));
             return out.buffer;
