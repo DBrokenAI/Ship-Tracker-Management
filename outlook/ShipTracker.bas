@@ -14,7 +14,7 @@
 
 Const MY_NAME = "CHANGE_ME"
 Const FIREBASE_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/incomingEmails"
-Const CURRENT_VERSION = "3.5"
+Const CURRENT_VERSION = "3.6"
 Const VBA_CODE_URL = ""
 ' End of Day email button
 Const FIREBASE_WEB_KEY = "AIzaSyA2HSftodTHDq3CJbeN7O4i0u4cADawJwI"   ' public web key (same as the website)
@@ -27,7 +27,6 @@ Const LINK_PREFIX = "STLINK:"
 Dim g_entryId As String
 Dim g_threadGroup As String
 Dim g_startupScanDone As Boolean
-Dim g_lastNotifiedVersion As String
 Dim g_lastConfigResponse As String
 Dim g_emailsLoggedToday As Long
 Dim g_lastShipLogged As String
@@ -38,138 +37,6 @@ Dim g_configKeywords As String
 Dim g_configTeam As String
 Dim g_configLoaded As Boolean
 Dim g_configVersion As String
-
-Public Sub EnableVBAAccess()
-    Dim ws As Object
-    Set ws = CreateObject("WScript.Shell")
-    ws.RegWrite "HKCU\Software\Microsoft\Office\16.0\Outlook\Security\AccessVBOM", 1, "REG_DWORD"
-    MsgBox "VBA project access enabled! Restart Outlook for it to take effect.", vbInformation, "Done"
-End Sub
-
-' Load config from Teams/SharePoint
-' ============================================
-' AUTO-UPDATER — downloads new VBA from Teams
-' Requires: Trust Center → "Trust access to VBA project object model" = ON
-' ============================================
-
-Private Sub CheckForUpdate()
-    On Error Resume Next
-    
-    LoadConfig
-    
-    If Not g_configLoaded Then Exit Sub
-    If g_configVersion = "" Or g_configVersion = CURRENT_VERSION Then Exit Sub
-    If g_configVersion = g_lastNotifiedVersion Then Exit Sub
-    
-    ' Mark as notified so it only shows once
-    g_lastNotifiedVersion = g_configVersion
-    
-    ' Get changelog from Firebase
-    Dim changelogText As String
-    changelogText = ExtractFirestoreField(g_lastConfigResponse, "changelog")
-    changelogText = Replace(changelogText, "\n", vbCrLf)
-    If changelogText = "" Then changelogText = "Bug fixes and improvements"
-    
-    ' Show what's new and ask to update
-    Dim answer As VbMsgBoxResult
-    answer = MsgBox("Ship Tracker Update v" & g_configVersion & vbCrLf & _
-           "Current: v" & CURRENT_VERSION & vbCrLf & vbCrLf & _
-           "WHAT'S NEW:" & vbCrLf & _
-           changelogText & vbCrLf & vbCrLf & _
-           "Click YES to update now.", _
-           vbYesNo + vbInformation, "Ship Tracker Update v" & g_configVersion)
-
-    If answer = vbNo Then Exit Sub
-
-    ' Download new code from Firebase
-    Dim http As Object
-    Set http = CreateObject("MSXML2.XMLHTTP.6.0")
-    http.Open "GET", "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/settings/vbaCode", False
-    http.Send
-
-    If http.Status <> 200 Then
-        MsgBox "Download failed: " & http.Status, vbCritical, "Update Error"
-        Exit Sub
-    End If
-
-    Dim encodedCode As String
-    encodedCode = ExtractFirestoreField(http.responseText, "sourceCode")
-    Set http = Nothing
-
-    Dim newCode As String
-    newCode = DecodeBase64(encodedCode)
-
-    If Len(newCode) < 500 Then
-        MsgBox "Downloaded code too small (" & Len(newCode) & " chars). Update cancelled.", vbCritical, "Update Error"
-        Exit Sub
-    End If
-
-    ' Preserve user's MY_NAME
-    newCode = Replace(newCode, "Const MY_NAME = ""CHANGE_ME""", "Const MY_NAME = """ & MY_NAME & """")
-
-    ' Try to replace the code directly (needs "Trust access to the VBA project object model")
-    On Error Resume Next
-    Dim vbComp As Object
-    Set vbComp = Application.VBE.ActiveVBProject.VBComponents("ThisOutlookSession")
-    If Not vbComp Is Nothing And Err.Number = 0 Then
-        Dim codeModule As Object
-        Set codeModule = vbComp.CodeModule
-        If codeModule.CountOfLines > 0 Then codeModule.DeleteLines 1, codeModule.CountOfLines
-        codeModule.AddFromString newCode
-        If Err.Number = 0 Then
-            MsgBox "Updated to v" & g_configVersion & "!" & vbCrLf & vbCrLf & _
-                   "Close Outlook and open it again to finish.", vbInformation, "Ship Tracker Updated"
-            Exit Sub
-        End If
-    End If
-    Err.Clear
-
-    ' Not allowed on this PC: hand the code to the user to paste in.
-    ' (No batch files, key-pressing or auto-restart - locked-down PCs block those.)
-    Dim tempPath As String
-    tempPath = Environ("TEMP") & "\ShipTracker_Update.bas"
-    Dim fso As Object
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    Dim f As Object
-    Set f = fso.CreateTextFile(tempPath, True, True)
-    f.Write newCode
-    f.Close
-    WriteClipboardText newCode
-    Err.Clear
-    On Error GoTo 0
-
-    MsgBox "This PC doesn't allow automatic updates, so please paste it in (1 minute):" & vbCrLf & vbCrLf & _
-           "1. Press Alt+F11 and double-click ThisOutlookSession" & vbCrLf & _
-           "2. Click in the code, press Ctrl+A, then Ctrl+V" & vbCrLf & _
-           "3. Press Ctrl+S, close that window, and restart Outlook" & vbCrLf & vbCrLf & _
-           "The new code (with your name already filled in) is on your clipboard." & vbCrLf & _
-           "If Ctrl+V pastes something else, open this file in Notepad and copy it from there:" & vbCrLf & _
-           tempPath, vbInformation, "Ship Tracker Update v" & g_configVersion
-End Sub
-
-
-' Schedule next update check in 15 minutes
-Private Sub ScheduleUpdateCheck()
-    On Error Resume Next
-    Application.OnTime DateAdd("s", 30, Now), "TimedUpdateCheck"
-End Sub
-
-' Called every 15 minutes by the timer
-Public Sub TimedUpdateCheck()
-    On Error Resume Next
-    
-    ' Reset config so it re-reads from Firebase
-    g_configLoaded = False
-    LoadConfig
-    
-    ' Check if new version available
-    If g_configLoaded And g_configVersion <> "" And g_configVersion <> CURRENT_VERSION Then
-        CheckForUpdate
-    End If
-    
-    ' Schedule next check
-    ScheduleUpdateCheck
-End Sub
 
 Private Sub LoadConfig()
     On Error Resume Next
@@ -387,14 +254,8 @@ End Sub
 Private Sub Application_MAPILogonComplete()
     On Error Resume Next
     
-    ' Check for VBA code updates
-    CheckForUpdate
-    
     ' Load config from Firebase
     LoadConfig
-    
-    ' Start recurring update checker (every 15 minutes)
-    ScheduleUpdateCheck
     
     ' Wait a few seconds for inbox to fully sync
     Dim waitUntil As Double
@@ -489,12 +350,9 @@ Private Sub Application_NewMailEx(ByVal EntryIDCollection As String)
         RunCatchupScan
     End If
     
-    ' Check for VBA updates on every email (lightweight — just reads one Firebase doc)
+    ' Refresh ship/keyword config from Ship Tracker (lightweight - one small Firebase doc)
     g_configLoaded = False
     LoadConfig
-    If g_configLoaded And g_configVersion <> "" And g_configVersion <> CURRENT_VERSION Then
-        CheckForUpdate
-    End If
     
     Dim ids() As String
     ids = Split(EntryIDCollection, ",")
