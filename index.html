@@ -56,6 +56,28 @@
         .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); margin-top: auto; background: var(--sidebar); }
         .version { font-size: 10px; color: var(--text-muted); text-align: center; font-family: 'JetBrains Mono', monospace; }
         .theme-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+        .user-chip { position: relative; z-index: 155; display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; color: var(--text); cursor: pointer; font-family: inherit; text-align: left; }
+        .user-chip:hover { border-color: var(--primary); }
+        .user-avatar { width: 28px; height: 28px; border-radius: 8px; background: var(--primary-glow); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+        .user-chip-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+        .admin-pill { background: var(--primary); color: #000; padding: 1px 5px; border-radius: 4px; font-size: 8px; font-weight: 700; }
+        .user-chip .badge-count { background: var(--amber); color: #000; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+        .user-chip-caret { color: var(--text-muted); font-size: 10px; }
+        .user-menu { position: absolute; bottom: 100%; left: 0; right: 0; margin-bottom: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); padding: 4px; z-index: 160; }
+        .user-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; background: none; border: none; border-radius: 6px; color: var(--text); font-family: inherit; font-size: 12px; cursor: pointer; text-align: left; }
+        .user-menu button:hover { background: var(--bg-input); }
+        .user-menu button.danger { color: var(--red); }
+        .user-menu .badge-count { margin-left: auto; background: var(--amber); color: #000; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+        .user-menu-note { padding: 6px 10px 4px; font-size: 10px; color: var(--text-muted); }
+        .user-menu-sep { height: 1px; background: var(--border); margin: 4px 6px; }
+        .sidebar-meta { white-space: nowrap; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 0 2px; font-size: 10px; color: var(--text-muted); }
+        .build-link { background: none; border: none; padding: 0; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; cursor: pointer; }
+        .build-link:hover { color: var(--text); text-decoration: underline; }
+        .build-link.has-new { color: var(--amber); font-weight: 700; }
+        .build-link.has-new::before { content: '\25CF  '; }
+        a.nav-btn { color: var(--text-dim); }
+        @media (max-height: 760px) { .logo-sub { display: none; } }
+        @media (max-height: 820px) { .nav-btn { padding: 7px 12px; } .nav-section { margin-bottom: 4px; } .nav-title { margin-top: 6px; margin-bottom: 2px; } .sidebar-header { padding-top: 12px; padding-bottom: 12px; } }
         .theme-toggle button { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-dim); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; }
         .theme-toggle button:hover { background: var(--bg-card-hover); }
         .theme-toggle button.active { background: var(--primary); color: #000; }
@@ -458,7 +480,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T152";
+    var APP_BUILD = "2026-10-29T153";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1823,6 +1845,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     const [feedbackText, setFeedbackText] = useState('');
     const [feedbackType, setFeedbackType] = useState('idea');
     const [showOnlineTooltip, setShowOnlineTooltip] = useState(false);
+    const [userMenu, setUserMenu] = useState(false);
+    useEffect(() => {
+        if (!userMenu) return;
+        const esc = (e) => { if (e.key === 'Escape') setUserMenu(false); };
+        window.addEventListener('keydown', esc);
+        return () => window.removeEventListener('keydown', esc);
+    }, [userMenu]);
     const searchRef = useRef(null);
     
     // Update online presence - each user writes their own document
@@ -1885,7 +1914,6 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     
     // Alert state — populated by Dashboard, displayed by Toast
     const [alerts, setAlerts] = useState([]);
-    const [suggestModal, setSuggestModal] = useState(false);
     const [dismissedAlerts, setDismissedAlerts] = useStorage('dismissedAlerts', []);
     
     const logActivity = (text, details = null) => { 
@@ -1968,58 +1996,55 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         <div className="app">
             <nav className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
                 <div className="sidebar-header"><div className="logo" style={{display:'flex',alignItems:'center',gap:'8px'}}><svg width="28" height="16" viewBox="0 0 120 60" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 42 L15 38 L105 38 L115 42 L108 45 L12 45 Z" fill="currentColor" fillOpacity="0.15"/><path d="M5 42 L15 38 L105 38 L115 42"/><path d="M15 38 L8 35 L5 42"/><path d="M105 38 L112 35 L115 42"/><path d="M18 38 L18 35 L102 35 L102 38"/><circle cx="28" cy="33" r="4"/><path d="M28 33 L28 26"/><path d="M52 35 L52 22 L72 22 L72 35"/><path d="M62 22 L62 10"/><path d="M76 35 L76 26 L88 26 L88 35"/><path d="M82 26 L82 18"/></svg>SHIP TRACKER</div><div className="logo-sub">Pro Edition</div></div>
-                <div style={{padding:'16px 12px',borderBottom:'1px solid var(--border)'}}>
-                    <a href="https://app.mil.powerbigov.us/groups/723e47dd-9fb2-45ba-9c59-fb38242cbc66/reports/ef93b590-8da1-4e3c-a3ef-80a577f44e1c?ctid=e3333e00-c877-4b87-b6ad-45e942de1750&pbi_source=linkShare" target="_blank" rel="noopener noreferrer" style={{display:'block',width:'100%',padding:'12px',background:'var(--green)',border:'none',borderRadius:'8px',color:'#fff',fontSize:'13px',fontWeight:700,cursor:'pointer',textAlign:'center',textDecoration:'none'}}>
-                        📊 {sidebarCollapsed ? '' : 'BI Dashboard'}
-                    </a>
+                <div className="nav-section">
+                    <div className="nav-title">Reports</div>
+                    <a className="nav-btn" href="https://app.mil.powerbigov.us/groups/723e47dd-9fb2-45ba-9c59-fb38242cbc66/reports/ef93b590-8da1-4e3c-a3ef-80a577f44e1c?ctid=e3333e00-c877-4b87-b6ad-45e942de1750&pbi_source=linkShare" target="_blank" rel="noopener noreferrer" title="Opens Power BI in a new tab" style={{textDecoration:'none'}}><Icon name="report"/><span>BI Dashboard ↗</span></a>
                 </div>
                 {sections.map(s => (<div key={s.title} className="nav-section"><div className="nav-title">{s.title}</div>{s.items.map(id => { const item = navItems.find(n => n.id === id); return (<button key={id} className={`nav-btn ${page === id ? 'active' : ''}`} onClick={() => setPage(id)}><Icon name={item.icon}/><span>{item.label}</span>{item.badge > 0 && <span className="badge-count">{item.badge}</span>}{item.dot && <span className={`nav-dot nav-dot-${item.dot}`}></span>}</button>); })}</div>))}
                 <div className="sidebar-footer">
-                    <div style={{marginBottom:'8px',padding:'8px',background:'var(--bg-input)',borderRadius:'6px'}}>
-                        <div style={{fontSize:'10px',color:'var(--text-muted)'}}>LOGGED IN AS</div>
-                        <div style={{fontSize:'12px',fontWeight:600,display:'flex',alignItems:'center',gap:'6px'}}>
-                            {currentUser?.username}
-                            {isAdmin && <span style={{background:'var(--primary)',color:'#000',padding:'1px 4px',borderRadius:'3px',fontSize:'8px',fontWeight:700}}>ADMIN</span>}
-                        </div>
-                        {currentUser?.lastLogin?.timestamp && (
-                            <div style={{fontSize:'9px',color:'var(--text-muted)',marginTop:'4px'}}>
-                                Last login: {new Date(currentUser.lastLogin.timestamp).toLocaleDateString()} {new Date(currentUser.lastLogin.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+                    {/* Account button + menu */}
+                    <div style={{position:'relative'}}>
+                        {userMenu && <div onClick={() => setUserMenu(false)} style={{position:'fixed',inset:0,zIndex:150}}/>}
+                        {userMenu && (
+                            <div role="menu" className="user-menu">
+                                {currentUser?.lastLogin?.timestamp && <div className="user-menu-note">Last login {new Date(currentUser.lastLogin.timestamp).toLocaleDateString()} {new Date(currentUser.lastLogin.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>}
+                                {isAdmin && <button role="menuitem" onClick={() => { setUserMenu(false); onOpenAdminPanel(); }}>👑 Admin Panel {pendingCount > 0 && <span className="badge-count">{pendingCount}</span>}</button>}
+                                <button role="menuitem" onClick={() => { setUserMenu(false); changeMyPassword(); }}>🔑 Change Password</button>
+                                <button role="menuitem" onClick={() => { setUserMenu(false); setFeedbackModal(true); }}>💡 Suggest Improvement</button>
+                                <button role="menuitem" onClick={() => setDarkMode(!darkMode)}>{darkMode ? '☀️ Light mode' : '🌙 Dark mode'}</button>
+                                <div className="user-menu-sep"/>
+                                <button role="menuitem" className="danger" onClick={() => { setUserMenu(false); onLogout(); }}>⎋ Log out</button>
                             </div>
                         )}
-                    </div>
-                    {isAdmin && (
-                        <button onClick={onOpenAdminPanel} style={{width:'100%',padding:'8px',marginBottom:'8px',background: pendingCount > 0 ? 'var(--amber-glow)' : 'var(--bg-input)',border: pendingCount > 0 ? '1px solid var(--amber)' : '1px solid var(--border)',borderRadius:'6px',color: pendingCount > 0 ? 'var(--amber)' : 'var(--text-dim)',fontSize:'11px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>
-                            👑 Admin Panel {pendingCount > 0 && <span style={{background:'var(--amber)',color:'#000',padding:'1px 6px',borderRadius:'8px',fontSize:'10px',fontWeight:600}}>{pendingCount}</span>}
+                        <button className="user-chip" onClick={() => setUserMenu(v => !v)} title="Account menu" aria-haspopup="menu" aria-expanded={userMenu}>
+                            <span className="user-avatar">{(currentUser?.username || '?').slice(0, 2).toUpperCase()}</span>
+                            <span className="user-chip-name">{currentUser?.username}{isAdmin && <span className="admin-pill">ADMIN</span>}</span>
+                            {isAdmin && pendingCount > 0 && <span className="badge-count" title={pendingCount + ' waiting for approval'}>{pendingCount}</span>}
+                            <svg className="user-chip-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6"/></svg>
                         </button>
-                    )}
-                    <div className="sync-status" style={{fontSize:'10px',color:'var(--primary)',marginBottom:'8px',display:'flex',alignItems:'center',gap:'6px',position:'relative'}} onMouseEnter={() => setShowOnlineTooltip(true)} onMouseLeave={() => setShowOnlineTooltip(false)}>
-                        <span style={{width:'8px',height:'8px',borderRadius:'50%',background:'var(--primary)',display:'inline-block',animation:'pulse 2s infinite'}}></span>
-                        <span>Live Sync</span>
-                        <span style={{marginLeft:'auto',background:'var(--primary-glow)',padding:'2px 6px',borderRadius:'10px',fontSize:'9px',cursor:'default'}}>👤 {activeUsers.length} online</span>
-                        {showOnlineTooltip && activeUsers.length > 0 && (
-                            <div style={{position:'absolute',bottom:'100%',left:'0',marginBottom:'8px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'8px',padding:'8px 12px',boxShadow:'0 4px 12px rgba(0,0,0,0.3)',zIndex:100,minWidth:'120px'}}>
-                                <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'6px',fontWeight:600}}>Users Online</div>
-                                {activeUsers.map(u => (
-                                    <div key={u.username} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:'var(--text)',marginBottom:'4px'}}>
-                                        <span style={{width:'6px',height:'6px',borderRadius:'50%',background:'var(--green)'}}></span>
-                                        {u.username}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
-                    <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
-                    <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-                        <div className="theme-toggle" style={{flex:1}}><button className={darkMode ? 'active' : ''} onClick={() => setDarkMode(true)}>🌙</button><button className={!darkMode ? 'active' : ''} onClick={() => setDarkMode(false)}>☀️</button></div>
-                        <button onClick={onLogout} style={{padding:'6px 10px',background:'var(--red-glow)',border:'1px solid var(--red)',borderRadius:'6px',color:'var(--red)',fontSize:'10px',cursor:'pointer'}}>Logout</button>
-                    </div>
-                    <button onClick={changeMyPassword} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',margin:'6px 0'}}>🔑 Change Password</button>
-                    <button onClick={() => setSuggestModal(true)} style={{width:'100%',padding:'6px 10px',background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',fontSize:'10px',fontWeight:500,cursor:'pointer',textAlign:'center',marginBottom:'6px'}}>💡 Suggest Improvement</button>
-                    <div className="version">v4.5.1 Firebase</div>
+                    {/* Online + build/changelog */}
+                    <div className="sidebar-meta">
+                        <span className="sync-status" style={{position:'relative',display:'inline-flex',alignItems:'center',gap:'5px',cursor:'default'}} onMouseEnter={() => setShowOnlineTooltip(true)} onMouseLeave={() => setShowOnlineTooltip(false)}>
+                            <span style={{width:'7px',height:'7px',borderRadius:'50%',background:'var(--primary)',display:'inline-block',animation:'pulse 2s infinite'}}></span>
+                            {activeUsers.length} online
+                            {showOnlineTooltip && activeUsers.length > 0 && (
+                                <div style={{position:'absolute',bottom:'100%',left:'0',marginBottom:'8px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'8px',padding:'8px 12px',boxShadow:'0 4px 12px rgba(0,0,0,0.3)',zIndex:100,minWidth:'120px'}}>
+                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'6px',fontWeight:600}}>Users Online</div>
+                                    {activeUsers.map(u => (
+                                        <div key={u.username} style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:'var(--text)',marginBottom:'4px'}}>
+                                            <span style={{width:'6px',height:'6px',borderRadius:'50%',background:'var(--green)'}}></span>
+                                            {u.username}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </span>
+                        <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T152'; } catch(e2) {}
-                        return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T153'; } catch(e2) {}
+                        return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
                                     var el = document.getElementById('changelogDrop');
@@ -2029,15 +2054,23 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T152');
+                                    localStorage.setItem('lastSeenBuild', 'T153');
                                 },
-                                style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
-                            }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
+                                className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
+                                title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
+                            }, 'Build ' + String(window.__APP_BUILD || '').split('T').pop()),
                             React.createElement('div', {id:'changelogOverlay', onClick:function(){document.getElementById('changelogDrop').style.display='none';document.getElementById('changelogOverlay').style.display='none';}, style:{display:'none',position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:199}}),
                             React.createElement('div', {id:'changelogDrop', style:{display:'none',position:'fixed',bottom:'50px',left:'210px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px',boxShadow:'0 12px 40px rgba(0,0,0,0.5)',zIndex:200,maxHeight:'600px',overflowY:'auto',width:'520px'}},
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T153'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '✨ Tidier Layout'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• One Suggest Improvement: removed the big button in the top right of every page and the duplicate suggestion form. It now lives in the account menu and opens the full form (idea, bug or workflow)\n• New account button at the bottom of the sidebar (your initials and name) with a menu: Admin Panel (shows how many are waiting for approval), Change Password, Suggest Improvement, Light/Dark mode and Log out. Press Esc to close it\n• Sidebar footer shortened to one line: who is online and the current build number. Click the build number for What’s new. It turns amber when there are new updates\n• Removed the outdated v4.5.1 Firebase label and the separate New Updates Available button\n• BI Dashboard is now a normal sidebar link under Reports (opens in a new tab) instead of a large green block\n• Toolbars have one green main action and neutral buttons for everything else (Dashboard: Weekly Report. Daily Checks: End of Day). Power BI Export, Copy Yesterday, Excel and Morning no longer use their own colors\n• Sidebar fits better on small laptop screens such as 1280x720: tighter spacing, and the Pro Edition subtitle hides on short screens'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T152'),
@@ -2243,6 +2276,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{fontSize:"9px",color:"var(--text-muted)",textAlign:"center",marginTop:"12px",borderTop:"1px solid var(--border)",paddingTop:"10px"}}, "Ship Tracker Pro — NSWC Corona PA22 REAP Team")                            )
                         );
                     })()}
+                    </div>
                 </div>
                 <button className="sidebar-toggle" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarCollapsed ? '▶' : '◀'}</button>
             </nav>
@@ -2260,11 +2294,6 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <button onClick={() => setPage(0)} className="btn btn-primary" style={{whiteSpace:'nowrap'}}>Go to Dashboard</button>
                     </div>
                 )}
-                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'16px'}}>
-                    <button onClick={() => setFeedbackModal(true)} style={{padding:'10px 16px',background:'var(--primary)',border:'none',borderRadius:'8px',color:'#000',fontSize:'12px',fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',boxShadow:'0 2px 8px rgba(25, 169, 116, 0.3)'}}>
-                        💡 Suggest Improvement
-                    </button>
-                </div>
                 {page === 0 && <Dashboard ships={ships} setShips={setShips} issues={issues} setIssues={setIssues} dailyChecks={dailyChecks} parts={parts} installs={installs} toast={toast} setPage={setPage} setEditingShip={setEditingShip} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} searchRef={searchRef} logActivity={logActivity} activityLog={activityLog} currentUser={currentUser} allUsers={allUsers} setAlerts={setAlerts} dismissedAlerts={dismissedAlerts} quickNotes={quickNotes} setQuickNotes={setQuickNotes}/>}
                 {page === 1 && <DailyChecks ships={ships} setShips={setShips} checks={dailyChecks} setChecks={setDailyChecks} installs={installs} issues={issues} toast={toast} logActivity={logActivity} quickNotes={quickNotes}/>}
                 {page === 2 && <AddShip ships={ships} setShips={setShips} toast={toast} editing={editingShip} setEditing={setEditingShip} setPage={setPage} logActivity={logActivity}/>}
@@ -2276,7 +2305,6 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser}/>}
             </main>
             <Toast toasts={toasts} remove={id => setToasts(t => t.filter(x => x.id !== id))} alerts={alerts} dismissAlert={id => setDismissedAlerts(prev => [...prev, id])}/>
-            {suggestModal && <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}} onClick={e => { if(e.target===e.currentTarget) setSuggestModal(false); }}><div style={{background:'var(--bg-card)',borderRadius:'14px',padding:'24px',width:'440px',border:'1px solid var(--border)'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}><h3 style={{fontSize:'16px',fontWeight:800,margin:0}}>💡 Suggest an Improvement</h3><button onClick={() => setSuggestModal(false)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'18px',cursor:'pointer'}}>✕</button></div><p style={{fontSize:'13px',color:'var(--text-dim)',marginBottom:'12px'}}>What would make Ship Tracker better?</p><textarea id="suggestInput" style={{width:'100%',minHeight:'120px',padding:'12px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px',resize:'vertical'}} placeholder="Describe your suggestion..."/><button className="btn btn-primary" style={{width:'100%',padding:'12px',fontWeight:700,borderRadius:'10px',marginTop:'12px'}} onClick={() => { var inp = document.getElementById('suggestInput'); if(!inp || !inp.value.trim()) return; db.collection('suggestions').add({text:inp.value.trim(),user:currentUser?currentUser.username:'Unknown',date:new Date().toISOString(),status:'new'}); toast('Suggestion submitted! 🎉','success'); setSuggestModal(false); }}>Submit Suggestion</button></div></div>}
             
             {/* Feedback Modal */}
             <Modal open={feedbackModal} onClose={() => setFeedbackModal(false)} title="💡 Suggest Improvement">
@@ -4388,7 +4416,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     </div>
                     <button className="btn btn-primary" onClick={copyReport}>📋 Weekly Report</button>
                     <button className="btn btn-secondary" onClick={downloadReport}>⬇️ Download</button>
-                    <button className="btn btn-secondary" onClick={exportPowerBI} style={{background:'var(--primary-glow)',border:'1px solid var(--primary)',color:'var(--primary)'}}>📊 Power BI Export</button>
+                    <button className="btn btn-secondary" onClick={exportPowerBI}>📊 Power BI Export</button>
                     <button className="btn btn-secondary" onClick={() => window.print()}><Icon name="print"/> Print</button>
                 </div>
             </div>
@@ -7326,19 +7354,19 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <button className="btn btn-sm btn-primary" onClick={() => setDate(toDateString(new Date()))}>Today</button>
                     </div>
                     <div style={{display:'flex',gap:'6px',flexWrap:'wrap',alignItems:'center'}}>
-                        <button className="btn btn-sm btn-warning" style={{fontSize:'10px'}} onClick={copyYesterday}>📋 Copy Yesterday</button>
+                        <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={copyYesterday}>📋 Copy Yesterday</button>
                         <div style={{width:'1px',height:'20px',background:'var(--border)'}}></div>
                         <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600}}>Export:</span>
-                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(16,185,129,0.1)',border:'1px solid var(--green)',color:'var(--green)'}} onClick={exportForExcel}>📊 Excel</button>
-                        <SplitButton testId="eod-split" label="📧 End of Day" onClick={sendEodEmail} className="btn btn-sm"
-                            style={{fontSize:'10px',padding:'4px 10px',background:'rgba(59,130,246,0.1)',border:'1px solid var(--blue)',color:'var(--blue)'}}
+                        <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={exportForExcel}>📊 Excel</button>
+                        <SplitButton testId="eod-split" label="📧 End of Day" onClick={sendEodEmail} className="btn btn-sm btn-primary"
+                            style={{fontSize:'10px',padding:'4px 10px'}}
                             items={[
                                 { label: '👁 Preview report', onClick: exportStatus },
                                 { label: '📋 Copy report only', onClick: copyEndOfDay },
                                 { label: '📊 Download Excel only', onClick: downloadEodExcel },
                                 { label: '🔗 Link Outlook (one-time)', onClick: linkOutlook },
                             ]}/>
-                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(245,158,11,0.1)',border:'1px solid var(--amber)',color:'var(--amber)'}} onClick={exportMorningReport}>☀️ Morning</button>
+                        <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={exportMorningReport}>☀️ Morning</button>
                     </div>
                 </div>
 
