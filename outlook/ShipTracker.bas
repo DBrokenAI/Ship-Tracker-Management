@@ -14,7 +14,7 @@
 
 Const MY_NAME = "CHANGE_ME"
 Const FIREBASE_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/incomingEmails"
-Const CURRENT_VERSION = "3.4"
+Const CURRENT_VERSION = "3.5"
 Const VBA_CODE_URL = ""
 ' End of Day email button
 Const FIREBASE_WEB_KEY = "AIzaSyA2HSftodTHDq3CJbeN7O4i0u4cADawJwI"   ' public web key (same as the website)
@@ -76,108 +76,75 @@ Private Sub CheckForUpdate()
            "Current: v" & CURRENT_VERSION & vbCrLf & vbCrLf & _
            "WHAT'S NEW:" & vbCrLf & _
            changelogText & vbCrLf & vbCrLf & _
-           "Click YES to update automatically." & vbCrLf & _
-           "Outlook will restart after updating.", _
-           vbYesNo + vbExclamation, "Ship Tracker Update v" & g_configVersion)
-    
+           "Click YES to update now.", _
+           vbYesNo + vbInformation, "Ship Tracker Update v" & g_configVersion)
+
     If answer = vbNo Then Exit Sub
-    
+
     ' Download new code from Firebase
     Dim http As Object
     Set http = CreateObject("MSXML2.XMLHTTP.6.0")
     http.Open "GET", "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/settings/vbaCode", False
     http.Send
-    
+
     If http.Status <> 200 Then
         MsgBox "Download failed: " & http.Status, vbCritical, "Update Error"
         Exit Sub
     End If
-    
+
     Dim encodedCode As String
     encodedCode = ExtractFirestoreField(http.responseText, "sourceCode")
     Set http = Nothing
-    
+
     Dim newCode As String
     newCode = DecodeBase64(encodedCode)
-    
+
     If Len(newCode) < 500 Then
-        MsgBox "Downloaded code too small (" & Len(newCode) & " chars). Update cancelled." & vbCrLf & vbCrLf & "Try updating manually from Teams.", vbCritical, "Update Error"
+        MsgBox "Downloaded code too small (" & Len(newCode) & " chars). Update cancelled.", vbCritical, "Update Error"
         Exit Sub
     End If
-    
+
     ' Preserve user's MY_NAME
     newCode = Replace(newCode, "Const MY_NAME = ""CHANGE_ME""", "Const MY_NAME = """ & MY_NAME & """")
-    
-    ' Try auto-replace
+
+    ' Try to replace the code directly (needs "Trust access to the VBA project object model")
     On Error Resume Next
     Dim vbComp As Object
     Set vbComp = Application.VBE.ActiveVBProject.VBComponents("ThisOutlookSession")
-    
-    If vbComp Is Nothing Or Err.Number <> 0 Then
-        Err.Clear
-        On Error Resume Next
-        
-        ' Save new code to temp file as backup
-        Dim tempPath As String
-        tempPath = Environ("TEMP") & "\ShipTracker_Update.bas"
-        Dim fso As Object
-        Set fso = CreateObject("Scripting.FileSystemObject")
-        Dim f As Object
-        Set f = fso.CreateTextFile(tempPath, True, True)
-        f.Write newCode
-        f.Close
-        Set f = Nothing
-        Set fso = Nothing
-        
-        ' Copy code to clipboard
-        Dim clipObj As Object
-        Set clipObj = CreateObject("htmlfile")
-        clipObj.ParentWindow.ClipboardData.SetData "text", newCode
-        Set clipObj = Nothing
-        
-        ' Create a batch file to restart Outlook after we close it
-        Dim batPath As String
-        batPath = Environ("TEMP") & "\ShipTracker_Restart.bat"
-        Dim batFile As Object
-        Set batFile = CreateObject("Scripting.FileSystemObject").CreateTextFile(batPath, True)
-        batFile.WriteLine "@echo off"
-        batFile.WriteLine "timeout /t 4 /nobreak >nul"
-        batFile.WriteLine "start """" ""outlook.exe"""
-        batFile.WriteLine "del ""%~f0"""
-        batFile.Close
-        Set batFile = Nothing
-        
-        ' Auto-paste using SendKeys
-        Application.SendKeys "%{F11}", True
-        Application.Wait DateAdd("s", 2, Now)
-        Application.SendKeys "^a", True
-        Application.Wait DateAdd("s", 1, Now)
-        Application.SendKeys "^v", True
-        Application.Wait DateAdd("s", 1, Now)
-        Application.SendKeys "^s", True
-        Application.Wait DateAdd("s", 2, Now)
-        Application.SendKeys "%{F4}", True
-        Application.Wait DateAdd("s", 1, Now)
-        
-        ' Launch restart batch and quit
-        CreateObject("WScript.Shell").Run batPath, 0, False
-        Application.Quit
-        Exit Sub
+    If Not vbComp Is Nothing And Err.Number = 0 Then
+        Dim codeModule As Object
+        Set codeModule = vbComp.CodeModule
+        If codeModule.CountOfLines > 0 Then codeModule.DeleteLines 1, codeModule.CountOfLines
+        codeModule.AddFromString newCode
+        If Err.Number = 0 Then
+            MsgBox "Updated to v" & g_configVersion & "!" & vbCrLf & vbCrLf & _
+                   "Close Outlook and open it again to finish.", vbInformation, "Ship Tracker Updated"
+            Exit Sub
+        End If
     End If
+    Err.Clear
+
+    ' Not allowed on this PC: hand the code to the user to paste in.
+    ' (No batch files, key-pressing or auto-restart - locked-down PCs block those.)
+    Dim tempPath As String
+    tempPath = Environ("TEMP") & "\ShipTracker_Update.bas"
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Dim f As Object
+    Set f = fso.CreateTextFile(tempPath, True, True)
+    f.Write newCode
+    f.Close
+    WriteClipboardText newCode
+    Err.Clear
     On Error GoTo 0
-    
-    ' Replace the code
-    Dim codeModule As Object
-    Set codeModule = vbComp.CodeModule
-    If codeModule.CountOfLines > 0 Then
-        codeModule.DeleteLines 1, codeModule.CountOfLines
-    End If
-    codeModule.AddFromString newCode
-    
-    MsgBox "Updated to v" & g_configVersion & "!" & vbCrLf & vbCrLf & _
-           "Outlook will restart now.", vbInformation, "Ship Tracker Updated"
-    
-    Application.Quit
+
+    MsgBox "This PC doesn't allow automatic updates, so please paste it in (1 minute):" & vbCrLf & vbCrLf & _
+           "1. Press Alt+F11 and double-click ThisOutlookSession" & vbCrLf & _
+           "2. Click in the code, press Ctrl+A, then Ctrl+V" & vbCrLf & _
+           "3. Press Ctrl+S, close that window, and restart Outlook" & vbCrLf & vbCrLf & _
+           "The new code (with your name already filled in) is on your clipboard." & vbCrLf & _
+           "If Ctrl+V pastes something else, open this file in Notepad and copy it from there:" & vbCrLf & _
+           tempPath, vbInformation, "Ship Tracker Update v" & g_configVersion
 End Sub
 
 
