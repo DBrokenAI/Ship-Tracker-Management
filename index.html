@@ -458,7 +458,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T147";
+    var APP_BUILD = "2026-10-29T148";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1684,7 +1684,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T147'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T148'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1695,7 +1695,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T147');
+                                    localStorage.setItem('lastSeenBuild', 'T148');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1704,6 +1704,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T148'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔑 Simple Outlook Sign-in'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Outlook macro v3.7: the first time you click EOD Email it asks for your Ship Tracker username and password (once per PC), then remembers the login\n• Removed the Connect Outlook step and its connection code (it was too long for Outlook’s paste box, and work PCs block reading the clipboard)\n• Removed Connect Outlook from the End of Day ▾ menu\n• Clear messages for a wrong username or password and for too many attempts\n• If a saved login stops working (for example after a password change), EOD Email simply asks you to sign in again'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T147'),
@@ -6750,15 +6757,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         return () => clearTimeout(t);
     }, [checks, ships, issues, quickNotes, date, dashOrder]);
 
-    // One-time setup for the Outlook macro: copies a connection code for this login
-    const connectOutlook = () => {
-        const u = auth.currentUser;
-        if (!u) { toast('Please log in again first.', 'error'); return; }
-        navigator.clipboard.writeText('STLINK:' + u.refreshToken).then(
-            () => toast('Connection code copied. In Outlook, click EOD Email and it will connect automatically.', 'success'),
-            () => toast('Could not copy the connection code. Try again.', 'error'));
-    };
-
     const exportForExcel = () => {
         const fullReapOrder = [67, 70, 54, 56, 62, 63];
         const miniReapOrder = [55, 57, 72, 77, 96, 98, 101, 103, 109, 111];
@@ -6963,7 +6961,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                 { label: '👁 Preview report', onClick: exportStatus },
                                 { label: '📋 Copy report only', onClick: copyEndOfDay },
                                 { label: '📊 Download Excel only', onClick: downloadEodExcel },
-                                { label: '🔗 Connect Outlook (one-time)', onClick: connectOutlook },
                             ]}/>
                         <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(245,158,11,0.1)',border:'1px solid var(--amber)',color:'var(--amber)'}} onClick={exportMorningReport}>☀️ Morning</button>
                     </div>

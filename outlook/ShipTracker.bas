@@ -14,12 +14,11 @@
 
 Const MY_NAME = "CHANGE_ME"
 Const FIREBASE_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/incomingEmails"
-Const CURRENT_VERSION = "3.6"
+Const CURRENT_VERSION = "3.7"
 Const VBA_CODE_URL = ""
 ' End of Day email button
 Const FIREBASE_WEB_KEY = "AIzaSyA2HSftodTHDq3CJbeN7O4i0u4cADawJwI"   ' public web key (same as the website)
 Const EOD_DOC_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/eodLogs/"
-Const LINK_PREFIX = "STLINK:"
 
 ' ★★★ CHANGE THIS TO YOUR TEAMS/SHAREPOINT CONFIG FILE URL ★★★
 'Config is now loaded from Firebase - no URL needed
@@ -1418,8 +1417,7 @@ End Function
 '   File > Options > Quick Access Toolbar > Choose commands from: Macros
 '   > Project1.ThisOutlookSession.CreateEodEmail > Add > OK
 ' FIRST USE (once per PC):
-'   In Ship Tracker: Daily Checks > End of Day arrow > Connect Outlook (one-time),
-'   then click the button in Outlook. It connects automatically.
+'   Click the button and sign in with your Ship Tracker username and password.
 ' ============================================
 
 Public Sub CreateEodEmail()
@@ -1444,8 +1442,8 @@ Public Sub CreateEodEmail()
     End If
     If http.Status = 401 Or http.Status = 403 Then
         DeleteShipTrackerLink
-        MsgBox "Outlook's connection to Ship Tracker is no longer valid (or your account isn't approved)." & vbCrLf & vbCrLf & _
-               "In Ship Tracker: Daily Checks > End of Day arrow > Connect Outlook, then click EOD Email again.", _
+        MsgBox "Ship Tracker didn't accept this login (your account may not be approved)." & vbCrLf & vbCrLf & _
+               "Click EOD Email to sign in again.", _
                vbExclamation, "Ship Tracker"
         Exit Sub
     End If
@@ -1500,64 +1498,75 @@ Failed:
     MsgBox "EOD Email failed: " & Err.Description, vbCritical, "Ship Tracker"
 End Sub
 
-' Returns a fresh sign-in token for Ship Tracker, connecting Outlook first if needed ("" = cancelled/failed)
+' Returns a fresh sign-in token for Ship Tracker, asking for the login the first time ("" = cancelled/failed)
 Private Function GetShipTrackerToken() As String
     On Error Resume Next
     GetShipTrackerToken = ""
+    Dim http As Object
+    Dim resp As String
 
     Dim refreshToken As String
     refreshToken = GetSetting("ShipTracker", "Auth", "RefreshToken", "")
 
-    If refreshToken = "" Then
-        ' First run: pick up the connection code the website put on the clipboard
-        Dim clip As String: clip = CleanCode(ReadClipboardText())
-        If Left(clip, Len(LINK_PREFIX)) <> LINK_PREFIX Then
-            ' Clipboard couldn't be read (or holds something else) - let the user paste it
-            Dim seen As String: seen = Left(clip, 12)
-            If seen = "" Then seen = "(nothing)"
-            Dim typed As String
-            typed = InputBox("Connect Outlook to Ship Tracker (one time):" & vbCrLf & vbCrLf & _
-                   "1. In Ship Tracker: Daily Checks > arrow next to End of Day > Connect Outlook (one-time)" & vbCrLf & _
-                   "2. Click in the box below and press Ctrl+V, then OK" & vbCrLf & vbCrLf & _
-                   "(Outlook read from the clipboard: " & seen & ")", "Ship Tracker")
-            clip = CleanCode(typed)
-            If clip = "" Then Exit Function
-            If Len(typed) >= 254 Then
-                ' VBA's InputBox silently cuts input at 254 characters
-                MsgBox "The code was too long for the paste box and got cut off, and Outlook couldn't read your clipboard directly either." & vbCrLf & vbCrLf & _
-                       "Tell your Ship Tracker admin: 'clipboard read failed, InputBox truncated'.", vbExclamation, "Ship Tracker"
-                Exit Function
-            End If
-            If Left(clip, Len(LINK_PREFIX)) <> LINK_PREFIX Then
-                MsgBox "That isn't a Ship Tracker connection code (it should start with " & LINK_PREFIX & ")." & vbCrLf & vbCrLf & _
-                       "In Ship Tracker: Daily Checks > arrow next to End of Day > Connect Outlook (one-time), then try again.", _
-                       vbExclamation, "Ship Tracker"
-                Exit Function
-            End If
+    If refreshToken <> "" Then
+        ' Normal case: renew the login saved on this PC
+        Set http = CreateObject("MSXML2.XMLHTTP.6.0")
+        http.Open "POST", "https://securetoken.googleapis.com/v1/token?key=" & FIREBASE_WEB_KEY, False
+        http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
+        http.Send "grant_type=refresh_token&refresh_token=" & refreshToken
+        If http.Status = 200 Then
+            resp = http.responseText
+            Dim renewed As String: renewed = ExtractJsonString(resp, "refresh_token")
+            If renewed <> "" Then SaveSetting "ShipTracker", "Auth", "RefreshToken", renewed
+            GetShipTrackerToken = ExtractJsonString(resp, "id_token")
+            Exit Function
         End If
-        refreshToken = Mid(clip, Len(LINK_PREFIX) + 1)
+        ' Saved login stopped working (password changed, account removed...) - sign in again below
+        DeleteShipTrackerLink
     End If
 
-    Dim http As Object
-    Set http = CreateObject("MSXML2.XMLHTTP.6.0")
-    http.Open "POST", "https://securetoken.googleapis.com/v1/token?key=" & FIREBASE_WEB_KEY, False
-    http.setRequestHeader "Content-Type", "application/x-www-form-urlencoded"
-    http.Send "grant_type=refresh_token&refresh_token=" & refreshToken
+    ' First time on this PC: sign in with the Ship Tracker username + password
+    Dim userName As String
+    userName = Trim(InputBox("Sign in to Ship Tracker (one time on this PC)." & vbCrLf & vbCrLf & _
+               "Ship Tracker username:", "Ship Tracker"))
+    If userName = "" Then Exit Function
+    Dim pw As String
+    pw = InputBox("Ship Tracker password for " & userName & ":" & vbCrLf & vbCrLf & _
+         "Outlook can't hide what you type in this box. Your password goes only to the Ship Tracker sign-in and is never saved.", _
+         "Ship Tracker")
+    If pw = "" Then Exit Function
 
+    Dim body As String
+    body = "{""email"":""" & JsonEscape(LCase(userName) & "@ship-checker.firebaseapp.com") & _
+           """,""password"":""" & JsonEscape(pw) & """,""returnSecureToken"":true}"
+    pw = ""
+    Set http = CreateObject("MSXML2.XMLHTTP.6.0")
+    http.Open "POST", "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" & FIREBASE_WEB_KEY, False
+    http.setRequestHeader "Content-Type", "application/json"
+    http.Send body
+    body = ""
+
+    resp = http.responseText
     If http.Status <> 200 Then
-        DeleteShipTrackerLink
-        MsgBox "Couldn't connect to Ship Tracker (HTTP " & http.Status & ")." & vbCrLf & vbCrLf & _
-               "In Ship Tracker: Daily Checks > End of Day arrow > Connect Outlook, then click EOD Email again.", _
-               vbExclamation, "Ship Tracker"
+        If InStr(resp, "INVALID_LOGIN_CREDENTIALS") > 0 Or InStr(resp, "INVALID_PASSWORD") > 0 Or _
+           InStr(resp, "EMAIL_NOT_FOUND") > 0 Or InStr(resp, "INVALID_EMAIL") > 0 Then
+            MsgBox "Wrong Ship Tracker username or password. Click EOD Email to try again.", vbExclamation, "Ship Tracker"
+        ElseIf InStr(resp, "TOO_MANY_ATTEMPTS") > 0 Then
+            MsgBox "Too many sign-in attempts. Wait a few minutes, then try again.", vbExclamation, "Ship Tracker"
+        Else
+            MsgBox "Couldn't sign in to Ship Tracker (HTTP " & http.Status & ").", vbExclamation, "Ship Tracker"
+        End If
         Exit Function
     End If
 
-    Dim resp As String: resp = http.responseText
-    Dim newRefresh As String: newRefresh = ExtractJsonString(resp, "refresh_token")
-    If newRefresh <> "" Then SaveSetting "ShipTracker", "Auth", "RefreshToken", newRefresh
-    GetShipTrackerToken = ExtractJsonString(resp, "id_token")
-    ' Clear the connection code off the clipboard once it has been used
-    If Left(Trim(ReadClipboardText()), Len(LINK_PREFIX)) = LINK_PREFIX Then WriteClipboardText ""
+    Dim saved As String: saved = ExtractJsonString(resp, "refreshToken")
+    If saved <> "" Then SaveSetting "ShipTracker", "Auth", "RefreshToken", saved
+    GetShipTrackerToken = ExtractJsonString(resp, "idToken")
+End Function
+
+' Escape a value for a JSON string
+Private Function JsonEscape(s As String) As String
+    JsonEscape = Replace(Replace(s, "\", "\\"), """", "\""")
 End Function
 
 Private Sub DeleteShipTrackerLink()
@@ -1596,53 +1605,3 @@ Private Function SaveBase64ToFile(b64 As String, path As String) As Boolean
 Failed:
     SaveBase64ToFile = False
 End Function
-
-' Strip spaces and line breaks that sneak in when a code is copied/pasted
-Private Function CleanCode(s As String) As String
-    CleanCode = Replace(Replace(Replace(Replace(s, vbCr, ""), vbLf, ""), vbTab, ""), " ", "")
-End Function
-
-' Clipboard text, trying three methods (locked-down PCs often block one or two of them)
-Private Function ReadClipboardText() As String
-    On Error Resume Next
-    Dim t As String
-
-    ' 1) MSForms DataObject
-    Dim d As Object
-    Set d = CreateObject("new:{1C3B4210-F441-11CE-B9EA-00AA006B1A69}")
-    If Not d Is Nothing Then
-        d.GetFromClipboard
-        t = d.GetText(1)
-    End If
-    Err.Clear
-
-    ' 2) Paste into the (hidden) editor of a throwaway email, then read it back
-    If Len(t) = 0 Then
-        Dim tmp As Outlook.MailItem
-        Set tmp = Application.CreateItem(0)
-        Dim ed As Object
-        Set ed = tmp.GetInspector.WordEditor
-        If Not ed Is Nothing Then
-            ed.Range.PasteSpecial DataType:=2   ' wdPasteText
-            t = ed.Range.Text
-        End If
-        tmp.Close 1   ' olDiscard
-        Set ed = Nothing
-        Set tmp = Nothing
-    End If
-    Err.Clear
-
-    ' 3) Legacy HTML clipboard
-    If Len(t) = 0 Then t = CreateObject("htmlfile").ParentWindow.ClipboardData.GetData("text")
-    Err.Clear
-
-    ReadClipboardText = t
-End Function
-
-Private Sub WriteClipboardText(text As String)
-    On Error Resume Next
-    Dim d As Object
-    Set d = CreateObject("new:{1C3B4210-F441-11CE-B9EA-00AA006B1A69}")
-    d.SetText text
-    d.PutInClipboard
-End Sub
