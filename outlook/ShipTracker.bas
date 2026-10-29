@@ -14,7 +14,7 @@
 
 Const MY_NAME = "CHANGE_ME"
 Const FIREBASE_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/incomingEmails"
-Const CURRENT_VERSION = "3.3"
+Const CURRENT_VERSION = "3.4"
 Const VBA_CODE_URL = ""
 ' End of Day email button
 Const FIREBASE_WEB_KEY = "AIzaSyA2HSftodTHDq3CJbeN7O4i0u4cADawJwI"   ' public web key (same as the website)
@@ -1685,14 +1685,30 @@ Private Function GetShipTrackerToken() As String
 
     If refreshToken = "" Then
         ' First run: pick up the connection code the website put on the clipboard
-        Dim clip As String: clip = Trim(ReadClipboardText())
+        Dim clip As String: clip = CleanCode(ReadClipboardText())
         If Left(clip, Len(LINK_PREFIX)) <> LINK_PREFIX Then
-            MsgBox "Connect Outlook to Ship Tracker (one time):" & vbCrLf & vbCrLf & _
-                   "1. In Ship Tracker go to Daily Checks" & vbCrLf & _
-                   "2. Click the arrow next to End of Day > Connect Outlook (one-time)" & vbCrLf & _
-                   "3. Come back here and click EOD Email again", _
-                   vbInformation, "Ship Tracker"
-            Exit Function
+            ' Clipboard couldn't be read (or holds something else) - let the user paste it
+            Dim seen As String: seen = Left(clip, 12)
+            If seen = "" Then seen = "(nothing)"
+            Dim typed As String
+            typed = InputBox("Connect Outlook to Ship Tracker (one time):" & vbCrLf & vbCrLf & _
+                   "1. In Ship Tracker: Daily Checks > arrow next to End of Day > Connect Outlook (one-time)" & vbCrLf & _
+                   "2. Click in the box below and press Ctrl+V, then OK" & vbCrLf & vbCrLf & _
+                   "(Outlook read from the clipboard: " & seen & ")", "Ship Tracker")
+            clip = CleanCode(typed)
+            If clip = "" Then Exit Function
+            If Len(typed) >= 254 Then
+                ' VBA's InputBox silently cuts input at 254 characters
+                MsgBox "The code was too long for the paste box and got cut off, and Outlook couldn't read your clipboard directly either." & vbCrLf & vbCrLf & _
+                       "Tell your Ship Tracker admin: 'clipboard read failed, InputBox truncated'.", vbExclamation, "Ship Tracker"
+                Exit Function
+            End If
+            If Left(clip, Len(LINK_PREFIX)) <> LINK_PREFIX Then
+                MsgBox "That isn't a Ship Tracker connection code (it should start with " & LINK_PREFIX & ")." & vbCrLf & vbCrLf & _
+                       "In Ship Tracker: Daily Checks > arrow next to End of Day > Connect Outlook (one-time), then try again.", _
+                       vbExclamation, "Ship Tracker"
+                Exit Function
+            End If
         End If
         refreshToken = Mid(clip, Len(LINK_PREFIX) + 1)
     End If
@@ -1756,17 +1772,46 @@ Failed:
     SaveBase64ToFile = False
 End Function
 
-' Clipboard helpers (MSForms DataObject, no references needed)
+' Strip spaces and line breaks that sneak in when a code is copied/pasted
+Private Function CleanCode(s As String) As String
+    CleanCode = Replace(Replace(Replace(Replace(s, vbCr, ""), vbLf, ""), vbTab, ""), " ", "")
+End Function
+
+' Clipboard text, trying three methods (locked-down PCs often block one or two of them)
 Private Function ReadClipboardText() As String
     On Error Resume Next
+    Dim t As String
+
+    ' 1) MSForms DataObject
     Dim d As Object
     Set d = CreateObject("new:{1C3B4210-F441-11CE-B9EA-00AA006B1A69}")
-    d.GetFromClipboard
-    ReadClipboardText = d.GetText(1)
-    If Err.Number <> 0 Then
-        Err.Clear
-        ReadClipboardText = CreateObject("htmlfile").ParentWindow.ClipboardData.GetData("text")
+    If Not d Is Nothing Then
+        d.GetFromClipboard
+        t = d.GetText(1)
     End If
+    Err.Clear
+
+    ' 2) Paste into the (hidden) editor of a throwaway email, then read it back
+    If Len(t) = 0 Then
+        Dim tmp As Outlook.MailItem
+        Set tmp = Application.CreateItem(0)
+        Dim ed As Object
+        Set ed = tmp.GetInspector.WordEditor
+        If Not ed Is Nothing Then
+            ed.Range.PasteSpecial DataType:=2   ' wdPasteText
+            t = ed.Range.Text
+        End If
+        tmp.Close 1   ' olDiscard
+        Set ed = Nothing
+        Set tmp = Nothing
+    End If
+    Err.Clear
+
+    ' 3) Legacy HTML clipboard
+    If Len(t) = 0 Then t = CreateObject("htmlfile").ParentWindow.ClipboardData.GetData("text")
+    Err.Clear
+
+    ReadClipboardText = t
 End Function
 
 Private Sub WriteClipboardText(text As String)
