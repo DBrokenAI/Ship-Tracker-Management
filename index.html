@@ -458,7 +458,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T150";
+    var APP_BUILD = "2026-10-29T151";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1258,6 +1258,143 @@ const parseLocalDate = (d) => {
 };
 // Get date string in YYYY-MM-DD format from Date object (local time)
 const isTruthy = (v) => v === true || v === 'true' || v === 1;
+// ===== REAP STATUS REPORT WORKBOOK =====
+// Fills the team's yearly "REAP Status Report_YYYY.xlsx" template with daily checks.
+// Cells are written straight into the sheet XML so every format, dropdown, formula and
+// highlight in the template stays exactly as it was.
+const REAP_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const reapHullKey = (v) => String(v == null ? '' : v).toUpperCase().replace(/[^A-Z0-9]/g, '');
+const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const xmlUnesc = (s) => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+const colNum = (letters) => letters.split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
+
+// One ship's row for one day. Online = a ping was entered (same rule as the EOD email).
+// PC columns: Yes only if that PC's box is ticked AND a ping was taken at that time.
+const reapRowValues = (ship, check) => {
+    if (ship.pendingInstall || ship.pendingDeinstall) return { B: 'N/A' };
+    const am = String(check.pingAM == null ? '' : check.pingAM).trim();
+    const pm = String(check.pingPM == null ? '' : check.pingPM).trim();
+    const pri = isTruthy(check.statusAM), alt = isTruthy(check.statusPM);
+    const yn = (b) => (b ? 'Yes' : 'No');
+    const num = (v) => { const n = Number(String(v == null ? '' : v).trim()); return isFinite(n) ? n : 0; };
+    return {
+        B: yn(am !== '' || pm !== ''),
+        C: yn(pri && am !== ''), D: yn(pri && pm !== ''),
+        F: yn(alt && am !== ''), G: yn(alt && pm !== ''),
+        I: num(am), J: num(pm), K: num(check.hdSpace)
+    };
+};
+
+// entries: { 'YYYY-MM-DD': { HULLKEY: {B:'Yes', C:'No', I: 237, ...}, ... }, ... }
+// Returns { buffer, placed, unmatched } — unmatched lists hulls the template has no row for.
+const fillReapWorkbook = async (JSZip, templateBuffer, entries) => {
+    const zip = await JSZip.loadAsync(templateBuffer);
+    const read = (p) => zip.file(p).async('string');
+    const attrs = (tag) => { const o = {}; tag.replace(/([\w:]+)="([^"]*)"/g, (m, k, v) => { o[k] = v; return m; }); return o; };
+
+    // Sheet name -> XML path
+    const wbXml = await read('xl/workbook.xml');
+    const relsXml = await read('xl/_rels/workbook.xml.rels');
+    const relTarget = {};
+    (relsXml.match(/<Relationship\b[^>]*>/g) || []).forEach(t => { const a = attrs(t); relTarget[a.Id] = a.Target; });
+    const sheetPath = {};
+    (wbXml.match(/<sheet\b[^>]*>/g) || []).forEach(t => {
+        const a = attrs(t); const target = relTarget[a['r:id']] || '';
+        sheetPath[xmlUnesc(a.name)] = target.startsWith('/') ? target.slice(1) : 'xl/' + target.replace(/^\.\//, '');
+    });
+
+    // Shared strings (to read hull names and the "Date" labels in column A)
+    const shared = [];
+    if (zip.file('xl/sharedStrings.xml')) {
+        const ss = await read('xl/sharedStrings.xml');
+        (ss.match(/<si>[\s\S]*?<\/si>/g) || []).forEach(si => {
+            shared.push(xmlUnesc((si.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || []).map(t => t.replace(/<[^>]+>/g, '')).join('')));
+        });
+    }
+
+    const placed = [], unmatched = new Set();
+    const byMonth = {};
+    Object.keys(entries).forEach(d => { const m = REAP_MONTHS[Number(d.slice(5, 7)) - 1]; (byMonth[m] = byMonth[m] || []).push(d); });
+
+    for (const month of Object.keys(byMonth)) {
+        const path = sheetPath[month];
+        if (!path || !zip.file(path)) continue;
+        let xml = await read(path);
+
+        // Index rows: number -> {text of column A}
+        const rowRe = /<row\b[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g;
+        const rows = [];
+        let m;
+        while ((m = rowRe.exec(xml))) {
+            const r = Number(attrs(m[0].match(/<row\b[^>]*>/)[0]).r);
+            const aCell = m[0].match(new RegExp('<c r="A' + r + '"[^>]*?(?:/>|>([\\s\\S]*?)</c>)'));
+            let aText = '';
+            if (aCell && aCell[1] != null) {
+                const cAttrs = attrs(aCell[0].match(/<c\b[^>]*>/)[0]);
+                const v = (aCell[1].match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+                const is = (aCell[1].match(/<t[^>]*>([\s\S]*?)<\/t>/) || [])[1];
+                aText = cAttrs.t === 's' && v != null ? shared[Number(v)] : xmlUnesc(is != null ? is : (v || ''));
+            }
+            rows.push({ r, aText });
+        }
+        // Day blocks start at the rows labelled "Date": 1st block = day 1, 2nd = day 2, ...
+        const blockStarts = rows.filter(x => x.aText.trim().toLowerCase() === 'date').map(x => x.r);
+
+        const writes = {};   // row number -> { col: value }
+        byMonth[month].forEach(d => {
+            const start = blockStarts[Number(d.slice(8, 10)) - 1];
+            if (start == null) return;
+            const end = blockStarts[Number(d.slice(8, 10))] || start + 24;
+            const hullRow = {};
+            rows.filter(x => x.r > start && x.r < end && x.aText).forEach(x => { hullRow[reapHullKey(x.aText)] = x.r; });
+            Object.keys(entries[d]).forEach(hull => {
+                const r = hullRow[hull];
+                if (r == null) { unmatched.add(hull); return; }
+                writes[r] = entries[d][hull];
+                placed.push(d + ' ' + hull);
+            });
+        });
+
+        // Apply writes row by row, keeping each cell's style (s="...")
+        xml = xml.replace(rowRe, (rowXml) => {
+            const open = rowXml.match(/<row\b[^>]*?\/?>/)[0];
+            const r = Number(attrs(open).r);
+            const vals = writes[r];
+            if (!vals) return rowXml;
+            let body = open.endsWith('/>') ? '' : rowXml.slice(open.length, rowXml.length - '</row>'.length);
+            const rowOpen = open.endsWith('/>') ? open.slice(0, -2) + '>' : open;
+            Object.keys(vals).forEach(col => {
+                const ref = col + r;
+                const v = vals[col];
+                const cellRe = new RegExp('<c r="' + ref + '"[^>]*?(?:/>|>[\\s\\S]*?</c>)');
+                const existing = body.match(cellRe);
+                const style = existing ? (attrs(existing[0].match(/<c\b[^>]*>/)[0]).s) : null;
+                const sAttr = style != null ? ' s="' + style + '"' : '';
+                const cell = typeof v === 'number'
+                    ? '<c r="' + ref + '"' + sAttr + '><v>' + v + '</v></c>'
+                    : '<c r="' + ref + '"' + sAttr + ' t="inlineStr"><is><t>' + xmlEsc(v) + '</t></is></c>';
+                if (existing) { body = body.replace(cellRe, cell); return; }
+                // Insert in column order
+                const target = colNum(col);
+                const cellsRe = /<c r="([A-Z]+)\d+"/g;
+                let insertAt = body.length, cm;
+                while ((cm = cellsRe.exec(body))) { if (colNum(cm[1]) > target) { insertAt = cm.index; break; } }
+                body = body.slice(0, insertAt) + cell + body.slice(insertAt);
+            });
+            return rowOpen + body + '</row>';
+        });
+        zip.file(path, xml);
+    }
+
+    // Recalculate formulas (Y/N and totals) when the file is opened
+    let wb = wbXml;
+    if (/<calcPr\b/.test(wb)) wb = wb.replace(/<calcPr\b([^>]*?)\s*(\/?)>/, (m, a, sl) => '<calcPr' + a.replace(/\s*fullCalcOnLoad="[^"]*"/, '') + ' fullCalcOnLoad="1"' + (sl ? '/' : '') + '>');
+    else wb = wb.replace('</workbook>', '<calcPr fullCalcOnLoad="1"/></workbook>');
+    zip.file('xl/workbook.xml', wb);
+
+    const buffer = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    return { buffer, placed, unmatched: Array.from(unmatched) };
+};
 const toDateString = (d) => {
     const date = d instanceof Date ? d : new Date(d);
     const y = date.getFullYear();
@@ -1684,7 +1821,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T150'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T151'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1695,7 +1832,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T150');
+                                    localStorage.setItem('lastSeenBuild', 'T151');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1704,6 +1841,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T151'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📊 REAP Status Report Workbook'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• End of Day Excel is now your team’s REAP Status Report_2026.xlsx workbook, filled in from daily checks (replaces the copy of the email table)\n• Every day of the year that has daily checks is filled into its own block on the right month tab. Formatting, dropdowns, formulas, weekend shading, List and Master Form stay exactly as in the template\n• Filled per ship: VOIP (Yes when a ping was entered, N/A for pending ships), StarPC/Primary and DataPC/Alternate AM and PM (Yes only when that box is ticked and that ping was taken), ping AM and PM, and HD space\n• Comments rows are left empty. Data and file-count columns stay at 0 (Ship Tracker doesn’t track those)\n• Ships with no row in the template are skipped\n• Email subject is now Daily Ship Checks - (date)\n• Outlook macro v3.9: attaches the full workbook with its real name (it is stored in parts because it is over 1 MB)\n• The report saved for the Outlook button now updates 15 seconds after you stop typing, since the workbook is larger'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T150'),
@@ -6472,81 +6616,68 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             fullReap: eodData.fullReap.map(pick),
             miniReap: eodData.miniReap.map(pick)
         };
+        // The filled workbook (~1.3 MB as base64) is over Firestore's 1 MB document limit,
+        // so it is stored in parts: eodLogs/{date}-xlsx-0, -1, ... (the Outlook macro joins them)
+        var parts = [];
         if (email) {
             logEntry.emailSubject = email.subject;
             logEntry.emailHtmlB64 = textToBase64(email.html);
-            logEntry.xlsxB64 = email.xlsxB64 || '';
+            logEntry.xlsxB64 = '';
+            var b64 = email.xlsxB64 || '';
+            for (var i = 0; i < b64.length; i += EOD_XLSX_PART_SIZE) parts.push(b64.slice(i, i + EOD_XLSX_PART_SIZE));
+            logEntry.xlsxParts = String(parts.length);
+            logEntry.xlsxName = email.xlsxName || '';
         }
-        db.collection('eodLogs').doc(dateStr).set(logEntry).catch(function(err) {
-            console.error('Failed to save EOD log:', err);
-        });
+        var logs = db.collection('eodLogs');
+        Promise.all(parts.map(function(p, i) { return logs.doc(dateStr + '-xlsx-' + i).set({ xlsxPart: p }); }))
+            .then(function() { return logs.doc(dateStr).set(logEntry); })
+            .catch(function(err) { console.error('Failed to save EOD log:', err); });
     };
+    const EOD_XLSX_PART_SIZE = 700000;
 
-    // ===== EXCEL (.xlsx) — today's report only, same colors as the email =====
-    // ExcelJS is ~1 MB, so it's only downloaded the first time someone exports
-    const loadExcelJs = function() {
-        if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
-        if (!window.__excelJsPromise) {
-            window.__excelJsPromise = new Promise(function(resolve, reject) {
+    // ===== EXCEL (.xlsx) — the team's "REAP Status Report_YYYY.xlsx", filled from daily checks =====
+    // Template: templates/REAP_Status_Report_YYYY.xlsx (blank yearly workbook). Every day of that
+    // year that has daily checks is written into its block; nothing else in the file changes.
+    const loadJsZip = function() {
+        if (window.JSZip) return Promise.resolve(window.JSZip);
+        if (!window.__jsZipPromise) {
+            window.__jsZipPromise = new Promise(function(resolve, reject) {
                 var s = document.createElement('script');
-                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
-                s.onload = function() { resolve(window.ExcelJS); };
-                s.onerror = function() { window.__excelJsPromise = null; reject(new Error('Could not load Excel library')); };
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                s.onload = function() { resolve(window.JSZip); };
+                s.onerror = function() { window.__jsZipPromise = null; reject(new Error('Could not load the zip library')); };
                 document.head.appendChild(s);
             });
         }
-        return window.__excelJsPromise;
+        return window.__jsZipPromise;
     };
+    const reapTemplateCache = useRef({});
+    const loadReapTemplate = function(year) {
+        if (!reapTemplateCache.current[year]) {
+            reapTemplateCache.current[year] = fetch('templates/REAP_Status_Report_' + year + '.xlsx')
+                .then(function(r) { if (!r.ok) throw new Error('No REAP Status Report template for ' + year); return r.arrayBuffer(); })
+                .catch(function(err) { delete reapTemplateCache.current[year]; throw err; });
+        }
+        return reapTemplateCache.current[year];
+    };
+    const eodXlsxName = function(dateStr) { return 'REAP Status Report_' + dateStr.slice(0, 4) + '.xlsx'; };
     const generateEodExcel = function(eodData, dateStr) {
-        return loadExcelJs().then(function(ExcelJS) {
-            var argb = function(hex) { return 'FF' + hex.replace('#', '').toUpperCase(); };
-            var border = { top:{style:'thin',color:{argb:'FFBBBBBB'}}, left:{style:'thin',color:{argb:'FFBBBBBB'}}, bottom:{style:'thin',color:{argb:'FFBBBBBB'}}, right:{style:'thin',color:{argb:'FFBBBBBB'}} };
-            var wb = new ExcelJS.Workbook();
-            var ws = wb.addWorksheet('REAP Status');
-            ws.columns = [{width:12},{width:12},{width:12},{width:9},{width:10},{width:10},{width:70}];
-            var dateLabel = parseLocalDate(dateStr).toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
-            ws.addRow([dateLabel]).font = { bold: true, size: 13 };
-            ws.addRow([]);
-            var head = ws.addRow(['', 'AM', 'PM', 'Files', 'Diode', 'Phone', 'Notes']);
-            head.eachCell(function(c, n) {
-                c.font = { bold: true, color: { argb: 'FF444444' } };
-                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-                c.alignment = { horizontal: n === 7 || n === 1 ? 'left' : 'center', vertical: 'middle' };
-                c.border = border;
-            });
-            var addSection = function(rows, label, bg) {
-                var sec = ws.addRow([label]);
-                ws.mergeCells(sec.number, 1, sec.number, 7);
-                var c = sec.getCell(1);
-                c.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb(bg) } };
-                c.alignment = { horizontal: 'center' };
-                c.border = border;
-                rows.forEach(function(r, i) {
-                    var notes = (r.notes || '') + (r.lastContactDate ? (r.notes ? '\n' : '') + r.lastContactDate : '');
-                    var row = ws.addRow([
-                        r.name,
-                        r.am + (r.amPing ? '\n' + r.amPing : ''),
-                        r.pm + (r.pmPing ? '\n' + r.pmPing : ''),
-                        r.files || '',
-                        r.diode || '',
-                        r.phone || '',
-                        notes
-                    ]);
-                    var lines = Math.max(r.amPing || r.pmPing ? 2 : 1, notes ? Math.ceil(notes.length / 80) + (r.lastContactDate && r.notes ? 1 : 0) : 1);
-                    row.height = Math.max(18, lines * 15);
-                    var colors = [null, eodColor(r, r.am), eodColor(r, r.pm), '#555555', eodColor(r, r.diode), eodColor(r, r.phone), '#222222'];
-                    row.eachCell({ includeEmpty: true }, function(cell, n) {
-                        cell.border = border;
-                        cell.alignment = { horizontal: n === 1 || n === 7 ? 'left' : 'center', vertical: 'middle', wrapText: true };
-                        cell.font = { bold: n <= 3, color: colors[n - 1] ? { argb: argb(colors[n - 1]) } : undefined };
-                        if (i % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } };
-                    });
-                });
-            };
-            if (eodData.fullReap.length > 0) addSection(eodData.fullReap, 'Full Reap', '#0d47a1');
-            if (eodData.miniReap.length > 0) addSection(eodData.miniReap, 'Mini-Reap', '#1b5e20');
-            return wb.xlsx.writeBuffer();
+        var year = dateStr.slice(0, 4);
+        // Every day this year that has checks: { date: { HULL: row values } }
+        var shipById = {};
+        ships.forEach(function(s) { shipById[s.id] = s; });
+        var entries = {};
+        checks.forEach(function(c) {
+            if (!c || typeof c.date !== 'string' || c.date.slice(0, 4) !== year) return;
+            var s = shipById[c.shipId];
+            if (!s) return;
+            (entries[c.date] = entries[c.date] || {})[reapHullKey(s.name)] = reapRowValues(s, c);
+        });
+        return Promise.all([loadJsZip(), loadReapTemplate(year)]).then(function(res) {
+            return fillReapWorkbook(res[0], res[1].slice(0), entries);
+        }).then(function(out) {
+            if (out.unmatched.length) console.warn('Ships not in the REAP Status Report template:', out.unmatched.join(', '));
+            return out.buffer;
         });
     };
     const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -6564,7 +6695,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         var eodData;
         try { eodData = getEndOfDayData(); } catch (err) { toast('Could not build the report: ' + err.message, 'error'); return; }
         generateEodExcel(eodData, date)
-            .then(function(buf) { downloadBlob(new Blob([buf], { type: XLSX_MIME }), 'REAP_Status_Report_' + date + '.xlsx'); toast('Excel downloaded', 'success'); })
+            .then(function(buf) { downloadBlob(new Blob([buf], { type: XLSX_MIME }), eodXlsxName(date)); toast('Excel downloaded', 'success'); })
             .catch(function(err) { console.error('EOD Excel failed:', err); toast('Excel file could not be created.', 'error'); });
     };
 
@@ -6573,7 +6704,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     const eodSubject = function(dateStr) {
         var d = parseLocalDate(dateStr);
         var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        return 'REAP Status Report - ' + monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+        return 'Daily Ship Checks - ' + monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
     };
     const textToBase64 = function(text) { return btoa(unescape(encodeURIComponent(text))); };
     const bufferToBase64 = function(buf) {
@@ -6593,8 +6724,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         var copied = copyHtmlToClipboard(reportHtml);
         var excel = generateEodExcel(eodData, date)
             .then(function(buf) {
-                downloadBlob(new Blob([buf], { type: XLSX_MIME }), 'REAP_Status_Report_' + date + '.xlsx');
-                saveEodLog(date, eodData, { subject: subject, html: reportHtml, xlsxB64: bufferToBase64(buf) });
+                downloadBlob(new Blob([buf], { type: XLSX_MIME }), eodXlsxName(date));
+                saveEodLog(date, eodData, { subject: subject, html: reportHtml, xlsxB64: bufferToBase64(buf), xlsxName: eodXlsxName(date) });
                 return true;
             })
             .catch(function(err) {
@@ -6785,9 +6916,9 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 .then(buf => bufferToBase64(buf), () => '')
                 .then(xlsxB64 => {
                     lastEodSaved.current = key;
-                    saveEodLog(date, eodData, { subject: eodSubject(date), html, xlsxB64 });
+                    saveEodLog(date, eodData, { subject: eodSubject(date), html, xlsxB64, xlsxName: eodXlsxName(date) });
                 });
-        }, 4000);
+        }, 15000);
         return () => clearTimeout(t);
     }, [checks, ships, issues, quickNotes, date, dashOrder]);
 

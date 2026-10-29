@@ -14,7 +14,7 @@
 
 Const MY_NAME = "CHANGE_ME"
 Const FIREBASE_URL = "https://firestore.googleapis.com/v1/projects/ship-checker/databases/(default)/documents/incomingEmails"
-Const CURRENT_VERSION = "3.8"
+Const CURRENT_VERSION = "3.9"
 Const VBA_CODE_URL = ""
 ' End of Day email button
 Const FIREBASE_WEB_KEY = "AIzaSyA2HSftodTHDq3CJbeN7O4i0u4cADawJwI"   ' public web key (same as the website)
@@ -1460,6 +1460,26 @@ Public Sub CreateEodEmail()
     Dim subject As String: subject = ExtractFirestoreField(resp, "emailSubject")
     Dim reportHtml As String: reportHtml = DecodeBase64(ExtractFirestoreField(resp, "emailHtmlB64"))
     Dim xlsxB64 As String: xlsxB64 = ExtractFirestoreField(resp, "xlsxB64")
+    Dim xlsxName As String: xlsxName = ExtractFirestoreField(resp, "xlsxName")
+
+    ' The workbook is too big for one record, so Ship Tracker stores it in numbered parts
+    Dim xlsxParts As Long: xlsxParts = Val(ExtractFirestoreField(resp, "xlsxParts"))
+    If xlsxParts > 0 Then
+        xlsxB64 = ""
+        Dim part As Long
+        For part = 0 To xlsxParts - 1
+            Set http = CreateObject("MSXML2.XMLHTTP.6.0")
+            http.Open "GET", EOD_DOC_URL & dayKey & "-xlsx-" & part, False
+            http.setRequestHeader "Authorization", "Bearer " & idToken
+            http.Send
+            If http.Status <> 200 Then
+                xlsxB64 = ""
+                Exit For
+            End If
+            xlsxB64 = xlsxB64 & ExtractFirestoreField(http.responseText, "xlsxPart")
+        Next part
+        Set http = Nothing
+    End If
 
     If reportHtml = "" Then
         MsgBox "Today's report hasn't been prepared for Outlook yet." & vbCrLf & vbCrLf & _
@@ -1467,7 +1487,7 @@ Public Sub CreateEodEmail()
                vbExclamation, "Ship Tracker"
         Exit Sub
     End If
-    If subject = "" Then subject = "REAP Status Report - " & Format(Date, "mmmm d, yyyy")
+    If subject = "" Then subject = "Daily Ship Checks - " & Format(Date, "mmmm d, yyyy")
 
     ' Build the email; Display first so Outlook adds the user's signature, then put the report above it
     Dim mail As Outlook.MailItem
@@ -1484,10 +1504,12 @@ Public Sub CreateEodEmail()
         mail.HTMLBody = reportHtml & body
     End If
 
-    ' Attach the Excel sheet
+    ' Attach the Excel workbook (keeps the name Ship Tracker gave it, e.g. "REAP Status Report_2026.xlsx")
     If xlsxB64 <> "" Then
+        If xlsxName = "" Then xlsxName = "REAP Status Report_" & Year(Date) & ".xlsx"
+        xlsxName = Replace(Replace(Replace(xlsxName, "\", "_"), "/", "_"), ":", "_")
         Dim xlsxPath As String
-        xlsxPath = Environ("TEMP") & "\REAP_Status_Report_" & dayKey & ".xlsx"
+        xlsxPath = Environ("TEMP") & "\" & xlsxName
         If SaveBase64ToFile(xlsxB64, xlsxPath) Then
             mail.Attachments.Add xlsxPath
         Else
