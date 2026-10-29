@@ -211,6 +211,55 @@
         /* Dashboard Grid */
         .dash-grid { display: grid; grid-template-columns: 555px 1fr; gap: 20px; }
         .dash-grid > * { min-width: 0; }
+        /* Dashboard v2 */
+        .dash-grid.dash-grid-v2 { display: block; }
+        .attn-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+        .attn-tile { text-align: left; background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; color: var(--text); font-family: inherit; transition: border-color .15s, transform .15s, box-shadow .15s; min-width: 0; }
+        .attn-tile:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+        .attn-tile.active { box-shadow: 0 0 0 2px var(--primary); }
+        .attn-tile.tone-red { border-left-color: var(--red); } .attn-tile.tone-red .attn-value { color: var(--red); }
+        .attn-tile.tone-amber { border-left-color: var(--amber); } .attn-tile.tone-amber .attn-value { color: var(--amber); }
+        .attn-tile.tone-blue { border-left-color: var(--blue); } .attn-tile.tone-blue .attn-value { color: var(--blue); }
+        .attn-tile.tone-ok { border-left-color: var(--green); } .attn-tile.tone-ok .attn-value { color: var(--green); }
+        .attn-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+        .attn-value { font-size: 30px; font-weight: 800; line-height: 1.1; margin: 4px 0 6px; font-family: 'JetBrains Mono', monospace; }
+        .attn-value small { font-size: 16px; }
+        .attn-line { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .attn-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .fleet-bar-wrap { display: flex; align-items: center; gap: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; flex-wrap: wrap; }
+        .fleet-bar-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+        .fleet-bar { flex: 1; min-width: 160px; height: 10px; border-radius: 6px; overflow: hidden; display: flex; background: var(--bg-input); }
+        .fleet-seg { height: 100%; }
+        .seg-online { background: var(--green); } .seg-offline { background: var(--red); } .seg-unchecked { background: var(--text-muted); opacity: .45; } .seg-pending { background: var(--amber); }
+        .fleet-bar-legend { display: flex; gap: 14px; font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
+        .fleet-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+        .fleet-row { display: grid; grid-template-columns: 120px 56px 170px minmax(0, 1fr) 120px 190px; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; border-left: 3px solid transparent; }
+        .fleet-row:not(.fleet-head):hover { background: rgba(255,255,255,0.03); }
+        .fleet-row.selected { background: var(--primary-glow); border-left-color: var(--primary); }
+        .fleet-row.is-urgent { border-left-color: var(--red); }
+        .fleet-row.is-offline:not(.is-urgent) { border-left-color: rgba(239,68,68,0.5); }
+        .fleet-head { background: var(--bg-input); font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); padding-top: 8px; padding-bottom: 8px; }
+        .fleet-today { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
+        .fleet-today.state-online { color: var(--green); } .fleet-today.state-offline { color: var(--red); } .fleet-today.state-unchecked { color: var(--text-muted); font-weight: 500; } .fleet-today.state-pending { color: var(--amber); }
+        .ping-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--text-muted); display: inline-block; opacity: .6; }
+        .ping-dot.on { background: var(--green); border-color: var(--green); opacity: 1; }
+        .fleet-issue { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .fleet-issue-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+        .sev-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; } .sev-urgent { background: var(--red); } .sev-mild { background: var(--amber); }
+        .fleet-more { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+        .fleet-none { color: var(--text-muted); }
+        .fleet-contact { font-size: 11px; white-space: nowrap; }
+        .fleet-port { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fleet-mini-btn { font-size: 9px; padding: 2px 8px; background: var(--bg-input); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+        .fleet-mini-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .fleet-today-tag { margin-left: 6px; font-size: 10px; color: var(--green); }
+        .fleet-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 12px; }
+        .ship-drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 900; }
+        .ship-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(680px, 94vw); background: var(--bg-main, var(--bg-deep)); border-left: 1px solid var(--border); box-shadow: -12px 0 32px rgba(0,0,0,0.35); z-index: 901; overflow-y: auto; padding: 18px 20px 28px; transform: translateX(105%); transition: transform .22s ease; }
+        .ship-drawer.open { transform: translateX(0); }
+        .ship-drawer-close { position: sticky; top: 0; float: right; z-index: 2; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); cursor: pointer; font-size: 14px; }
+        .ship-drawer-close:hover { color: var(--text); border-color: var(--primary); }
+        @media (max-width: 1200px) { .attn-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fleet-row { grid-template-columns: 110px 48px 150px minmax(0, 1fr) 100px; } .fleet-row > .fleet-port { display: none; } }
         .detail-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; overflow: hidden; max-width: 100%; box-sizing: border-box; }
         .section-title { font-size: 10px; font-weight: 600; color: var(--primary); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
         
@@ -480,7 +529,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T153";
+    var APP_BUILD = "2026-10-29T154";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2043,7 +2092,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T153'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T154'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2054,7 +2103,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T153');
+                                    localStorage.setItem('lastSeenBuild', 'T154');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2064,6 +2113,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T154'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📊 New Dashboard'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Dashboard redesigned around what needs attention today\n• Four clickable tiles: Offline today, Open issues, Contact due and New emails. Click one to filter the ship list, click again to clear. New emails jumps to the inbox\n• Fleet today bar shows online, offline, not checked and pending ships at a glance\n• Removed the four donut charts and the Urgent, Check-ins, Total ships and Incomplete docs tiles, which repeated the same numbers (Incomplete docs is still on the Inventory page)\n• The ship list is now a full-width table: ship, type, today’s AM and PM pings, top open issue, last contact and homeport\n• Online on the Dashboard now means a ping was entered, the same rule as the End of Day email (it used to go by the checkboxes)\n• Ship details slide in from the right when you click a ship. Close them with the X, Esc or by clicking outside\n• New Needs attention filter: ships that are offline, have open issues or are due for contact\n• Weekly Report, Download report, Power BI export and Print are now one Weekly Report ▾ button\n• The Inbox strip only appears when there are new emails to file'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T153'),
@@ -3813,6 +3869,37 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         };
     }, [ships, issues, dailyChecks, today]);
     
+    // Today at a glance. Online = an AM or PM ping was entered (same rule as the End of Day email).
+    const shipToday = (s) => {
+        if (s.pendingInstall) return { state: 'pending', label: 'Pending install' };
+        if (s.pendingDeinstall) return { state: 'pending', label: 'Pending deinstall' };
+        const c = dailyChecks.find(x => x.shipId === s.id && x.date === today);
+        const am = !!c && String(c.pingAM == null ? '' : c.pingAM).trim() !== '';
+        const pm = !!c && String(c.pingPM == null ? '' : c.pingPM).trim() !== '';
+        if (!c) return { state: 'unchecked', label: 'Not checked', am, pm };
+        return am || pm ? { state: 'online', label: 'Online', am, pm } : { state: 'offline', label: 'Offline', am, pm };
+    };
+    const attn = useMemo(() => {
+        const r = { online: [], offline: [], unchecked: [], pending: [], contact: [], issueShips: new Set() };
+        ships.forEach(s => {
+            const t = shipToday(s);
+            r[t.state === 'pending' ? 'pending' : t.state].push(s);
+            if (t.state !== 'pending') { const st = getEmailStatus(s, issues).status; if (st === 'OVERDUE' || st === 'DUE') r.contact.push(s); }
+        });
+        const shipIds = new Set(ships.map(s => s.id));
+        r.issues = issues.filter(i => !i.resolved && shipIds.has(i.shipId))
+            .sort((a, b) => (a.threat === 'Urgent' ? 0 : 1) - (b.threat === 'Urgent' ? 0 : 1));
+        r.issues.forEach(i => r.issueShips.add(i.shipId));
+        r.urgent = r.issues.filter(i => i.threat === 'Urgent').length;
+        r.ids = {
+            offline: new Set(r.offline.map(x => x.id)),
+            contact: new Set(r.contact.map(x => x.id)),
+            issues: r.issueShips
+        };
+        r.ids.attention = new Set([...r.ids.offline, ...r.ids.contact, ...r.ids.issues]);
+        return r;
+    }, [ships, dailyChecks, issues, today]);
+
     const sorted = useMemo(() => {
         let result = [...ships];
         if (globalSearch) {
@@ -3835,6 +3922,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         }
         if (typeFilter === 'updated') {
             result = result.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today);
+        } else if (attn.ids[typeFilter]) {
+            result = result.filter(s => attn.ids[typeFilter].has(s.id));
         } else if (typeFilter !== 'all') {
             result = result.filter(s => s.type === typeFilter);
         }
@@ -3858,9 +3947,15 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             if (be.days !== ae.days) return be.days - ae.days;
             return hullNum(a.name) - hullNum(b.name);
         });
-    }, [ships, issues, globalSearch, typeFilter, today, dashShipOrder]);
+    }, [ships, issues, globalSearch, typeFilter, today, dashShipOrder, attn]);
     
     const selIssues = useMemo(() => sel ? issues.filter(i => i.shipId === sel.id && !i.resolved) : [], [sel, issues]);
+    useEffect(() => {
+        if (!sel) return;
+        const esc = (e) => { if (e.key === 'Escape' && !document.querySelector('.modal-overlay')) setSel(null); };
+        window.addEventListener('keydown', esc);
+        return () => window.removeEventListener('keydown', esc);
+    }, [sel]);
     
     const getSparklineData = (shipId) => {
         const last7 = [];
@@ -4414,16 +4509,64 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         <input ref={searchRef} placeholder="Search ships, issues, emails, notes..." value={globalSearch} onChange={e => setGlobalSearch(e.target.value)}/>
                         <span className="shortcut">/</span>
                     </div>
-                    <button className="btn btn-primary" onClick={copyReport}>📋 Weekly Report</button>
-                    <button className="btn btn-secondary" onClick={downloadReport}>⬇️ Download</button>
-                    <button className="btn btn-secondary" onClick={exportPowerBI}>📊 Power BI Export</button>
-                    <button className="btn btn-secondary" onClick={() => window.print()}><Icon name="print"/> Print</button>
+                    <SplitButton testId="dash-export" label="📋 Weekly Report" onClick={copyReport} className="btn btn-primary"
+                        items={[
+                            { label: '⬇️ Download report', onClick: downloadReport },
+                            { label: '📊 Power BI export', onClick: exportPowerBI },
+                            { label: '🖨 Print', onClick: () => window.print() },
+                        ]}/>
                 </div>
             </div>
             
-            {/* Visual Charts Row */}
-            <div className="charts-row">
-                <div className="chart-card">
+            {/* Needs attention — click a tile to filter the ship list */}
+            <div className="attn-row">
+                {[
+                    { key: 'offline', title: 'Offline today', value: attn.offline.length, tone: attn.offline.length ? 'red' : 'ok',
+                      line: attn.offline.length ? attn.offline.slice(0, 4).map(x => x.name).join(', ') + (attn.offline.length > 4 ? ' +' + (attn.offline.length - 4) : '') : 'No ship reported offline',
+                      sub: attn.unchecked.length ? attn.unchecked.length + ' not checked yet' : 'All ships checked' },
+                    { key: 'issues', title: 'Open issues', value: attn.issues.length, tone: attn.urgent ? 'red' : attn.issues.length ? 'amber' : 'ok',
+                      line: attn.issues.length ? (attn.issues[0].title || attn.issues[0].details || 'Issue') + ' \u00B7 ' + ((ships.find(x => x.id === attn.issues[0].shipId) || {}).name || '') : 'No open issues',
+                      sub: attn.urgent ? attn.urgent + ' urgent' : attn.issues.length ? 'None urgent' : '' },
+                    { key: 'contact', title: 'Contact due', value: attn.contact.length, tone: attn.contact.length ? 'amber' : 'ok',
+                      line: attn.contact.length ? attn.contact.slice(0, 4).map(x => x.name).join(', ') + (attn.contact.length > 4 ? ' +' + (attn.contact.length - 4) : '') : 'Everyone contacted on time',
+                      sub: attn.contact.length ? 'Overdue or due today' : '' },
+                    { key: 'emails', title: 'New emails', value: pendingEmails.length, tone: pendingEmails.length ? 'blue' : 'ok',
+                      line: pendingEmails.length ? 'Waiting to be filed to a ship' : 'Inbox all caught up',
+                      sub: pendingEmails.length ? 'Click to open the inbox' : '' },
+                ].map(t => (
+                    <button key={t.key} type="button" data-testid={'tile-' + t.key}
+                        className={'attn-tile tone-' + t.tone + (typeFilter === t.key ? ' active' : '')}
+                        onClick={() => {
+                            if (t.key === 'emails') { const el = document.getElementById('dash-inbox'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+                            setTypeFilter(typeFilter === t.key ? 'all' : t.key);
+                        }}>
+                        <div className="attn-title">{t.title}</div>
+                        <div className="attn-value">{t.value === 0 && t.tone === 'ok' ? <span>0 <small>✓</small></span> : t.value}</div>
+                        <div className="attn-line" title={t.line}>{t.line}</div>
+                        {t.sub && <div className="attn-sub">{t.sub}</div>}
+                    </button>
+                ))}
+            </div>
+
+            {/* Fleet today */}
+            {(() => {
+                const segs = [
+                    { n: attn.online.length, label: 'online', cls: 'seg-online' },
+                    { n: attn.offline.length, label: 'offline', cls: 'seg-offline' },
+                    { n: attn.unchecked.length, label: 'not checked', cls: 'seg-unchecked' },
+                    { n: attn.pending.length, label: 'pending install/deinstall', cls: 'seg-pending' },
+                ];
+                const total = segs.reduce((a, x) => a + x.n, 0) || 1;
+                return (
+                    <div className="fleet-bar-wrap" title="Online = an AM or PM ping was entered today">
+                        <div className="fleet-bar-label">Fleet today</div>
+                        <div className="fleet-bar">{segs.filter(x => x.n).map(x => <div key={x.cls} className={'fleet-seg ' + x.cls} style={{width: (x.n / total * 100) + '%'}}/>)}</div>
+                        <div className="fleet-bar-legend">{segs.filter(x => x.n).map(x => <span key={x.cls}><i className={'fleet-dot ' + x.cls}/>{x.n} {x.label}</span>)}</div>
+                    </div>
+                );
+            })()}
+
+            <div id="dash-inbox">
                 {/* Green email notification banner — fixed to top */}
                 {pendingEmails.length > 0 && (
                     <div style={{position:'fixed',top:0,left:0,right:0,zIndex:100,background:'var(--green-glow)',borderBottom:'1px solid var(--green)',padding:'10px 24px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px'}}>
@@ -4434,13 +4577,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
 
                 {/* INCOMING EMAIL INBOX — Compact */}
                 {(() => {
-                    if (pendingEmails.length === 0) {
-                        return React.createElement('div', {style:{marginBottom:'16px',padding:'14px 18px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',display:'flex',alignItems:'center',gap:'10px'}},
-                            React.createElement('span', {style:{fontSize:'16px'}}, '\uD83D\uDCEC'),
-                            React.createElement('span', {style:{fontWeight:700,fontSize:'13px',color:'var(--text)'}}, 'Inbox'),
-                            React.createElement('span', {style:{fontSize:'12px',color:'var(--green)'}}, '\u2705 All caught up')
-                        );
-                    }
+                    // Nothing to file: the "New emails" tile above already says the inbox is caught up
+                    if (pendingEmails.length === 0) return null;
                     var grouped = {};
                     var unmatched = [];
                     pendingEmails.slice().sort(function(a,b) { return new Date(b.receivedAt || b.timestamp || 0) - new Date(a.receivedAt || a.timestamp || 0); }).forEach(function(item) {
@@ -4608,87 +4746,23 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         )
                     );
                 })()}
+            </div>
 
-                    <div className="card-title tip" data-tip="Based on today's AM/PM connectivity checks">Fleet Status (Today)</div>
-                    <PieChart data={[chartData.online, chartData.offline, chartData.noData, chartData.pendingInstall, chartData.pendingDeinstall]} colors={['var(--green)', 'var(--red)', 'var(--text-muted)', 'var(--amber)', '#f87171']}/>
-                    <div className="chart-legend">
-                        <span className="legend-item tip" data-tip="Both AM and PM checks passed"><span className="legend-dot" style={{background:'var(--green)'}}></span> Online: {chartData.online}</span>
-                        <span className="legend-item tip" data-tip="AM or PM check failed"><span className="legend-dot" style={{background:'var(--red)'}}></span> Offline: {chartData.offline}</span>
-                        <span className="legend-item tip" data-tip="No daily check entered today"><span className="legend-dot" style={{background:'var(--text-muted)'}}></span> No Data: {chartData.noData}</span>
-                        {chartData.pendingInstall > 0 && <span className="legend-item tip" data-tip="Awaiting equipment installation"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Pending Install: {chartData.pendingInstall}</span>}
-                        {chartData.pendingDeinstall > 0 && <span className="legend-item tip" data-tip="Scheduled for equipment removal"><span className="legend-dot" style={{background:'#f87171'}}></span> Pending Deinstall: {chartData.pendingDeinstall}</span>}
-                    </div>
-                </div>
-                
-                <div className="chart-card">
-                    <div className="card-title tip" data-tip="Count of unresolved issues by severity level">Issue Severity</div>
-                    <PieChart data={[chartData.urgentCount, chartData.mildCount, chartData.noIssueCount]} colors={['var(--red)', 'var(--amber)', 'var(--green)']}/>
-                    <div className="chart-legend">
-                        <span className="legend-item tip" data-tip="Requires immediate action"><span className="legend-dot" style={{background:'var(--red)'}}></span> Urgent: {chartData.urgentCount}</span>
-                        <span className="legend-item tip" data-tip="Needs attention soon"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Mild: {chartData.mildCount}</span>
-                        <span className="legend-item tip" data-tip="No open issues"><span className="legend-dot" style={{background:'var(--green)'}}></span> None: {chartData.noIssueCount}</span>
-                    </div>
-                </div>
-                
-                <div className="chart-card">
-                    <div className="card-title tip" data-tip="Ships grouped by email contact status">Email Status</div>
-                    <PieChart data={[chartData.emailOverdue, chartData.emailDue, chartData.emailWaiting, chartData.emailInPort, chartData.emailOk]} colors={['var(--red)', 'var(--amber)', 'var(--blue)', '#06b6d4', 'var(--green)']}/>
-                    <div className="chart-legend">
-                        <span className="legend-item tip" data-tip="No email contact in 14+ days"><span className="legend-dot" style={{background:'var(--red)'}}></span> Overdue: {chartData.emailOverdue}</span>
-                        <span className="legend-item tip" data-tip="Email contact due within 7 days"><span className="legend-dot" style={{background:'var(--amber)'}}></span> Due: {chartData.emailDue}</span>
-                        <span className="legend-item tip" data-tip="Sent email, awaiting response"><span className="legend-dot" style={{background:'var(--blue)'}}></span> Waiting: {chartData.emailWaiting}</span>
-                        <span className="legend-item tip" data-tip="Ship currently in port"><span className="legend-dot" style={{background:'#06b6d4'}}></span> In Port: {chartData.emailInPort}</span>
-                        <span className="legend-item tip" data-tip="Recently contacted, no action needed"><span className="legend-dot" style={{background:'var(--green)'}}></span> OK: {chartData.emailOk}</span>
-                    </div>
-                </div>
-                
-                <div className="chart-card">
-                    <div className="card-title tip" data-tip="How recently each ship was last contacted">Last Contact</div>
-                    {(() => {
-                        var recent = 0, aging = 0, overdue = 0, never = 0;
-                        ships.forEach(s => {
-                            if (s.pendingInstall || s.pendingDeinstall) return;
-                            var shipEm = emailHistory.filter(h => h.shipId === s.id);
-                            var last = shipEm.length > 0 ? new Date(shipEm.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0].timestamp) : (s.lastContact ? new Date(s.lastContact) : null);
-                            if (!last) { never++; return; }
-                            var days = Math.floor((new Date() - last) / 86400000);
-                            if (days <= 3) recent++;
-                            else if (days <= 7) aging++;
-                            else overdue++;
-                        });
-                        return (<>
-                            <PieChart data={[recent, aging, overdue, never]} colors={['var(--green)', 'var(--amber)', 'var(--red)', 'var(--text-muted)']}/>
-                            <div className="chart-legend">
-                                <span className="legend-item"><span className="legend-dot" style={{background:'var(--green)'}}></span> {'< 3 days: ' + recent}</span>
-                                <span className="legend-item"><span className="legend-dot" style={{background:'var(--amber)'}}></span> 3-7 days: {aging}</span>
-                                <span className="legend-item"><span className="legend-dot" style={{background:'var(--red)'}}></span> 7+ days: {overdue}</span>
-                                {never > 0 && <span className="legend-item"><span className="legend-dot" style={{background:'var(--text-muted)'}}></span> Never: {never}</span>}
-                            </div>
-                        </>);
-                    })()}
-                </div>
-            </div>
-            
-            {/* Stats Row */}
-            <div className="stats">
-                <div className="stat urgent tip" data-tip="Open urgent issues requiring immediate attention"><div className="stat-label">Urgent Issues</div><div className="stat-value"><AnimCount value={stats.urgent}/></div>{stats.tdResolved > 0 && <div style={{fontSize:'10px',marginTop:'2px',color:'var(--green)'}}>✓ {stats.tdResolved} resolved today</div>}</div>
-                <div className="stat due tip" data-tip="Ships with check-ins due within 7 days"><div className="stat-label">Check-ins Due</div><div className="stat-value"><AnimCount value={stats.due}/></div>{stats.tdChecked > 0 && <div style={{fontSize:'10px',marginTop:'2px',color:'var(--green)'}}>{stats.tdChecked}/{ships.length} checked today</div>}</div>
-                <div className="stat total tip" data-tip={`${stats.tdOnline} online today${stats.ydOnline > 0 ? ' vs ' + stats.ydOnline + ' yesterday' : ''}`}><div className="stat-label">Total Ships</div><div className="stat-value"><AnimCount value={stats.total}/></div>{stats.onlineTrend !== 0 && <div style={{fontSize:'10px',marginTop:'2px',color:stats.onlineTrend > 0 ? 'var(--green)' : 'var(--red)'}}>{stats.onlineTrend > 0 ? '↑' : '↓'} {Math.abs(stats.onlineTrend)} vs yesterday</div>}</div>
-                <div className="stat missing tip" data-tip="Ships missing serial numbers or documentation" onClick={() => setPage(4)} style={{cursor:'pointer'}}><div className="stat-label">Incomplete Docs</div><div className="stat-value"><AnimCount value={stats.missing}/></div>{stats.missing === 0 && <div style={{fontSize:'10px',marginTop:'2px',color:'var(--green)'}}>✓ All docs complete</div>}</div>
-            </div>
-            
             <div className="filters">
                 <button className={`filter-btn ${typeFilter === 'all' ? 'active' : ''}`} onClick={() => setTypeFilter('all')}>All Ships</button>
                 <button className={`filter-btn ${typeFilter === 'Full REAP' ? 'active' : ''}`} onClick={() => setTypeFilter('Full REAP')}>Full REAP ({chartData.fullReap})</button>
                 <button className={`filter-btn ${typeFilter === 'Mini REAP' ? 'active' : ''}`} onClick={() => setTypeFilter('Mini REAP')}>Mini REAP ({chartData.miniReap})</button>
+                <button className={`filter-btn ${typeFilter === 'attention' ? 'active' : ''}`} onClick={() => setTypeFilter(typeFilter === 'attention' ? 'all' : 'attention')}>⚠ Needs attention ({attn.ids.attention.size})</button>
+                {['offline', 'issues', 'contact'].includes(typeFilter) && <button className="filter-btn active" onClick={() => setTypeFilter('all')} title="Clear filter">{{ offline: 'Offline today', issues: 'Open issues', contact: 'Contact due' }[typeFilter]} ✕</button>}
                 <button className={`filter-btn ${typeFilter === 'updated' ? 'active' : ''}`} style={{background: typeFilter === 'updated' ? 'var(--green)' : 'transparent', borderColor: 'var(--green)', color: typeFilter === 'updated' ? '#fff' : 'var(--green)'}} onClick={() => setTypeFilter(typeFilter === 'updated' ? 'all' : 'updated')}>✓ Updated Today ({ships.filter(s => s.lastContact && fmtDateInput(s.lastContact) === today).length})</button>
             </div>
             
-            <div className="dash-grid">
+            <div className="dash-grid dash-grid-v2">
                 <div className="card">
                     <div className="card-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>🚢 Fleet <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>{dashReorder ? <><button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px',background:'var(--primary)',color:'#000',fontWeight:700}} onClick={() => setDashReorder(false)}>✓ Done</button><button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 8px'}} onClick={resetDashOrder}>↩ Reset</button></> : <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setDashReorder(true)}>↕ Reorder</button>}<span style={{fontWeight:'normal',color:'var(--text-muted)',fontSize:'11px'}}>{sorted.length} ships</span></span></div>
                     <div className="ship-list">
-                        <div className="ship-list-header"><span>STATUS</span><span>SHIP</span><span>TYPE</span><span>COMMS</span><span>HOMEPORT</span></div>
+                        <div className="fleet-row fleet-head"><span>SHIP</span><span>TYPE</span><span>TODAY</span><span>TOP ISSUE</span><span>LAST CONTACT</span><span>HOMEPORT</span></div>
+                        {sorted.length === 0 && <div className="fleet-empty">No ships match this filter.</div>}
                         {sorted.map(ship => {
                             const si = issues.filter(i => i.shipId === ship.id && !i.resolved);
                             const hasU = si.some(i => i.threat === 'Urgent'), hasM = si.some(i => i.threat === 'Mild');
@@ -4704,12 +4778,39 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             const realLastContact = shipEmails.length > 0 ? shipEmails.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0].timestamp : ship.lastContact;
                             const updatedToday = realLastContact && fmtDateInput(realLastContact) === today;
                             const daysSinceContact = realLastContact ? Math.floor((new Date() - new Date(realLastContact)) / 86400000) : 999;
-                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined} style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'opacity 0.15s'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}>{dashReorder && <span style={{color:'var(--text-muted)',fontSize:'12px',cursor:'grab',userSelect:'none',padding:'0 4px',flexShrink:0}}>⋮⋮</span>}<span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}><span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span><button style={{fontSize:'9px',padding:'2px 8px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button></span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(realLastContact || ship.lastContact)} style={{color: daysSinceContact > 7 ? 'var(--red)' : daysSinceContact > 3 ? 'var(--amber)' : 'var(--text-muted)',fontSize:'10px',fontWeight: daysSinceContact > 7 ? 600 : 400}}>{daysSinceContact > 7 ? '⚠ ' : ''}{relTime(realLastContact || ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}>{'Back ' + fmtDate(ship.inPortUntil)}<button style={{fontSize:'9px',padding:'2px 8px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button></span> : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {(topIssue.details || '').substring(0, 50)}{(topIssue.details || '').length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
+                            const t = shipToday(ship);
+                            const issueText = topIssue ? (topIssue.title || topIssue.details || 'Issue') : '';
+                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
+                                className={'fleet-row' + (sel?.id === ship.id ? ' selected' : '') + (t.state === 'offline' ? ' is-offline' : '') + (hasU ? ' is-urgent' : '')}
+                                style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : undefined}}>
+                                <span className="ship-name">{dashReorder && <span style={{color:'var(--text-muted)',marginRight:'6px',cursor:'grab'}}>⋮⋮</span>}{ship.name}{updatedToday && <span className="fleet-today-tag" title="Contacted today">✓</span>}</span>
+                                <span className="ship-type">{ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type}</span>
+                                <span className={'fleet-today state-' + t.state}>
+                                    {t.state !== 'pending' && <><i className={'ping-dot' + (t.am ? ' on' : '')} title={t.am ? 'AM ping entered' : 'No AM ping'}/><i className={'ping-dot' + (t.pm ? ' on' : '')} title={t.pm ? 'PM ping entered' : 'No PM ping'}/></>}
+                                    <span>{t.label}</span>
+                                    {isPending && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button>}
+                                </span>
+                                <span className="fleet-issue" title={issueText}>
+                                    {topIssue ? <><i className={'sev-dot ' + (topIssue.threat === 'Urgent' ? 'sev-urgent' : 'sev-mild')}/><span className="fleet-issue-text">{issueText}</span>{si.length > 1 && <span className="fleet-more">+{si.length - 1}</span>}</> : <span className="fleet-none">—</span>}
+                                </span>
+                                <span className="fleet-contact">
+                                    {ship.waitingReply ? <span style={{color:'var(--blue)'}}>⏳ Waiting reply</span>
+                                     : isPending ? <span className="fleet-none">Not installed</span>
+                                     : isDeinstall ? <span style={{color:'var(--red)'}}>Removal{ship.deinstallDate ? ' ' + fmtDate(ship.deinstallDate) : ''}</span>
+                                     : realLastContact ? <span className="tip" data-tip={fmtDate(realLastContact)} style={{color: daysSinceContact > 7 ? 'var(--red)' : daysSinceContact > 3 ? 'var(--amber)' : 'var(--text-dim)', fontWeight: daysSinceContact > 7 ? 600 : 400}}>{relTime(realLastContact)}</span>
+                                     : <span className="fleet-none">Never</span>}
+                                </span>
+                                <span className="fleet-port">
+                                    {isInPort ? <><span style={{color:'var(--blue)'}}>⚓ Back {fmtDate(ship.inPortUntil)}</span><button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button></> : (ship.location || '—')}
+                                </span>
+                            </div>);
                         })}
                     </div>
                 </div>
-                <div>
+                {sel && <div className="ship-drawer-backdrop" onClick={() => setSel(null)}/>}
+                <div className={'ship-drawer' + (sel ? ' open' : '')} role="dialog" aria-label="Ship details">
                     {sel ? (<>
+                        <button className="ship-drawer-close" onClick={() => setSel(null)} title="Close (Esc)">✕</button>
                         {/* Ship Header */}
                         <div className="detail-section" style={{paddingBottom:'0'}}>
                             <div className="flex-between mb-md">
@@ -5186,33 +5287,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             </div>
                             </div>{/* end tab-content */}
                         </div>
-                    </>) : <div className="detail-section"><div className="empty" style={{padding:'60px 20px'}}><svg width="140" height="70" viewBox="0 0 120 60" fill="none" stroke="var(--text-muted)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.5}}>
-                            <path d="M5 42 L15 38 L105 38 L115 42 L108 45 L12 45 Z" fill="var(--text-muted)" fillOpacity="0.05"/>
-                            <path d="M5 42 L15 38 L105 38 L115 42"/>
-                            <path d="M15 38 L8 35 L5 42"/>
-                            <path d="M105 38 L112 35 L115 42"/>
-                            <path d="M18 38 L18 35 L102 35 L102 38"/>
-                            <circle cx="28" cy="33" r="4" fill="var(--text-muted)" fillOpacity="0.1"/>
-                            <path d="M28 33 L28 25"/>
-                            <path d="M26 25 L30 25"/>
-                            <rect x="36" y="31" width="12" height="6" rx="1" fill="var(--text-muted)" fillOpacity="0.08"/>
-                            <path d="M39 31 L39 37 M42 31 L42 37 M45 31 L45 37"/>
-                            <path d="M52 35 L52 22 L72 22 L72 35" fill="var(--text-muted)" fillOpacity="0.1"/>
-                            <path d="M54 22 L54 18 L70 18 L70 22"/>
-                            <path d="M56 20 L68 20"/>
-                            <path d="M62 18 L62 8"/>
-                            <path d="M58 12 L66 12"/>
-                            <rect x="59" y="13" width="6" height="4" fill="var(--text-muted)" fillOpacity="0.15"/>
-                            <path d="M76 35 L76 26 L88 26 L88 35" fill="var(--text-muted)" fillOpacity="0.08"/>
-                            <path d="M82 26 L82 16"/>
-                            <path d="M79 19 L85 19"/>
-                            <circle cx="94" cy="33" r="3" fill="var(--text-muted)" fillOpacity="0.1"/>
-                            <path d="M94 33 L94 29 L96 27"/>
-                            <circle cx="98" cy="37" r="2" strokeDasharray="1 1"/>
-                            <path d="M12 45 L108 45" strokeOpacity="0.4"/>
-                            <path d="M108 43 Q112 43 116 44" strokeOpacity="0.2"/>
-                            <path d="M108 44 Q113 44 118 46" strokeOpacity="0.15"/>
-                        </svg><p className="mt-md">Select a ship to view details</p></div></div>}
+                    </>) : null}
                 </div>
             </div>
             
