@@ -458,7 +458,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T141";
+    var APP_BUILD = "2026-10-29T142";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1467,6 +1467,35 @@ const Modal = ({ title, onClose, children, wide, open }) => {
     );
 };
 
+// Main action button with a ▾ menu for related, less-used actions
+const SplitButton = ({ label, onClick, items, className, style, testId }) => {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    useEffect(() => {
+        if (!open) return;
+        const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+        document.addEventListener('mousedown', close);
+        document.addEventListener('keydown', esc);
+        return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+    }, [open]);
+    return (
+        <div ref={ref} style={{position:'relative',display:'inline-flex'}} data-testid={testId}>
+            <button className={className} style={{...style,borderTopRightRadius:0,borderBottomRightRadius:0}} onClick={onClick}>{label}</button>
+            <button className={className} title="More options" aria-haspopup="menu" aria-expanded={open} style={{...style,borderTopLeftRadius:0,borderBottomLeftRadius:0,borderLeft:'1px solid rgba(128,128,128,0.35)',paddingLeft:'6px',paddingRight:'6px'}} onClick={() => setOpen(o => !o)}>▾</button>
+            {open && (
+                <div role="menu" style={{position:'absolute',top:'100%',right:0,marginTop:'4px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'8px',boxShadow:'0 8px 24px rgba(0,0,0,0.35)',zIndex:10001,minWidth:'190px',padding:'4px'}}>
+                    {items.map(it => (
+                        <button key={it.label} role="menuitem" onClick={() => { setOpen(false); it.onClick(); }}
+                            style={{display:'block',width:'100%',textAlign:'left',padding:'8px 12px',background:'none',border:'none',color:'var(--text)',fontSize:'12px',cursor:'pointer',borderRadius:'6px',whiteSpace:'nowrap'}}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-input)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>{it.label}</button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, allUsers }) {
     const [page, setPage] = useState(() => {
         const saved = localStorage.getItem('currentPage');
@@ -1697,7 +1726,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T141'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T142'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1708,7 +1737,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T141');
+                                    localStorage.setItem('lastSeenBuild', 'T142');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1717,6 +1746,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T142'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📧 End of Day Overhaul'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• One-click End of Day: downloads an Outlook email draft with the subject, the colored report and the Excel sheet already attached. Open it and hit Send\n• The report is still copied to your clipboard as a backup\n• New ▾ menu on the End of Day button: Preview report, Copy report only, Download Excel only (replaces the separate 👁 button)\n• Preview window uses the same Send Email ▾ button with Copy and Excel options\n• Excel is now a real .xlsx file (no more “format doesn’t match” warning) with the same colors as the email\n• Excel now contains today only (before, every day ever was stacked into one growing file)\n• Notes rewritten: built only from open issues (real titles, urgent first, with “since” date), quick notes from the last 3 days, in-port and pending status\n• Removed keyword guessing that caused false labels (e.g. any email containing “status” was reported as “ATU Expired”)\n• Old emails no longer drive the notes, and healthy ships no longer all say “Coordinating with ship forces for resolution”\n• Notes no longer repeat themselves: duplicate issues are collapsed and quick notes drop text already in an issue title\n• Notes are cleaned up: consistent capitalization and periods, emoji removed, at most 2 issues listed plus “+N more”\n• Healthy ships now have a blank note; offline ships with nothing on record say “System offline; troubleshooting with ship’s force.”\n• Everyone now gets the same report (it no longer depends on the email history stored in your own browser)\n• Diode and Phone now consistently follow the ship’s online status (Up / Down)\n• Pending install and deinstall ships show N/A in grey instead of red Offline / Down\n• Files column is blank when nothing was entered (was showing 0)\n• Last contact is labeled “Last contact:” and uses your local date (evening emails were showing the next day)\n• Preview now shows exactly what gets emailed, and Copy uses that same clean version (Copy used to lose colors in Outlook)\n• If copying fails you now get an error instead of a false “copied” message\n• Fixed End of Day crashes on numeric ping values, issues without a title and empty quick notes\n• Fixed Dashboard crash when an issue has a title but no details\n• Saved daily End of Day snapshot now records pending (N/A) ships'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T141'),
@@ -3140,7 +3176,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 r += `  ${ship.name}\n`;
                 si.forEach(issue => {
                     const tag = issue.threat === 'Urgent' ? '[URGENT]' : '[Issue]';
-                    r += `    ${tag} ${(issue.title || issue.details).substring(0, 45)}\n`;
+                    r += `    ${tag} ${(issue.title || issue.details || '').substring(0, 45)}\n`;
                     r += `          \n`;
                 });
             });
@@ -4278,7 +4314,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             const realLastContact = shipEmails.length > 0 ? shipEmails.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0].timestamp : ship.lastContact;
                             const updatedToday = realLastContact && fmtDateInput(realLastContact) === today;
                             const daysSinceContact = realLastContact ? Math.floor((new Date() - new Date(realLastContact)) / 86400000) : 999;
-                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined} style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'opacity 0.15s'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}>{dashReorder && <span style={{color:'var(--text-muted)',fontSize:'12px',cursor:'grab',userSelect:'none',padding:'0 4px',flexShrink:0}}>⋮⋮</span>}<span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}><span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span><button style={{fontSize:'9px',padding:'2px 8px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button></span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(realLastContact || ship.lastContact)} style={{color: daysSinceContact > 7 ? 'var(--red)' : daysSinceContact > 3 ? 'var(--amber)' : 'var(--text-muted)',fontSize:'10px',fontWeight: daysSinceContact > 7 ? 600 : 400}}>{daysSinceContact > 7 ? '⚠ ' : ''}{relTime(realLastContact || ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}>{'Back ' + fmtDate(ship.inPortUntil)}<button style={{fontSize:'9px',padding:'2px 8px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button></span> : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {topIssue.details.substring(0, 50)}{topIssue.details.length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
+                            return (<div key={ship.id} onClick={() => setSel(ship)} draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined} style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, borderTop: dashDragOver === ship.id && dashDragShip !== ship.id ? '3px solid var(--primary)' : '3px solid transparent', transition: 'opacity 0.15s'}}><div className={`ship-item ${sel?.id === ship.id ? 'selected' : ''}`} style={{...topIssue ? {borderBottom:'none'} : {}, ...(updatedToday && sel?.id !== ship.id ? {background:'rgba(16, 185, 129, 0.08)', borderLeft:'3px solid var(--green)'} : {}), ...(isPending ? {background:'rgba(245,158,11,0.06)', borderLeft:'3px solid var(--amber)'} : {}), ...(isDeinstall ? {background:'rgba(239,68,68,0.06)', borderLeft:'3px solid var(--red)'} : {})}}>{dashReorder && <span style={{color:'var(--text-muted)',fontSize:'12px',cursor:'grab',userSelect:'none',padding:'0 4px',flexShrink:0}}>⋮⋮</span>}<span>{hasU ? <span className="badge badge-urgent tip" data-tip="Has urgent issues">!</span> : hasM ? <span className="badge badge-mild tip" data-tip="Has mild issues">!</span> : isInPort ? <span className="badge tip" data-tip="Currently in port" style={{background:'var(--blue)',color:'#fff'}}>⚓</span> : isPending ? <span className="badge tip" data-tip="Pending installation" style={{background:'var(--amber)',color:'#fff',fontSize:'8px'}}>🔧</span> : isDeinstall ? <span className="badge tip" data-tip="Scheduled for deinstall" style={{background:'var(--red)',color:'#fff',fontSize:'8px'}}>🔻</span> : isOnline === false ? <span className="badge badge-missing tip" data-tip="Failed connectivity check">DOWN</span> : <span className="badge badge-ok tip" data-tip={isOnline ? 'Connectivity verified' : 'No check data today'}>{isOnline ? 'UP' : '—'}</span>}</span><span className="ship-name">{ship.name}{updatedToday && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--green)',fontWeight:500}}>✓ Today</span>}{isPending && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Pending Install{ship.installDate ? ` • ${fmtDate(ship.installDate)}` : ''}</span>}{isDeinstall && <span style={{marginLeft:'6px',fontSize:'9px',color:'var(--red)',fontWeight:500}}>Pending Deinstall{ship.deinstallDate ? ` • ${fmtDate(ship.deinstallDate)}` : ''}</span>}</span><span className="ship-type">{ship.type}</span><span>{ship.waitingReply ? <span style={{fontSize:'9px',color:'var(--blue)',fontWeight:500}}>⏳ Waiting on reply</span> : isPending ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}><span style={{fontSize:'9px',color:'var(--amber)',fontWeight:500}}>Not yet installed</span><button style={{fontSize:'9px',padding:'2px 8px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button></span> : isDeinstall ? <span style={{fontSize:'9px',color:'var(--red)',fontWeight:500}}>Scheduled for removal</span> : ship.lastContact ? <span className="tip" data-tip={fmtDate(realLastContact || ship.lastContact)} style={{color: daysSinceContact > 7 ? 'var(--red)' : daysSinceContact > 3 ? 'var(--amber)' : 'var(--text-muted)',fontSize:'10px',fontWeight: daysSinceContact > 7 ? 600 : 400}}>{daysSinceContact > 7 ? '⚠ ' : ''}{relTime(realLastContact || ship.lastContact)}</span> : <span style={{color:'var(--text-muted)',fontSize:'10px'}}>—</span>}</span><span style={{fontSize:'11px',color: isInPort ? 'var(--blue)' : isPending ? 'var(--amber)' : isDeinstall ? 'var(--red)' : 'var(--text-muted)'}}>{isInPort ? <span style={{display:'flex',alignItems:'center',gap:'6px'}}>{'Back ' + fmtDate(ship.inPortUntil)}<button style={{fontSize:'9px',padding:'2px 8px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'4px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button></span> : (ship.location || '—')}</span></div>{topIssue && <div style={{padding:'4px 12px 8px 67px',fontSize:'11px',color: topIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',borderBottom:'1px solid var(--border)',background: sel?.id === ship.id ? 'var(--primary-glow)' : updatedToday ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}}>↳ {(topIssue.details || '').substring(0, 50)}{(topIssue.details || '').length > 50 ? '...' : ''}{si.length > 1 && <span style={{color:'var(--text-muted)',marginLeft:'8px'}}>+{si.length - 1} more</span>}</div>}</div>);
                         })}
                     </div>
                 </div>
@@ -4540,9 +4576,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                         </div>
                                                     </div>
                                                     <div style={{display:'flex',gap:'4px',flexShrink:0}}>
-                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details).substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
+                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details || '').substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
                                                         <button className="btn btn-sm btn-success" style={{padding:'3px 8px',fontSize:'9px'}} onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
-                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',color:'var(--red)'}} onClick={() => { if (confirm('Delete this issue?\n\n' + (issue.title || issue.details))) { setIssues(p => p.filter(x => x.id !== issue.id)); logActivity('Deleted issue from ' + (sel ? sel.name : 'ship') + ': ' + (issue.title || issue.details).substring(0,40)); toast('Issue deleted', 'info'); } }}>🗑️</button>
+                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',color:'var(--red)'}} onClick={() => { if (confirm('Delete this issue?\n\n' + (issue.title || issue.details))) { setIssues(p => p.filter(x => x.id !== issue.id)); logActivity('Deleted issue from ' + (sel ? sel.name : 'ship') + ': ' + (issue.title || issue.details || '').substring(0,40)); toast('Issue deleted', 'info'); } }}>🗑️</button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -4647,7 +4683,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                             {issue.title && issue.details && issue.title !== issue.details && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>{issue.details}</div>}
                                                         </div>
                                                         <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
-                                                            <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} title={`Switch to ${issue.responsibility === 'REAP' ? 'Ship' : 'REAP'}`} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details).substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
+                                                            <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} title={`Switch to ${issue.responsibility === 'REAP' ? 'Ship' : 'REAP'}`} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details || '').substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
                                                             <button className="btn btn-sm btn-success" onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
                                                         </div>
                                                     </div>
@@ -6335,7 +6371,9 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     const exportStatus = () => { setShowEndOfDay(true); };
 
     // ===== BUILD COLORED HTML TABLE FOR EOD REPORT =====
-    // Can take optional eodData + dateStr to rebuild from saved logs
+    // Used for the email body, the Copy button and the preview, so all three always match
+    const EOD_GREEN = '#00a844', EOD_RED = '#d32f2f', EOD_GREY = '#888888';
+    const eodColor = (r, v) => r.na ? EOD_GREY : (v === 'Up' || v === 'Online') ? EOD_GREEN : (v === 'Down' || v === 'Offline') ? EOD_RED : EOD_GREY;
     const buildEodHtmlFromData = function(eodData, dateStr) {
         var d = parseLocalDate(dateStr);
         var dateLabel = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
@@ -6355,17 +6393,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             h += '<tr><td colspan="7" style="padding:8px 14px;background:' + bg + ';text-align:center;font-weight:bold;font-size:14px;color:#fff;border:1px solid #bbb;letter-spacing:1px;">' + label + '</td></tr>';
             rows.forEach(function(r, i) {
                 var rowBg = i % 2 === 0 ? '#ffffff' : '#f5f5f5';
-                var amC = r.amUp ? '#00a844' : '#d32f2f';
-                var pmC = r.pmUp ? '#00a844' : '#d32f2f';
-                var diC = r.diode==='Up' ? '#00a844' : r.diode==='Down'||r.diode==='Output-down' ? '#d32f2f' : '#888';
-                var phC = r.phone==='Up' ? '#00a844' : r.phone==='Down' ? '#d32f2f' : '#888';
                 h += '<tr style="background:' + rowBg + ';">';
                 h += '<td style="padding:8px 12px;border:1px solid #bbb;font-weight:bold;font-size:13px;">' + escHtml(r.name) + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + amC + ';">' + escHtml(r.am) + (r.amPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + escHtml(r.amPing) + '</span>' : '') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + pmC + ';">' + escHtml(r.pm) + (r.pmPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + escHtml(r.pmPing) + '</span>' : '') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;color:#555;">' + escHtml(r.files || '0') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + diC + ';">' + escHtml(r.diode || '') + '</td>';
-                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + phC + ';">' + escHtml(r.phone || '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + eodColor(r, r.am) + ';">' + escHtml(r.am) + (r.amPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + escHtml(r.amPing) + '</span>' : '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:bold;color:' + eodColor(r, r.pm) + ';">' + escHtml(r.pm) + (r.pmPing ? '<br><span style="font-size:11px;color:#888;font-weight:normal;">' + escHtml(r.pmPing) + '</span>' : '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;color:#555;">' + escHtml(r.files || '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + eodColor(r, r.diode) + ';">' + escHtml(r.diode || '') + '</td>';
+                h += '<td style="padding:8px 10px;border:1px solid #bbb;text-align:center;font-weight:600;color:' + eodColor(r, r.phone) + ';">' + escHtml(r.phone || '') + '</td>';
                 h += '<td style="padding:8px 12px;border:1px solid #bbb;font-size:12px;line-height:1.6;">' + escHtml(r.notes || '') + (r.lastContactDate ? '<br><span style="color:#888;font-size:11px;">' + escHtml(r.lastContactDate) + '</span>' : '') + '</td>';
                 h += '</tr>';
             });
@@ -6379,133 +6413,282 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         return buildEodHtmlFromData(getEndOfDayData(), date);
     };
 
+    // Copy rich HTML (with a plain-text fallback) to the clipboard. Resolves true/false.
+    const copyHtmlToClipboard = function(html) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        tmp.style.position = 'fixed';
+        tmp.style.left = '-9999px';
+        document.body.appendChild(tmp);
+        var plain = tmp.innerText;
+        var legacyCopy = function() {
+            var range = document.createRange();
+            range.selectNodeContents(tmp);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            var ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) {}
+            sel.removeAllRanges();
+            return ok;
+        };
+        var done = function(ok) { if (tmp.parentNode) document.body.removeChild(tmp); return ok; };
+        if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+            var fullHtml = '<html><body style="font-family:Segoe UI,Arial,sans-serif;">' + html + '</body></html>';
+            return navigator.clipboard.write([new ClipboardItem({
+                'text/html': new Blob([fullHtml], { type: 'text/html' }),
+                'text/plain': new Blob([plain], { type: 'text/plain' })
+            })]).then(function() { return done(true); }, function() { return done(legacyCopy()); });
+        }
+        return Promise.resolve(done(legacyCopy()));
+    };
+
     // ===== SAVE EOD SNAPSHOT TO FIREBASE =====
     const saveEodLog = function(dateStr, eodData) {
+        var pick = function(r) {
+            return { name: r.name, am: r.am, amPing: r.amPing, pm: r.pm, pmPing: r.pmPing,
+                files: r.files, diode: r.diode, phone: r.phone, notes: r.notes,
+                lastContactDate: r.lastContactDate, amUp: r.amUp, pmUp: r.pmUp, na: !!r.na };
+        };
         var logEntry = {
             date: dateStr,
             savedAt: new Date().toISOString(),
-            fullReap: eodData.fullReap.map(function(r) {
-                return { name: r.name, am: r.am, amPing: r.amPing, pm: r.pm, pmPing: r.pmPing,
-                    files: r.files, diode: r.diode, phone: r.phone, notes: r.notes,
-                    lastContactDate: r.lastContactDate, amUp: r.amUp, pmUp: r.pmUp };
-            }),
-            miniReap: eodData.miniReap.map(function(r) {
-                return { name: r.name, am: r.am, amPing: r.amPing, pm: r.pm, pmPing: r.pmPing,
-                    files: r.files, diode: r.diode, phone: r.phone, notes: r.notes,
-                    lastContactDate: r.lastContactDate, amUp: r.amUp, pmUp: r.pmUp };
-            })
+            fullReap: eodData.fullReap.map(pick),
+            miniReap: eodData.miniReap.map(pick)
         };
         db.collection('eodLogs').doc(dateStr).set(logEntry).catch(function(err) {
             console.error('Failed to save EOD log:', err);
         });
     };
 
-    // ===== GENERATE CUMULATIVE COLORED EXCEL (.xls) =====
-    // Fetches all past EOD logs from Firebase + today, builds one Excel with all days
-    const generateEodExcel = function(callback) {
-        var todayData = getEndOfDayData();
-        // Fetch all historical EOD logs from Firebase
-        db.collection('eodLogs').orderBy('date', 'asc').get().then(function(snapshot) {
-            var allLogs = [];
-            snapshot.forEach(function(doc) {
-                var d = doc.data();
-                // Skip today if already saved - we use fresh live data for today
-                if (d.date !== date) {
-                    allLogs.push(d);
-                }
+    // ===== EXCEL (.xlsx) — today's report only, same colors as the email =====
+    // ExcelJS is ~1 MB, so it's only downloaded the first time someone exports
+    const loadExcelJs = function() {
+        if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+        if (!window.__excelJsPromise) {
+            window.__excelJsPromise = new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+                s.onload = function() { resolve(window.ExcelJS); };
+                s.onerror = function() { window.__excelJsPromise = null; reject(new Error('Could not load Excel library')); };
+                document.head.appendChild(s);
             });
-            // Add today's live data at the end
-            allLogs.push({ date: date, fullReap: todayData.fullReap, miniReap: todayData.miniReap });
-
-            // Build Excel HTML with all days stacked
-            var bodyHtml = '';
-            allLogs.forEach(function(log, idx) {
-                if (idx > 0) bodyHtml += '<br style="mso-data-placement:same-cell;"><br>';
-                bodyHtml += buildEodHtmlFromData(log, log.date);
+        }
+        return window.__excelJsPromise;
+    };
+    const generateEodExcel = function(eodData, dateStr) {
+        return loadExcelJs().then(function(ExcelJS) {
+            var argb = function(hex) { return 'FF' + hex.replace('#', '').toUpperCase(); };
+            var border = { top:{style:'thin',color:{argb:'FFBBBBBB'}}, left:{style:'thin',color:{argb:'FFBBBBBB'}}, bottom:{style:'thin',color:{argb:'FFBBBBBB'}}, right:{style:'thin',color:{argb:'FFBBBBBB'}} };
+            var wb = new ExcelJS.Workbook();
+            var ws = wb.addWorksheet('REAP Status');
+            ws.columns = [{width:12},{width:12},{width:12},{width:9},{width:10},{width:10},{width:70}];
+            var dateLabel = parseLocalDate(dateStr).toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+            ws.addRow([dateLabel]).font = { bold: true, size: 13 };
+            ws.addRow([]);
+            var head = ws.addRow(['', 'AM', 'PM', 'Files', 'Diode', 'Phone', 'Notes']);
+            head.eachCell(function(c, n) {
+                c.font = { bold: true, color: { argb: 'FF444444' } };
+                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+                c.alignment = { horizontal: n === 7 || n === 1 ? 'left' : 'center', vertical: 'middle' };
+                c.border = border;
             });
-
-            var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
-            excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-            excelHtml += '<x:Name>REAP Status Log</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
-            excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
-            excelHtml += '<body>' + bodyHtml + '</body></html>';
-            var blob = new Blob([excelHtml], {type: 'application/vnd.ms-excel'});
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'REAP_Status_Log_' + date + '.xls';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            if (callback) callback(a.download);
-        }).catch(function(err) {
-            console.error('Failed to fetch EOD logs:', err);
-            // Fallback: just export today
-            var excelHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
-            excelHtml += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-            excelHtml += '<x:Name>REAP Status Log</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>';
-            excelHtml += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
-            excelHtml += '<body>' + buildEodHtml() + '</body></html>';
-            var blob = new Blob([excelHtml], {type: 'application/vnd.ms-excel'});
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'REAP_Status_Log_' + date + '.xls';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            if (callback) callback(a.download);
+            var addSection = function(rows, label, bg) {
+                var sec = ws.addRow([label]);
+                ws.mergeCells(sec.number, 1, sec.number, 7);
+                var c = sec.getCell(1);
+                c.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb(bg) } };
+                c.alignment = { horizontal: 'center' };
+                c.border = border;
+                rows.forEach(function(r, i) {
+                    var notes = (r.notes || '') + (r.lastContactDate ? (r.notes ? '\n' : '') + r.lastContactDate : '');
+                    var row = ws.addRow([
+                        r.name,
+                        r.am + (r.amPing ? '\n' + r.amPing : ''),
+                        r.pm + (r.pmPing ? '\n' + r.pmPing : ''),
+                        r.files || '',
+                        r.diode || '',
+                        r.phone || '',
+                        notes
+                    ]);
+                    var lines = Math.max(r.amPing || r.pmPing ? 2 : 1, notes ? Math.ceil(notes.length / 80) + (r.lastContactDate && r.notes ? 1 : 0) : 1);
+                    row.height = Math.max(18, lines * 15);
+                    var colors = [null, eodColor(r, r.am), eodColor(r, r.pm), '#555555', eodColor(r, r.diode), eodColor(r, r.phone), '#222222'];
+                    row.eachCell({ includeEmpty: true }, function(cell, n) {
+                        cell.border = border;
+                        cell.alignment = { horizontal: n === 1 || n === 7 ? 'left' : 'center', vertical: 'middle', wrapText: true };
+                        cell.font = { bold: n <= 3, color: colors[n - 1] ? { argb: argb(colors[n - 1]) } : undefined };
+                        if (i % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } };
+                    });
+                });
+            };
+            if (eodData.fullReap.length > 0) addSection(eodData.fullReap, 'Full Reap', '#0d47a1');
+            if (eodData.miniReap.length > 0) addSection(eodData.miniReap, 'Mini-Reap', '#1b5e20');
+            return wb.xlsx.writeBuffer();
         });
     };
+    const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const downloadBlob = function(blob, filename) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+    };
+    const downloadEodExcel = function() {
+        var eodData;
+        try { eodData = getEndOfDayData(); } catch (err) { toast('Could not build the report: ' + err.message, 'error'); return; }
+        generateEodExcel(eodData, date)
+            .then(function(buf) { downloadBlob(new Blob([buf], { type: XLSX_MIME }), 'REAP_Status_Report_' + date + '.xlsx'); toast('Excel downloaded', 'success'); })
+            .catch(function(err) { console.error('EOD Excel failed:', err); toast('Excel file could not be created.', 'error'); });
+    };
 
-    // ===== SEND EOD EMAIL — saves log, downloads cumulative Excel, copies report, opens Outlook =====
+    // ===== EMAIL DRAFT (.eml) =====
+    // Opening this file in Outlook pops up a new, unsent message with the subject,
+    // the colored report in the body and the Excel sheet attached (X-Unsent: 1).
+    const base64Lines = function(b64) { return b64.replace(/.{1,76}/g, function(m) { return m + '\r\n'; }); };
+    const textToBase64 = function(text) { return btoa(unescape(encodeURIComponent(text))); };
+    const bufferToBase64 = function(buf) {
+        var bytes = new Uint8Array(buf), bin = '';
+        for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        return btoa(bin);
+    };
+    const buildEodEml = function(subject, reportHtml, xlsxBuf, xlsxName) {
+        var boundary = '----=_ShipTracker_' + Date.now().toString(36);
+        var body = '<html><head><meta charset="utf-8"></head><body style="font-family:Segoe UI,Arial,sans-serif;">' + reportHtml + '</body></html>';
+        var eml = 'Subject: ' + subject + '\r\n'
+            + 'X-Unsent: 1\r\n'
+            + 'MIME-Version: 1.0\r\n'
+            + 'Content-Type: multipart/mixed; boundary="' + boundary + '"\r\n\r\n'
+            + '--' + boundary + '\r\n'
+            + 'Content-Type: text/html; charset="utf-8"\r\n'
+            + 'Content-Transfer-Encoding: base64\r\n\r\n'
+            + base64Lines(textToBase64(body));
+        if (xlsxBuf) {
+            eml += '--' + boundary + '\r\n'
+                + 'Content-Type: ' + XLSX_MIME + '; name="' + xlsxName + '"\r\n'
+                + 'Content-Disposition: attachment; filename="' + xlsxName + '"\r\n'
+                + 'Content-Transfer-Encoding: base64\r\n\r\n'
+                + base64Lines(bufferToBase64(xlsxBuf));
+        }
+        eml += '--' + boundary + '--\r\n';
+        return eml;
+    };
+
+    // ===== SEND EOD EMAIL — one click: email draft with report + Excel attached =====
     const sendEodEmail = function() {
-        var reportHtml = buildEodHtml();
+        var eodData;
+        try { eodData = getEndOfDayData(); }
+        catch (err) { console.error('EOD build failed:', err); toast('Could not build the report: ' + err.message, 'error'); return; }
+        var reportHtml = buildEodHtmlFromData(eodData, date);
         var d = parseLocalDate(date);
         var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        var dateHeader = monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-        var subject = 'REAP Status Report - ' + dateHeader;
+        var subject = 'REAP Status Report - ' + monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+        var xlsxName = 'REAP_Status_Report_' + date + '.xlsx';
 
-        // Step 1 - Save today's EOD snapshot to Firebase for cumulative log
-        var todayData = getEndOfDayData();
-        saveEodLog(date, todayData);
+        // Clipboard first (browsers only allow it right after the click) — backup if the draft can't be opened
+        var copied = copyHtmlToClipboard(reportHtml);
+        saveEodLog(date, eodData);
+        var excel = generateEodExcel(eodData, date).then(null, function(err) { console.error('EOD Excel failed:', err); return null; });
 
-        // Step 2 - Generate and download cumulative colored Excel
-        generateEodExcel();
-
-        // Step 3 - Copy colored HTML report to clipboard as rich text
-        var fullHtml = '<html><body style="font-family:Segoe UI,Arial,sans-serif;">' + reportHtml + '</body></html>';
-        if (navigator.clipboard && navigator.clipboard.write) {
-            var htmlBlob = new Blob([fullHtml], { type: 'text/html' });
-            var textEl = document.createElement('div');
-            textEl.innerHTML = reportHtml;
-            var plainBlob = new Blob([textEl.innerText || textEl.textContent], { type: 'text/plain' });
-            navigator.clipboard.write([new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': plainBlob })]).catch(function() {});
-        } else {
-            // Fallback: render hidden div + execCommand copy
-            var tmp = document.createElement('div');
-            tmp.innerHTML = reportHtml;
-            tmp.style.position = 'fixed';
-            tmp.style.left = '-9999px';
-            document.body.appendChild(tmp);
-            var range = document.createRange();
-            range.selectNodeContents(tmp);
-            var sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
-            document.execCommand('copy');
-            sel.removeAllRanges();
-            document.body.removeChild(tmp);
-        }
-
-        // Step 4 - Open Outlook compose via mailto with subject pre-filled
-        var mailUrl = 'mailto:?subject=' + encodeURIComponent(subject);
-        window.open(mailUrl, '_self');
-
-        toast('EOD saved! Excel log downloading + report copied. Ctrl+V in Outlook, then attach the .xls.', 'success');
+        Promise.all([copied, excel]).then(function(res) {
+            var xlsxBuf = res[1];
+            var eml = buildEodEml(subject, reportHtml, xlsxBuf, xlsxName);
+            downloadBlob(new Blob([eml], { type: 'message/rfc822' }), 'REAP_Status_Report_' + date + '.eml');
+            if (xlsxBuf) toast('Email draft downloaded. Open it and Outlook opens with the report and Excel attached.', 'success');
+            else toast('Email draft downloaded without the Excel file (it could not be created).', 'error');
+        });
         logActivity('Generated EOD email for ' + date);
+    };
+
+    // ===== EOD NOTES =====
+    // Built only from shared data (open issues, recent quick notes, ship status), so every
+    // teammate gets the same report. No keyword guessing, no old emails, no repeats.
+    const EOD_NOTE_DAYS = 3;          // quick notes older than this are left out
+    const EOD_MAX_ISSUES = 2;         // issues listed by name; the rest are counted
+    const eodClean = function(t) {
+        return String(t == null ? '' : t)
+            .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '')   // emoji
+            .replace(/\s+/g, ' ').trim()
+            .replace(/^[\s\-•*:;,.]+/, '').replace(/[\s\-•*:;,.!]+$/, '');
+    };
+    const eodSentence = function(t, max) {
+        var s = eodClean(t);
+        if (!s) return '';
+        if (max && s.length > max) s = s.slice(0, max).replace(/\s+\S*$/, '') + '…';
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    };
+    const eodKey = function(t) { return eodClean(t).toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim(); };
+    const eodShortDate = function(v) { var x = new Date(v); return isNaN(x) ? '' : (x.getMonth() + 1) + '/' + x.getDate(); };
+    // Calendar date in local time, whether the value is 'YYYY-MM-DD' or a full timestamp
+    const eodDate = function(v) {
+        if (!v) return '';
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return fmtDate(v);
+        var x = new Date(v);
+        return isNaN(x) ? '' : x.toLocaleDateString('en-US');
+    };
+
+    const buildEodNote = function(s, shipIssues, shipNotes, online) {
+        var parts = [], keys = [];
+        var add = function(text, keySource) {
+            if (!text) return;
+            var k = eodKey(keySource || text);
+            if (!k || keys.some(function(x) { return x.indexOf(k) !== -1 || k.indexOf(x) !== -1; })) return;
+            keys.push(k);
+            parts.push(text);
+        };
+
+        if (s.pendingInstall) {
+            add('Pending install' + (s.installDate ? ', estimated ' + eodDate(s.installDate) : ''));
+            if (s.location) add('Location: ' + eodClean(s.location));
+        } else if (s.pendingDeinstall) {
+            add('Pending deinstall' + (s.deinstallDate ? ', estimated ' + eodDate(s.deinstallDate) : ''));
+        } else {
+            // 1. Open issues by their real title, urgent first, then oldest first
+            var sorted = shipIssues.slice().sort(function(a, b) {
+                var ua = a.threat === 'Urgent' ? 0 : 1, ub = b.threat === 'Urgent' ? 0 : 1;
+                if (ua !== ub) return ua - ub;
+                return String(a.created || a.date || '').localeCompare(String(b.created || b.date || ''));
+            });
+            // Collapse duplicates first so they're neither listed twice nor counted as "more"
+            var distinct = [], distinctKeys = [];
+            sorted.forEach(function(iss) {
+                var title = eodSentence(iss.title || iss.details, 45);
+                var k = eodKey(title);
+                if (!k || distinctKeys.some(function(x) { return x.indexOf(k) !== -1 || k.indexOf(x) !== -1; })) return;
+                distinctKeys.push(k);
+                distinct.push({ title: title, since: eodShortDate(iss.created || iss.date) });
+            });
+            distinct.slice(0, EOD_MAX_ISSUES).forEach(function(d) {
+                add(d.title + (d.since ? ' (since ' + d.since + ')' : ''), d.title);
+            });
+            var extra = distinct.length - EOD_MAX_ISSUES;
+            if (extra > 0) add('+' + extra + ' more open issue' + (extra > 1 ? 's' : ''));
+
+            // 2. Newest quick note from the last few days, minus any issue title it repeats
+            if (shipNotes.length > 0) {
+                var noteText = eodClean(shipNotes[0].text);
+                sorted.forEach(function(iss) {
+                    var t = eodClean(iss.title || iss.details);
+                    if (t.length >= 4) noteText = noteText.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ');
+                });
+                noteText = eodClean(noteText);
+                if (noteText.length >= 3) add(eodSentence(noteText, 70));
+            }
+
+            // 3. In port
+            if (s.inPort && s.inPortUntil && parseLocalDate(s.inPortUntil) >= parseLocalDate(date)) {
+                add('In port until ' + eodDate(s.inPortUntil));
+            }
+
+            // 4. Offline with nothing else to explain it
+            if (!online && parts.length === 0) add('System offline; troubleshooting with ship’s force');
+        }
+        return parts.map(function(p) { return /[.…]$/.test(p) ? p : p + '.'; }).join(' ');
     };
 
     const getEndOfDayData = () => {
@@ -6513,150 +6696,52 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
             return hullNum(a.name) - hullNum(b.name);
         });
-        // All ships in their type groups, pending ships included as offline
         const fullReap = dashSorted.filter(s => s.type === 'Full REAP');
         const miniReap = dashSorted.filter(s => s.type === 'Mini REAP');
-        
+        const reportDay = parseLocalDate(date);
+        const noteCutoff = new Date(reportDay); noteCutoff.setDate(noteCutoff.getDate() - EOD_NOTE_DAYS);
+        const dayAfter = new Date(reportDay); dayAfter.setDate(dayAfter.getDate() + 1);
+
         const getShipRow = function(s) {
             var c = getCheck(s.id);
-            var isPending = s.pendingInstall;
-            var isDeinstall = s.pendingDeinstall;
-            var hasPingAM = c.pingAM && c.pingAM.trim() !== '';
-            var hasPingPM = c.pingPM && c.pingPM.trim() !== '';
-            var am = (isPending || isDeinstall) ? false : hasPingAM;
-            var pm = (isPending || isDeinstall) ? false : hasPingPM;
+            var na = !!(s.pendingInstall || s.pendingDeinstall);
+            var pingAM = String(c.pingAM == null ? '' : c.pingAM).trim();
+            var pingPM = String(c.pingPM == null ? '' : c.pingPM).trim();
+            var am = !na && pingAM !== '';
+            var pm = !na && pingPM !== '';
+            var online = am || pm;
             var shipIssues = (issues || []).filter(function(i) { return i.shipId === s.id && !i.resolved; });
+            var shipNotes = (quickNotes || []).filter(function(n) {
+                if (n.shipId !== s.id || !eodClean(n.text)) return false;
+                var t = new Date(n.date);
+                return !isNaN(t) && t >= noteCutoff && t < dayAfter;
+            }).sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
-            // Get email history
-            var allEmails = [];
-            try { allEmails = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e2) {}
-            var emails = allEmails.filter(function(h) { return h.shipId === s.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); });
-
-            // Get quick notes for this ship
-            var shipNotes = (quickNotes || []).filter(function(n) { return n.shipId === s.id; }).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
-
-            // ---- EOD NOTE BUILDER ----
-            // Short, clean status lines. No email body dumps.
-            // Format: [Issue]. [Quick note]. [Comm status].
-            var noteText = '';
-            var lastContactDate = '';
-
-            if (isPending) {
-                noteText = 'Pending Install \u2014 ' + s.type + '.';
-                if (s.installDate) noteText += ' Estimated install date: ' + fmtDate(s.installDate) + '.';
-                if (s.location) noteText += ' Location: ' + s.location + '.';
-            } else if (isDeinstall) {
-                noteText = 'Pending Deinstall' + (s.deinstallDate ? '. Estimated date: ' + fmtDate(s.deinstallDate) : '') + '.';
-            } else {
-                var noteParts = [];
-
-                // === PART 1: Issue label (short tag only, no email content) ===
-                var issueLabel = '';
-                var allText = '';
-
-                // Build a search string from issues + email subjects (NOT bodies)
-                if (shipIssues.length > 0) allText += ' ' + (shipIssues[0].title || '');
-                if (emails.length > 0) allText += ' ' + ((emails[0].result ? emails[0].result.emailSummary : '') || '');
-                allText = allText.toLowerCase();
-
-                // Map to a clean label
-                if (allText.indexOf('atu') !== -1 || allText.indexOf('expired') !== -1) issueLabel = 'ATU Expired';
-                else if (allText.indexOf('bcr') !== -1) issueLabel = 'BCR Issue';
-                else if (allText.indexOf('offline') !== -1 || allText.indexOf('down') !== -1) issueLabel = 'Systems Offline';
-                else if (allText.indexOf('connection') !== -1 || allText.indexOf('connectivity') !== -1 || allText.indexOf('unable to communicate') !== -1) issueLabel = 'Connection Lost';
-                else if (allText.indexOf('noc') !== -1) issueLabel = 'Waiting on NOC';
-                else if (allText.indexOf('diode') !== -1) issueLabel = 'Diode Issue';
-                else if (allText.indexOf('drive') !== -1 || allText.indexOf('hdd') !== -1 || allText.indexOf('ssd') !== -1) issueLabel = 'Drive Failure';
-                else if (allText.indexOf('crypto') !== -1 || allText.indexOf('comsec') !== -1 || allText.indexOf('taclane') !== -1) issueLabel = 'Crypto Issue';
-                else if (allText.indexOf('satcom') !== -1) issueLabel = 'SATCOM Issue';
-                else if (allText.indexOf('router') !== -1 || allText.indexOf('switch') !== -1) issueLabel = 'Router/Switch Issue';
-                else if (allText.indexOf('phone') !== -1 || allText.indexOf('voip') !== -1 || allText.indexOf('mega phone') !== -1) issueLabel = 'Phone Issue';
-                else if (allText.indexOf('install') !== -1) issueLabel = 'REAP Install';
-                else if (allText.indexOf('bios') !== -1 || allText.indexOf('stuck') !== -1 || allText.indexOf('stcuk') !== -1) issueLabel = 'REAP System Issue';
-                else if (allText.indexOf('reap') !== -1 || allText.indexOf('system') !== -1) issueLabel = 'REAP System Issue';
-                else if (shipIssues.length > 0) issueLabel = shipIssues[0].title.substring(0, 30);
-
-                if (issueLabel) noteParts.push(issueLabel);
-
-                // === PART 2: Quick note (human-written, always short) ===
-                if (shipNotes.length > 0) {
-                    var qnText = shipNotes[0].text.trim().substring(0, 50);
-                    // Don't duplicate the issue label
-                    if (!issueLabel || qnText.toLowerCase().indexOf(issueLabel.toLowerCase().substring(0, 10)) === -1) {
-                        noteParts.push(qnText);
-                    }
-                }
-
-                // === PART 3: In port status ===
-                if (s.inPort && s.inPortUntil) {
-                    noteParts.push('In port until ' + fmtDate(s.inPortUntil));
-                }
-
-                // === PART 4: Communication status ===
-                if (emails.length > 0) {
-                    var lastEmail = emails[0];
-                    var senderName = (lastEmail.result && lastEmail.result.sender) ? lastEmail.result.sender.name : (lastEmail.fromName || '');
-                    var contactedBy = (lastEmail.result ? lastEmail.result.contactedBy : '') || '';
-                    var isFromShip = senderName === '__SHIP__' || senderName === 'Ship' || contactedBy.indexOf('Ship') === 0;
-
-                    if (isFromShip) {
-                        noteParts.push('Ship has responded, reviewing reply');
-                    } else {
-                        noteParts.push('Coordinating with ship forces for resolution');
-                    }
-                } else if (shipIssues.length > 0) {
-                    noteParts.push('Actively troubleshooting with ship forces');
-                }
-
-                // === LAST CONTACT DATE ===
-                if (emails.length > 0 && emails[0].timestamp) {
-                    lastContactDate = fmtDate(emails[0].timestamp);
-                } else if (s.lastContact) {
-                    lastContactDate = fmtDate(s.lastContact);
-                }
-
-                // Join with ". " \u2014 clean, short, scannable
-                noteText = noteParts.join('. ').replace(/\.\./g, '.').replace(/\. \./g, '.').replace(/\.\s*\./g, '.');
-                if (noteText && !noteText.endsWith('.')) noteText += '.';
-            }
-
+            var lastContact = eodDate(s.lastContact);
             return {
                 name: s.name,
-                am: am ? 'Online' : 'Offline',
-                amPing: am && c.pingAM ? c.pingAM : '',
-                pm: pm ? 'Online' : 'Offline',
-                pmPing: pm && c.pingPM ? c.pingPM : '',
-                files: (isPending || isDeinstall) ? '' : (c.hdSpace || '0'),
-                diode: (isPending || isDeinstall) ? 'N/A' : (c.diode || (am || pm ? 'Up' : 'N/A')),
-                phone: (isPending || isDeinstall) ? 'Down' : (c.phone || (am || pm ? 'Up' : 'Down')),
-                notes: noteText, lastContactDate: lastContactDate, amUp: am, pmUp: pm
+                na: na,
+                am: na ? 'N/A' : am ? 'Online' : 'Offline',
+                amPing: am ? pingAM : '',
+                pm: na ? 'N/A' : pm ? 'Online' : 'Offline',
+                pmPing: pm ? pingPM : '',
+                files: na ? '' : String(c.hdSpace == null ? '' : c.hdSpace).trim(),
+                // Diode and phone follow the ship's online status
+                diode: na ? 'N/A' : online ? 'Up' : 'Down',
+                phone: na ? 'N/A' : online ? 'Up' : 'Down',
+                notes: buildEodNote(s, shipIssues, shipNotes, online),
+                lastContactDate: !na && lastContact ? 'Last contact: ' + lastContact : '',
+                amUp: am, pmUp: pm
             };
         };
         return { fullReap: fullReap.map(getShipRow), miniReap: miniReap.map(getShipRow) };
     };
-    
+
     const copyEndOfDay = () => {
-        const el = document.getElementById('eod-table-container');
-        if (!el) return;
-        // Get the HTML with all inline styles baked in for email clients
-        const htmlContent = el.innerHTML;
-        // Use Clipboard API for rich HTML paste
-        if (navigator.clipboard && navigator.clipboard.write) {
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const plainBlob = new Blob([el.innerText], { type: 'text/plain' });
-            navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': plainBlob })]);
-        } else {
-            // Fallback
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            const sel2 = window.getSelection();
-            sel2.removeAllRanges();
-            sel2.addRange(range);
-            document.execCommand('copy');
-            sel2.removeAllRanges();
-        }
-        logActivity('Exported end-of-day report for ' + date);
-        toast('Report copied — paste into email!', 'success');
+        copyHtmlToClipboard(buildEodHtml()).then(ok => {
+            if (ok) { toast('Report copied — paste into email!', 'success'); logActivity('Exported end-of-day report for ' + date); }
+            else toast('Could not copy. Select the table and press Ctrl+C.', 'error');
+        });
     };
 
     const exportForExcel = () => {
@@ -6857,8 +6942,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <div style={{width:'1px',height:'20px',background:'var(--border)'}}></div>
                         <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600}}>Export:</span>
                         <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(16,185,129,0.1)',border:'1px solid var(--green)',color:'var(--green)'}} onClick={exportForExcel}>📊 Excel</button>
-                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(59,130,246,0.1)',border:'1px solid var(--blue)',color:'var(--blue)'}} onClick={sendEodEmail}>📧 End of Day</button>
-                        <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 8px',color:'var(--text-muted)'}} onClick={exportStatus} title="Preview EOD report">👁</button>
+                        <SplitButton testId="eod-split" label="📧 End of Day" onClick={sendEodEmail} className="btn btn-sm"
+                            style={{fontSize:'10px',padding:'4px 10px',background:'rgba(59,130,246,0.1)',border:'1px solid var(--blue)',color:'var(--blue)'}}
+                            items={[
+                                { label: '👁 Preview report', onClick: exportStatus },
+                                { label: '📋 Copy report only', onClick: copyEndOfDay },
+                                { label: '📊 Download Excel only', onClick: downloadEodExcel },
+                            ]}/>
                         <button className="btn btn-sm" style={{fontSize:'10px',padding:'4px 10px',background:'rgba(245,158,11,0.1)',border:'1px solid var(--amber)',color:'var(--amber)'}} onClick={exportMorningReport}>☀️ Morning</button>
                     </div>
                 </div>
@@ -7036,64 +7126,28 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             )}
             {/* End of Day Report Modal */}
             {showEndOfDay && (() => {
-                const data = getEndOfDayData();
-                const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
-                const bc = 'var(--bg-card)';
-                const bd = '1px solid var(--border)';
-                const renderRows = function(rows) { return rows.map(function(r, i) {
-                    var bg = i % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-input)';
-                    return React.createElement('tr', {key: i, style: {background: bg}},
-                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontWeight:700,fontSize:'14px',color:'var(--text)',whiteSpace:'nowrap'}}, r.name),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:700,fontSize:'13px',color: r.amUp ? '#00c853' : '#ff1744'}},
-                            r.am, r.amPing ? React.createElement('div', {style: {fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, r.amPing) : null),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:700,fontSize:'13px',color: r.pmUp ? '#00c853' : '#ff1744'}},
-                            r.pm, r.pmPing ? React.createElement('div', {style: {fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, r.pmPing) : null),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontSize:'13px',color:'var(--text-dim)'}}, r.files),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.diode==='Up'?'#00c853':r.diode==='Down'||r.diode==='Output-down'?'#ff1744':'var(--text-muted)'}}, r.diode),
-                        React.createElement('td', {style: {padding:'10px 12px',border:bd,textAlign:'center',fontWeight:600,fontSize:'13px',color: r.phone==='Up'?'#00c853':r.phone==='Down'?'#ff1744':'var(--text-muted)'}}, r.phone),
-                        React.createElement('td', {style: {padding:'10px 14px',border:bd,fontSize:'12px',color:'var(--text)',lineHeight:'1.7',whiteSpace:'pre-wrap'}},
-                            r.notes,
-                            r.lastContactDate ? React.createElement('div', {style:{color:'var(--text-muted)',fontSize:'11px',marginTop:'4px'}}, r.lastContactDate) : null
-                        )
-                    );
-                }); };
-                var secHead = function(label, bg) { return React.createElement('tr', null,
-                    React.createElement('td', {colSpan:7, style:{padding:'10px 16px',background:bg,textAlign:'center',fontWeight:700,fontSize:'14px',color:'#fff',border:bd,letterSpacing:'1px'}}, label)
-                ); };
-                var thStyle = {padding:'10px 14px',background:'var(--bg-input)',border:bd,fontWeight:700,fontSize:'12px',color:'var(--text-dim)',textAlign:'center',letterSpacing:'0.5px'};
+                // Preview shows the exact HTML that gets copied/emailed (already escaped by buildEodHtmlFromData)
+                let html;
+                try { html = buildEodHtml(); }
+                catch (err) { console.error('EOD build failed:', err); html = '<p style="color:#d32f2f">Could not build the report: ' + escHtml(err.message) + '</p>'; }
                 return (
                 React.createElement('div', {style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'},onClick:function(e){if(e.target===e.currentTarget)setShowEndOfDay(false)}},
                     React.createElement('div', {style:{background:'var(--bg-main)',borderRadius:'12px',width:'100%',maxWidth:'1100px',maxHeight:'92vh',overflow:'auto',border:'1px solid var(--border)'}},
                         React.createElement('div', {style:{padding:'16px 24px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',position:'sticky',top:0,background:'var(--bg-main)',zIndex:1}},
                             React.createElement('div', null,
                                 React.createElement('div', {style:{fontSize:'16px',fontWeight:700,color:'var(--text)'}}, 'End of Day Status Report'),
-                                React.createElement('div', {style:{fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, dateLabel)
+                                React.createElement('div', {style:{fontSize:'12px',color:'var(--text-muted)',marginTop:'2px'}}, 'Exactly what will be pasted into the email')
                             ),
                             React.createElement('div', {style:{display:'flex',gap:'8px'}},
-                                React.createElement('button', {className:'btn btn-primary',style:{fontWeight:700,padding:'8px 20px'},onClick:sendEodEmail}, '📧 Send Email'),
-                                React.createElement('button', {className:'btn btn-secondary',style:{fontWeight:600,padding:'8px 16px'},onClick:copyEndOfDay}, '📋 Copy'),
+                                React.createElement(SplitButton, {testId:'eod-modal-split', label:'📧 Send Email', onClick:sendEodEmail, className:'btn btn-primary', style:{fontWeight:700,padding:'8px 16px'},
+                                    items:[
+                                        { label: '📋 Copy report only', onClick: copyEndOfDay },
+                                        { label: '📊 Download Excel only', onClick: downloadEodExcel }
+                                    ]}),
                                 React.createElement('button', {onClick:function(){setShowEndOfDay(false)},style:{background:'none',border:'1px solid var(--border)',color:'var(--text-muted)',fontSize:'16px',cursor:'pointer',borderRadius:'6px',width:'34px',height:'34px'}}, '✕')
                             )
                         ),
-                        React.createElement('div', {style:{padding:'16px 20px'},id:'eod-table-container'},
-                            React.createElement('table', {style:{width:'100%',borderCollapse:'collapse',background:bc,color:'var(--text)',fontFamily:'Segoe UI, Arial, sans-serif'}},
-                                React.createElement('thead', null,
-                                    React.createElement('tr', null,
-                                        React.createElement('th', {style:{...thStyle,textAlign:'left',minWidth:'70px'}}, ''),
-                                        React.createElement('th', {style:{...thStyle,minWidth:'80px'}}, 'AM'),
-                                        React.createElement('th', {style:{...thStyle,minWidth:'80px'}}, 'PM'),
-                                        React.createElement('th', {style:{...thStyle,minWidth:'50px'}}, 'Files'),
-                                        React.createElement('th', {style:{...thStyle,minWidth:'65px'}}, 'Diode'),
-                                        React.createElement('th', {style:{...thStyle,minWidth:'65px'}}, 'Phone'),
-                                        React.createElement('th', {style:thStyle}, 'Notes')
-                                    )
-                                ),
-                                React.createElement('tbody', null,
-                                    data.fullReap.length > 0 ? [secHead('Full Reap','#0d47a1')].concat(renderRows(data.fullReap)) : null,
-                                    data.miniReap.length > 0 ? [secHead('Mini-Reap','#1b5e20')].concat(renderRows(data.miniReap)) : null
-                                )
-                            )
-                        )
+                        React.createElement('div', {id:'eod-table-container', style:{margin:'16px 20px',padding:'16px',background:'#ffffff',borderRadius:'8px'}, dangerouslySetInnerHTML:{__html: html}})
                     )
                 )
                 );
