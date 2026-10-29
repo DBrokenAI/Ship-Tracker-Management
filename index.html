@@ -458,7 +458,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T140";
+    var APP_BUILD = "2026-10-29T141";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -584,7 +584,12 @@ const ConfirmCheck = ({ show, onDone }) => {
     );
 };
 
-// Firebase real-time hook - loads instantly from localStorage, syncs with Firestore
+// Firestore batches are capped at 500 writes; stay safely under it
+const FIRESTORE_BATCH_LIMIT = 450;
+
+// Firebase real-time hook - loads instantly from localStorage, syncs with Firestore.
+// setData keeps the old "replace the whole array" API, but only writes documents that
+// actually changed and only deletes documents the caller deliberately removed.
 const useFirestore = (collectionName, initialData = []) => {
     const [data, setData] = useState(() => {
         try {
@@ -598,40 +603,42 @@ const useFirestore = (collectionName, initialData = []) => {
     });
     const [loading, setLoading] = useState(false);
     const initialized = useRef(false);
-    const dataRef = useRef(data);
-    const pendingWrite = useRef(false);
-    const pendingData = useRef(null);
-    
-    // Keep ref in sync with state
+    const dataRef = useRef(data);          // newest data, including remote changes not yet rendered
+    const renderedIds = useRef(null);      // ids in the array React last rendered (what non-functional callers saw)
+    const syncedJson = useRef(null);       // id -> JSON of the version last seen in / sent to Firestore
+    // Until the first snapshot, treat the cached copy as synced so early saves only write real changes
+    if (syncedJson.current === null) syncedJson.current = new Map(data.filter(i => i && i.id).map(i => [i.id, JSON.stringify(i)]));
+
+    // Remember what the screen was showing, so a setX(staleArray) can't delete docs added since
     useEffect(() => {
-        dataRef.current = data;
+        renderedIds.current = new Set(data.filter(i => i && i.id).map(i => i.id));
     }, [data]);
 
     useEffect(() => {
         const unsubscribe = db.collection(collectionName).onSnapshot((snapshot) => {
-            // If we have a pending write, don't overwrite with stale Firebase data
-            if (pendingWrite.current) return;
-            
+            // Firestore applies our own pending writes to snapshots immediately, so they are never stale
             if (!snapshot.empty) {
                 const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                syncedJson.current = new Map(items.map(i => [i.id, JSON.stringify(i)]));
                 setData(items);
                 dataRef.current = items;
                 localStorage.setItem('fb_' + collectionName, JSON.stringify(items));
                 // Mark this collection as initialized so we never overwrite with defaults
                 localStorage.setItem('fb_init_' + collectionName, 'true');
+            } else if (snapshot.metadata.fromCache) {
+                // Offline/empty cache: keep showing the localStorage copy
+            } else if (localStorage.getItem('fb_init_' + collectionName)) {
+                // Collection really is empty on the server (e.g. everything was deleted)
+                syncedJson.current = new Map();
+                setData([]);
+                dataRef.current = [];
+                localStorage.setItem('fb_' + collectionName, '[]');
             } else if (initialData.length > 0 && !initialized.current) {
-                // ONLY use defaults if we've NEVER had data before
-                var everInitialized = localStorage.getItem('fb_init_' + collectionName);
-                if (!everInitialized) {
-                    initialized.current = true;
-                    const batch = db.batch();
-                    initialData.forEach(item => {
-                        const ref = db.collection(collectionName).doc(item.id);
-                        batch.set(ref, item);
-                    });
-                    batch.commit();
-                }
-                // If we HAD data before but Firebase returned empty, keep localStorage data
+                // ONLY seed defaults if this collection has NEVER had data
+                initialized.current = true;
+                const batch = db.batch();
+                initialData.forEach(item => batch.set(db.collection(collectionName).doc(item.id), item));
+                batch.commit().catch(err => console.error('Seed error:', err));
             }
             setLoading(false);
         }, (error) => {
@@ -642,45 +649,62 @@ const useFirestore = (collectionName, initialData = []) => {
     }, [collectionName]);
 
     const setDataWithSync = useCallback((newDataOrFn) => {
-        // Use ref to get fresh data for functional updates
         const currentData = dataRef.current;
-        const newData = typeof newDataOrFn === 'function' ? newDataOrFn(currentData) : newDataOrFn;
-        
-        // Set pending flag to prevent snapshot from overwriting
-        pendingWrite.current = true;
-        pendingData.current = newData;
-        
+        let newData, deletable;
+        if (typeof newDataOrFn === 'function') {
+            // Functional updates see the freshest data, so anything they drop was dropped on purpose
+            newData = newDataOrFn(currentData);
+            deletable = new Set(currentData.filter(i => i && i.id).map(i => i.id));
+        } else {
+            // A plain array was built from what was on screen; keep docs that arrived after that render
+            newData = newDataOrFn;
+            const seen = renderedIds.current || new Set(currentData.filter(i => i && i.id).map(i => i.id));
+            const newIds = new Set(newData.filter(i => i && i.id).map(i => i.id));
+            const arrivedSince = currentData.filter(i => i && i.id && !seen.has(i.id) && !newIds.has(i.id));
+            if (arrivedSince.length) newData = [...newData, ...arrivedSince];
+            deletable = seen;
+        }
+
         setData(newData);
         dataRef.current = newData;
         localStorage.setItem('fb_' + collectionName, JSON.stringify(newData));
-        
-        const batch = db.batch();
+
+        // Work out the minimal set of writes
+        const ops = [];
+        const keepIds = new Set();
         newData.forEach(item => {
-            if (item && item.id) {
-                const ref = db.collection(collectionName).doc(item.id);
-                batch.set(ref, item);
+            if (!item || !item.id) return;
+            keepIds.add(item.id);
+            const json = JSON.stringify(item);
+            if (syncedJson.current.get(item.id) !== json) {
+                ops.push({ type: 'set', id: item.id, item });
+                syncedJson.current.set(item.id, json);
             }
         });
-        const newIds = new Set(newData.map(item => item.id));
-        currentData.forEach(item => {
-            if (item && item.id && !newIds.has(item.id)) {
-                const ref = db.collection(collectionName).doc(item.id);
-                batch.delete(ref);
+        deletable.forEach(id => {
+            if (!keepIds.has(id)) {
+                ops.push({ type: 'delete', id });
+                syncedJson.current.delete(id);
             }
         });
-        batch.commit()
-            .then(() => {
-                // Clear pending flag after write completes
-                setTimeout(() => {
-                    pendingWrite.current = false;
-                    pendingData.current = null;
-                }, 500);
-            })
-            .catch(err => {
-                console.error('Batch write error:', err);
-                pendingWrite.current = false;
-                pendingData.current = null;
+        if (ops.length === 0) return;
+
+        // Commit in chunks so large collections never hit the 500-write limit
+        for (let i = 0; i < ops.length; i += FIRESTORE_BATCH_LIMIT) {
+            const chunk = ops.slice(i, i + FIRESTORE_BATCH_LIMIT);
+            const batch = db.batch();
+            chunk.forEach(op => {
+                const ref = db.collection(collectionName).doc(op.id);
+                if (op.type === 'set') batch.set(ref, op.item);
+                else batch.delete(ref);
             });
+            batch.commit().catch(err => {
+                console.error('Batch write error (' + collectionName + '):', err);
+                // Mark these docs unsynced so the next save retries them
+                chunk.forEach(op => syncedJson.current.delete(op.id));
+                window.dispatchEvent(new CustomEvent('firestore-write-error', { detail: { collection: collectionName, error: err } }));
+            });
+        }
     }, [collectionName]);
 
     return [data, setDataWithSync, loading];
@@ -1285,6 +1309,7 @@ const toDateString = (d) => {
 };
 const fmtTime = (d) => { const now = new Date(), then = new Date(d), diff = (now - then) / 1000; if (diff < 60) return 'Just now'; if (diff < 3600) return `${Math.floor(diff/60)}m ago`; if (diff < 86400) return `${Math.floor(diff/3600)}h ago`; return `${Math.floor(diff/86400)}d ago`; };
 const genId = (p) => `${p}${Date.now()}`;
+const newestFirst = (list) => [...list].sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')));
 
 const getEmailStatus = (ship, issues) => {
     // If ship is pending install, no email tracking needed
@@ -1460,7 +1485,9 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     const [dailyChecks, setDailyChecks] = useFirestore('dailyChecks', defaultDailyChecks);
     const [installs, setInstalls] = useFirestore('installs', []);
     const [parts, setParts] = useFirestore('parts', []);
-    const [activityLog, setActivityLog] = useFirestore('activityLog', defaultActivityLog);
+    const [rawActivityLog, setActivityLog] = useFirestore('activityLog', defaultActivityLog);
+    // Firestore returns docs in id order (oldest first); everything downstream expects newest first
+    const activityLog = useMemo(() => newestFirst(rawActivityLog), [rawActivityLog]);
     const [suggestions, setSuggestions] = useFirestore('suggestions', []);
     const [quickNotes, setQuickNotes] = useFirestore('quickNotes', []);
     const [onlineUsers, setOnlineUsers] = useState([]);
@@ -1521,7 +1548,19 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     // Get currently online users (already filtered in snapshot listener)
     const activeUsers = onlineUsers;
 
-    const toast = (msg, type = 'info') => { const id = Date.now(); setToasts(t => [...t, { id, message: msg, type }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000); };
+    const toast = (msg, type = 'info') => { const id = Date.now() + Math.random(); setToasts(t => [...t, { id, message: msg, type }]); setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000); };
+
+    // Saves happen in the background; make failures visible instead of silently reverting
+    useEffect(() => {
+        let last = 0;
+        const onWriteError = (e) => {
+            if (Date.now() - last < 5000) return;
+            last = Date.now();
+            toast(`Save failed (${e.detail.collection}). Check your connection and try again.`, 'error');
+        };
+        window.addEventListener('firestore-write-error', onWriteError);
+        return () => window.removeEventListener('firestore-write-error', onWriteError);
+    }, []);
     
     // Alert state — populated by Dashboard, displayed by Toast
     const [alerts, setAlerts] = useState([]);
@@ -1530,7 +1569,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     
     const logActivity = (text, details = null) => { 
         const newEntry = { id: genId('A'), text, details, user: currentUser?.username || 'Unknown', time: new Date().toISOString() };
-        setActivityLog(prev => [newEntry, ...prev.slice(0, 499)]); 
+        setActivityLog(prev => [newEntry, ...newestFirst(prev).slice(0, 499)]); 
     };
     
     // Log login once per session
@@ -1539,7 +1578,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         if (currentUser?.username && !loginLogged.current && activityLog !== undefined) {
             loginLogged.current = true;
             const entry = { id: genId('A'), text: `${currentUser.username} logged in`, details: null, user: currentUser.username, time: new Date().toISOString() };
-            setActivityLog(prev => [entry, ...prev.slice(0, 499)]);
+            setActivityLog(prev => [entry, ...newestFirst(prev).slice(0, 499)]);
         }
     }, [currentUser]);
     
@@ -1658,7 +1697,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T140'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T141'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1669,7 +1708,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T140');
+                                    localStorage.setItem('lastSeenBuild', 'T141');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1678,6 +1717,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T141'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '💾 Reliable Saving'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Saves now write only the records that changed (before: every save rewrote the whole list)\n• Large saves are split into chunks, fixing saves that silently failed once a list passed 500 records (Daily Checks, Activity Log)\n• Teammates’ updates are no longer ignored while your own save is in progress\n• Your save no longer deletes records a teammate added since your screen last refreshed\n• Saves made right after the page loads no longer overwrite newer data with your browser’s cached copy\n• Deleting every item in a list now actually empties it (before, deleted items stayed visible)\n• Failed saves now show a red “Save failed” message instead of failing silently\n• Activity Log is now newest-first everywhere (Recent Activity, ship Activity tab, View All, Activity Log page)\n• Activity Log 500-entry cap now removes the oldest entries (before, it deleted the newest)\n• Fixed pop-up messages that could clash when two appeared at the same moment'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T140'),
