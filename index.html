@@ -458,7 +458,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T143";
+    var APP_BUILD = "2026-10-29T144";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1016,9 +1016,29 @@ function VBAConfigPanel() {
             var v = newVersion.split('.');
             setNewVersion(v[0] + '.' + (parseInt(v[1] || '0') + 1));
             setTimeout(function() { setSaved(false); }, 3000);
+        }).catch(function(err) {
+            setSaving(false);
+            alert('Push failed: ' + err.message);
         });
     };
-    
+
+    // Load the macro shipped with this build of Ship Tracker (outlook/ShipTracker.bas)
+    var [loadMsg, setLoadMsg] = React.useState('');
+    var loadLatestMacro = function() {
+        setLoadMsg('Loading…');
+        fetch('outlook/ShipTracker.bas?v=' + Date.now(), { cache: 'no-store' })
+            .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+            .then(function(t) {
+                if (t.length < 500) throw new Error('file too small');
+                setCodeText(t);
+                var m = t.match(/Const CURRENT_VERSION = "([^"]+)"/);
+                if (m) setNewVersion(m[1]);
+                if (!changelog) setChangelog('- New EOD Email button: one click builds the End of Day email with the report and Excel attached\n- Add it via File > Options > Quick Access Toolbar > Macros > CreateEodEmail');
+                setLoadMsg('Loaded v' + (m ? m[1] : '?') + ' — review the changelog, then click Push.');
+            })
+            .catch(function(err) { setLoadMsg('Could not load the macro: ' + err.message); });
+    };
+
     return React.createElement('div', {style: {marginTop:'24px',borderTop:'1px solid var(--border)',paddingTop:'20px'}},
         React.createElement('h3', {style: {fontSize:'14px',fontWeight:700,marginBottom:'4px'}}, '\uD83D\uDD27 Push VBA Update'),
         React.createElement('div', {style: {fontSize:'11px',color:'var(--text-muted)',marginBottom:'16px'}}, 'Paste new .bas code here \u2192 click Push \u2192 all coworkers auto-update on next Outlook restart'),
@@ -1030,6 +1050,11 @@ function VBAConfigPanel() {
             React.createElement('input', {style: {width:'60px',padding:'4px 8px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)',fontSize:'12px',fontWeight:700}, value: newVersion, onChange: function(e) { setNewVersion(e.target.value); }})
         ),
         
+        React.createElement('div', {style: {display:'flex',gap:'10px',alignItems:'center',marginBottom:'10px',flexWrap:'wrap'}},
+            React.createElement('button', {onClick: loadLatestMacro, style: {padding:'8px 14px',background:'var(--primary-glow)',border:'1px solid var(--primary)',borderRadius:'8px',color:'var(--primary)',fontWeight:700,fontSize:'12px',cursor:'pointer'}}, '⬇ Load latest macro'),
+            loadMsg ? React.createElement('span', {style: {fontSize:'11px',color:'var(--text-muted)'}}, loadMsg) : null
+        ),
+
         React.createElement('textarea', {
             style: {width:'100%',minHeight:'200px',padding:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'10px',fontFamily:'monospace',resize:'vertical',lineHeight:'1.4'},
             placeholder: 'Paste the entire .bas file contents here...',
@@ -1727,7 +1752,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                     <div className="version">v4.5.1 Firebase</div>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T143'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T144'; } catch(e2) {}
                         return React.createElement('div', {style:{position:'relative',marginTop:'6px'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -1738,7 +1763,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T143');
+                                    localStorage.setItem('lastSeenBuild', 'T144');
                                 },
                                 style:{width:'100%',padding:'6px 10px',background: hasNewUpdate ? 'rgba(245,158,11,0.15)' : 'rgba(25,169,116,0.1)',border: hasNewUpdate ? '1px solid var(--amber)' : '1px solid rgba(25,169,116,0.3)',borderRadius:'6px',color: hasNewUpdate ? 'var(--amber)' : 'var(--green)',fontSize:'10px',fontWeight:600,cursor:'pointer',textAlign:'center'}
                             }, hasNewUpdate ? '\uD83D\uDD36 New Updates Available' : '\u2705 Up to Date \u2014 View Changes'),
@@ -1747,6 +1772,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T144'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔧 Easy Macro Push'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Admin Panel: new ⬇ Load latest macro button fills in Push VBA Update with Outlook macro v3.3 (EOD Email button), its version number and a changelog. Just click Push\n• Admin Panel: if a VBA push fails you now see the error (before, it stayed stuck on “Pushing…”)\n• Outlook macro v3.3 now ships with Ship Tracker (outlook/ShipTracker.bas), so it can be pushed from any computer'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T143'),
