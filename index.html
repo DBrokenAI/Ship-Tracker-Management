@@ -588,7 +588,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T162";
+    var APP_BUILD = "2026-10-30T163";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2201,7 +2201,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T162'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T163'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2212,7 +2212,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T162');
+                                    localStorage.setItem('lastSeenBuild', 'T163');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2222,6 +2222,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T163'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '✅ Simpler Daily Checks Toolbar'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Daily Checks: the Excel button is gone (the End of Day dropdown still has Download Excel only)\n• The four All AM / All PM Online / Offline buttons are now one All online button that marks every ship online for AM and PM. Its dropdown has All AM online, All PM online, All AM offline, All PM offline, and All offline (in red)\n• Every Daily Checks button now sits in the Quick Mark row: All online, Copy Yesterday, End of Day, Morning, Reorder, Table / Cards and Print\n• The date controls stay on their own line at the top\n• Table and Cards are now one small switch'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T162'),
@@ -6869,6 +6876,12 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         saveTimer.current = setTimeout(() => setSaveStatus('saved'), 800);
     };
 
+    const markAll = (online) => {
+        sorted.forEach(s => { update(s.id, 'statusAM', online); update(s.id, 'statusPM', online); });
+        logActivity(`Bulk marked all ships AM and PM ${online ? 'Online' : 'Offline'}`);
+        toast(`All ships marked ${online ? 'Online' : 'Offline'} for AM and PM`, 'success');
+    };
+
     // Bulk mark all online/offline
     const bulkMark = (field, value) => {
         sorted.forEach(s => update(s.id, field, value));
@@ -7329,23 +7342,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         return () => clearTimeout(t);
     }, [checks, ships, issues, quickNotes, date, shipOrder]);
 
-    const exportForExcel = () => {
-        const fullReapOrder = [67, 70, 54, 56, 62, 63];
-        const miniReapOrder = [55, 57, 72, 77, 96, 98, 101, 103, 109, 111];
-        const getRow = (hullNum) => {
-            const ship = ships.find(s => s.name.includes(hullNum.toString()));
-            if (!ship) return '0\t0\t0';
-            const c = getCheck(ship.id);
-            return `${c.pingAM || '0'}\t${c.pingPM || '0'}\t${c.hdSpace || '0'}`;
-        };
-        let fullReap = fullReapOrder.map(h => getRow(h)).join('\n');
-        const headerRow1 = '\t\t', headerRow2 = '\t\t', headerRow3 = 'AM\tPM\tDaily';
-        let miniReap = miniReapOrder.map(h => getRow(h)).join('\n');
-        const output = `${fullReap}\n${headerRow1}\n${headerRow2}\n${headerRow3}\n${miniReap}`;
-        navigator.clipboard.writeText(output);
-        logActivity(`Exported daily checks for Excel on ${date}`);
-        toast('Copied! Paste at CG67 AM column', 'success');
-    };
 
     const isAbnormal = (val, type) => {
         const num = parseInt(val);
@@ -7478,13 +7474,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                     <h1 className="page-title" style={{display:'flex',alignItems:'center',gap:'10px'}}>Daily Checks {saveStatus && <span className={`save-indicator ${saveStatus}`}>{saveStatus === 'saving' ? '● Saving...' : '✓ Saved'}</span>}</h1>
                     <p className="page-sub">Fleet status monitoring • {parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'})}</p>
                 </div>
-                <div className="btn-group">
-                    <button className={`btn btn-sm ${reorderMode ? 'btn-warning' : 'btn-secondary'}`} onClick={() => setReorderMode(!reorderMode)} title="Reorder ships">{reorderMode ? '✓ Done Reordering' : '↕ Reorder'}</button>
-                    {reorderMode && <button className="btn btn-sm btn-secondary" onClick={resetOrder}>↩ Reset Order</button>}
-                    <button className={`btn btn-sm ${viewMode === 'table' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setViewMode('table')}>Table</button>
-                    <button className={`btn btn-sm ${viewMode === 'cards' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setViewMode('cards')}>Cards</button>
-                    <button className="btn btn-secondary" onClick={() => window.print()}><Icon name="print"/></button>
-                </div>
             </div>
 
             {/* Status Dashboard Cards */}
@@ -7521,30 +7510,38 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <button className="btn btn-sm btn-secondary" onClick={() => { const d = parseLocalDate(date); d.setDate(d.getDate()+1); setDate(toDateString(d)); }}>→</button>
                         <button className="btn btn-sm btn-primary" onClick={() => setDate(toDateString(new Date()))}>Today</button>
                     </div>
-                    <div style={{display:'flex',gap:'6px',flexWrap:'wrap',alignItems:'center'}}>
-                        <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={copyYesterday}>📋 Copy Yesterday</button>
-                        <div style={{width:'1px',height:'20px',background:'var(--border)'}}></div>
-                        <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:600}}>Export:</span>
-                        <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={exportForExcel}>📊 Excel</button>
-                        <SplitButton testId="eod-split" label="📧 End of Day" onClick={sendEodEmail} className="btn btn-sm btn-primary"
-                            style={{fontSize:'10px',padding:'4px 10px'}}
-                            items={[
-                                { label: '👁 Preview report', onClick: exportStatus },
-                                { label: '📋 Copy report only', onClick: copyEndOfDay },
-                                { label: '📊 Download Excel only', onClick: downloadEodExcel },
-                                { label: '🔗 Link Outlook (one-time)', onClick: linkOutlook },
-                            ]}/>
-                        <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={exportMorningReport}>☀️ Morning</button>
-                    </div>
                 </div>
 
-                {/* Quick Mark Buttons */}
+                {/* Quick Mark: every Daily Checks action in one row */}
                 <div style={{display:'flex',gap:'8px',marginTop:'12px',paddingTop:'12px',borderTop:'1px solid var(--border)',flexWrap:'wrap',alignItems:'center'}}>
                     <span style={{fontSize:'11px',color:'var(--text-muted)',alignSelf:'center'}}>Quick Mark:</span>
-                    <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff'}} onClick={() => bulkMark('statusAM', true)}>All AM Online</button>
-                    <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff'}} onClick={() => bulkMark('statusAM', false)}>All AM Offline</button>
-                    <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff'}} onClick={() => bulkMark('statusPM', true)}>All PM Online</button>
-                    <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff'}} onClick={() => bulkMark('statusPM', false)}>All PM Offline</button>
+                    <SplitButton testId="mark-all" label="✓ All online" onClick={() => markAll(true)} className="btn btn-sm btn-success"
+                        items={[
+                            { label: 'All AM online', onClick: () => bulkMark('statusAM', true) },
+                            { label: 'All PM online', onClick: () => bulkMark('statusPM', true) },
+                            { label: 'All AM offline', onClick: () => bulkMark('statusAM', false) },
+                            { label: 'All PM offline', onClick: () => bulkMark('statusPM', false) },
+                            { label: '✕ All offline (AM and PM)', danger: true, onClick: () => markAll(false) },
+                        ]}/>
+                    <button className="btn btn-sm btn-secondary" onClick={copyYesterday}>📋 Copy Yesterday</button>
+                    <div style={{width:'1px',height:'20px',background:'var(--border)'}}></div>
+                    <SplitButton testId="eod-split" label="📧 End of Day" onClick={sendEodEmail} className="btn btn-sm btn-primary"
+                        items={[
+                            { label: '👁 Preview report', onClick: exportStatus },
+                            { label: '📋 Copy report only', onClick: copyEndOfDay },
+                            { label: '📊 Download Excel only', onClick: downloadEodExcel },
+                            { label: '🔗 Link Outlook (one-time)', onClick: linkOutlook },
+                        ]}/>
+                    <button className="btn btn-sm btn-secondary" onClick={exportMorningReport}>☀️ Morning</button>
+                    <span style={{marginLeft:'auto',display:'flex',gap:'6px',flexWrap:'wrap',alignItems:'center'}}>
+                        <button className={`btn btn-sm ${reorderMode ? 'btn-warning' : 'btn-secondary'}`} onClick={() => setReorderMode(!reorderMode)} title="Reorder ships">{reorderMode ? '✓ Done Reordering' : '↕ Reorder'}</button>
+                        {reorderMode && <button className="btn btn-sm btn-secondary" onClick={resetOrder}>↩ Reset Order</button>}
+                        <div className="seg" role="group" aria-label="View">
+                            <button type="button" className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}>Table</button>
+                            <button type="button" className={viewMode === 'cards' ? 'active' : ''} onClick={() => setViewMode('cards')}>Cards</button>
+                        </div>
+                        <button className="btn btn-sm btn-secondary" onClick={() => window.print()} title="Print"><Icon name="print"/></button>
+                    </span>
                 </div>
             </div>
 
