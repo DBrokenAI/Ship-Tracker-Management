@@ -208,57 +208,6 @@
         .ship-list-header > span:nth-child(4) { width: 90px; flex-shrink: 0; }
         .ship-list-header > span:nth-child(5) { flex: 1; min-width: 0; text-align: right; }
         
-        /* Dashboard Grid */
-        .dash-grid { display: grid; grid-template-columns: 555px 1fr; gap: 20px; }
-        .dash-grid > * { min-width: 0; }
-        /* Dashboard v2 */
-        .dash-grid.dash-grid-v2 { display: block; }
-        .attn-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
-        .attn-tile { text-align: left; background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; color: var(--text); font-family: inherit; transition: border-color .15s, transform .15s, box-shadow .15s; min-width: 0; }
-        .attn-tile:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
-        .attn-tile.active { box-shadow: 0 0 0 2px var(--primary); }
-        .attn-tile.tone-red { border-left-color: var(--red); } .attn-tile.tone-red .attn-value { color: var(--red); }
-        .attn-tile.tone-amber { border-left-color: var(--amber); } .attn-tile.tone-amber .attn-value { color: var(--amber); }
-        .attn-tile.tone-blue { border-left-color: var(--blue); } .attn-tile.tone-blue .attn-value { color: var(--blue); }
-        .attn-tile.tone-ok { border-left-color: var(--green); } .attn-tile.tone-ok .attn-value { color: var(--green); }
-        .attn-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
-        .attn-value { font-size: 30px; font-weight: 800; line-height: 1.1; margin: 4px 0 6px; font-family: 'JetBrains Mono', monospace; }
-        .attn-value small { font-size: 16px; }
-        .attn-line { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .attn-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-        .fleet-bar-wrap { display: flex; align-items: center; gap: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; flex-wrap: wrap; }
-        .fleet-bar-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
-        .fleet-bar { flex: 1; min-width: 160px; height: 10px; border-radius: 6px; overflow: hidden; display: flex; background: var(--bg-input); }
-        .fleet-seg { height: 100%; }
-        .seg-online { background: var(--green); } .seg-offline { background: var(--red); } .seg-unchecked { background: var(--text-muted); opacity: .45; } .seg-pending { background: var(--amber); }
-        .fleet-bar-legend { display: flex; gap: 14px; font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
-        .fleet-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
-        .fleet-row { display: grid; grid-template-columns: 120px 56px 170px minmax(0, 1fr) 120px 190px; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; border-left: 3px solid transparent; }
-        .fleet-row:not(.fleet-head):hover { background: rgba(255,255,255,0.03); }
-        .fleet-row.selected { background: var(--primary-glow); border-left-color: var(--primary); }
-        .fleet-row.is-urgent { border-left-color: var(--red); }
-        .fleet-row.is-offline:not(.is-urgent) { border-left-color: rgba(239,68,68,0.5); }
-        .fleet-head { background: var(--bg-input); font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); padding-top: 8px; padding-bottom: 8px; }
-        .fleet-today { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
-        .fleet-today.state-online { color: var(--green); } .fleet-today.state-offline { color: var(--red); } .fleet-today.state-unchecked { color: var(--text-muted); font-weight: 500; } .fleet-today.state-pending { color: var(--amber); }
-        .ping-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--text-muted); display: inline-block; opacity: .6; }
-        .ping-dot.on { background: var(--green); border-color: var(--green); opacity: 1; }
-        .fleet-issue { display: flex; align-items: center; gap: 6px; min-width: 0; }
-        .fleet-issue-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
-        .sev-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; } .sev-urgent { background: var(--red); } .sev-mild { background: var(--amber); }
-        .fleet-more { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
-        .fleet-none { color: var(--text-muted); }
-        .fleet-contact { font-size: 11px; white-space: nowrap; }
-        .fleet-port { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .fleet-mini-btn { font-size: 9px; padding: 2px 8px; background: var(--bg-input); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-weight: 600; white-space: nowrap; }
-        .fleet-mini-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .fleet-today-tag { margin-left: 6px; font-size: 10px; color: var(--green); }
-        .fleet-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 12px; }
-        .ship-drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 900; }
-        .ship-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(680px, 94vw); background: var(--bg-main, var(--bg-deep)); border-left: 1px solid var(--border); box-shadow: -12px 0 32px rgba(0,0,0,0.35); z-index: 901; overflow-y: auto; padding: 18px 20px 28px; transform: translateX(105%); transition: transform .22s ease; }
-        .ship-drawer.open { transform: translateX(0); }
-        .ship-drawer-close { position: sticky; top: 0; float: right; z-index: 2; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); cursor: pointer; font-size: 14px; }
-        .ship-drawer-close:hover { color: var(--text); border-color: var(--primary); }
         /* Top tab bar (replaces the sidebar) */
         .app { flex-direction: column; }
         .main { margin-left: 0 !important; }
@@ -284,53 +233,42 @@
         @media (max-width: 1380px) { .topnav-btn { width: 70px; font-size: 10px; } }
         @media (max-width: 1100px) { .topbar { grid-template-columns: auto minmax(0, 1fr) auto; } .topbar-logo span { display: none; } .topnav { justify-content: center; } .topnav-btn { width: 46px; } .topnav-btn > span:not(.badge-count):not(.nav-dot) { display: none; } }
 
-        /* Dashboard: key numbers, ship table, needs-attention list */
-        .kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
-        .kpi { text-align: left; background: none; border: none; border-left: 1px solid var(--border); padding: 14px 18px; color: var(--text); font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0; transition: background .15s; }
-        .kpi:first-child { border-left: none; }
-        .kpi:hover { background: rgba(255,255,255,0.025); }
-        .kpi.active { background: var(--primary-glow); box-shadow: inset 0 -2px 0 var(--primary); }
-        .kpi-label { font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); }
-        .kpi-value { font-size: 26px; font-weight: 700; line-height: 1.15; font-family: 'JetBrains Mono', monospace; }
-        .kpi-value small { font-size: 15px; color: var(--text-muted); font-weight: 500; }
-        .kpi-sub { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .kpi-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; background: var(--bg-input); margin-top: 2px; }
-        .kpi-bar span { height: 100%; }
-        .dash-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
-        .dash-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; min-width: 0; }
-        .dash-card-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-        .dash-card-title { margin: 0; font-size: 14px; font-weight: 600; }
-        .dash-card-title span { font-weight: 400; color: var(--text-muted); margin-left: 6px; font-size: 12px; }
+        /* Dashboard: ship list on the left, selected ship's details on the right */
+        .dash-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: -12px 0 16px; }
+        .sum-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dim); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: border-color .15s, background .15s; }
+        .sum-chip strong { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); }
+        .sum-chip:hover { border-color: var(--border-focus); }
+        .sum-chip.active { border-color: var(--primary); background: var(--primary-glow); color: var(--text); }
+        .sum-chip.tone-red strong { color: var(--red); } .sum-chip.tone-amber strong { color: var(--amber); } .sum-chip.tone-green strong { color: var(--green); }
+        .dash-split { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
+        .dash-list { position: sticky; top: 84px; max-height: calc(100vh - 104px); display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; min-width: 0; }
+        .dash-list-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+        .dash-list-body { overflow-y: auto; flex: 1; }
+        .dash-list-body::-webkit-scrollbar { width: 6px; }
+        .dash-list-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .dash-list-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); }
         .seg { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--bg-input); border: 1px solid var(--border); }
         .seg button { border: none; background: none; color: var(--text-dim); font-family: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
         .seg button.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
-        .ship-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .ship-table th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); padding: 8px 16px; background: var(--bg-input); white-space: nowrap; }
-        .ship-table td { padding: 9px 16px; border-top: 1px solid var(--border); white-space: nowrap; }
-        .ship-table tbody tr { cursor: pointer; }
-        .ship-table tbody tr:hover { background: rgba(255,255,255,0.025); }
-        .ship-table tbody tr.selected { background: var(--primary-glow); }
-        .ship-table .hull { font-family: 'JetBrains Mono', monospace; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-        .ship-table .muted { color: var(--text-muted); }
-        .ship-table .issue-cell { max-width: 0; width: 40%; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
+        .ship-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 12px 10px 14px; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; cursor: pointer; }
+        .ship-row:hover { background: var(--bg-card-hover); }
+        .ship-row.selected { background: var(--primary-glow); border-left-color: var(--primary); }
+        .ship-row-name { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ship-row-sub { grid-column: 2 / 4; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .ship-row-sub > span { overflow: hidden; text-overflow: ellipsis; }
+        .ship-row-tag { font-size: 10px; font-weight: 700; letter-spacing: .4px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+        .ship-row-tag.off, .ship-row-tag.urgent { background: var(--red-glow); color: var(--red); }
+        .ship-row-tag.iss { background: var(--amber-glow); color: var(--amber); }
+        .ship-row-tag.pend { background: var(--bg-input); color: var(--text-muted); }
+        .ship-row-tag.port { background: var(--blue-glow); color: var(--blue); }
         .st-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
         .st-dot.off { background: var(--red); } .st-dot.iss { background: var(--amber); } .st-dot.on { background: var(--green); } .st-dot.nc { background: var(--text-muted); opacity: .5; } .st-dot.pend { border: 1.5px dashed var(--text-muted); box-sizing: border-box; }
-        .st-text.off { color: var(--red); } .st-text.on { color: var(--text-dim); } .st-text.nc, .st-text.pend { color: var(--text-muted); }
-        .sev-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .4px; padding: 1px 6px; border-radius: 4px; margin-right: 8px; vertical-align: 1px; }
-        .sev-tag.urgent { background: var(--red-glow); color: var(--red); } .sev-tag.mild { background: var(--amber-glow); color: var(--amber); }
-        .attn-list { display: flex; flex-direction: column; }
-        .attn-item { display: grid; grid-template-columns: 3px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 16px; border: none; border-top: 1px solid var(--border); background: none; color: var(--text); font-family: inherit; text-align: left; cursor: pointer; width: 100%; }
-        .attn-item:first-child { border-top: none; }
-        .attn-item:hover { background: rgba(255,255,255,0.025); }
-        .attn-bar { align-self: stretch; border-radius: 2px; }
-        .attn-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-        .attn-main strong { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
-        .attn-text { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .attn-age { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-        .attn-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
-        .attn-foot { display: block; width: 100%; padding: 10px 16px; border: none; border-top: 1px solid var(--border); background: none; color: var(--primary); font-family: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
-        @media (max-width: 1200px) { .dash-main { grid-template-columns: 1fr; } .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi:nth-child(3) { border-left: none; } .kpi:nth-child(n+3) { border-top: 1px solid var(--border); } .ship-table .col-port { display: none; } }
-        @media (max-width: 1200px) { .attn-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fleet-row { grid-template-columns: 110px 48px 150px minmax(0, 1fr) 100px; } .fleet-row > .fleet-port { display: none; } }
+        .fleet-mini-btn { font-size: 9px; padding: 2px 8px; background: var(--bg-input); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+        .fleet-mini-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .dash-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .dash-detail { min-width: 0; }
+        .dash-detail > .detail-section:first-child { border-top: 3px solid var(--primary); }
+        @media (max-width: 1000px) { .dash-split { grid-template-columns: 1fr; } .dash-list { position: static; max-height: 420px; } }
         .detail-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; overflow: hidden; max-width: 100%; box-sizing: border-box; }
         .section-title { font-size: 10px; font-weight: 600; color: var(--primary); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
         
@@ -422,8 +360,8 @@
         }
         
         /* Responsive */
-        @media (max-width: 1400px) { .dash-grid { grid-template-columns: 520px 1fr; } .grid-2-wide-left { grid-template-columns: 300px 1fr; } .charts-row { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 1200px) { .stats { grid-template-columns: repeat(2, 1fr); } .dash-grid { grid-template-columns: 1fr; } .grid-2 { grid-template-columns: 1fr; } .grid-2-wide-left { grid-template-columns: 1fr; } .charts-row { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 1400px) { .grid-2-wide-left { grid-template-columns: 300px 1fr; } .charts-row { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 1200px) { .stats { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } .grid-2-wide-left { grid-template-columns: 1fr; } .charts-row { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px) { .sidebar { width: 60px; } .sidebar .logo, .sidebar .logo-sub, .sidebar .nav-title, .sidebar .nav-btn span, .sidebar .version, .theme-toggle { display: none; } .sidebar .nav-btn { justify-content: center; padding: 12px; } .main { margin-left: 60px; padding: 16px; } .notif-banner { left: 60px; } .stats { grid-template-columns: 1fr; } .search-box input { width: 150px; } .search-box .shortcut { display: none; } .charts-row { grid-template-columns: 1fr; } }
         
         input[type="date"] { color-scheme: dark; }
@@ -600,7 +538,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T156";
+    var APP_BUILD = "2026-10-30T157";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2166,7 +2104,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T156'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T157'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2177,7 +2115,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T156');
+                                    localStorage.setItem('lastSeenBuild', 'T157');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2187,6 +2125,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T157'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🧭 New Dashboard Layout'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Dashboard rebuilt from scratch: ship list on the left, the selected ship\'s full details on the right, side by side (same colors as before)\n• Ship details are always visible in the right panel. The slide-in drawer, its close button and its dark backdrop are gone\n• The Dashboard opens with the most urgent ship already selected (offline ships first, then urgent issues)\n• Each ship in the list shows a status dot, a tag (OFFLINE, URGENT, ISSUE, IN PORT or Pending install) and a second line with its top open issue, or its type and homeport when nothing is wrong\n• Activate (pending installs) and Back (in-port ships) buttons now sit on the ship\'s line in the list\n• The ship list stays in view while you scroll the details, and scrolls on its own when the fleet is long\n• List filters: All, Attention, Full, Mini. The bottom of the list shows how many ships are listed, with a Show all link when a filter is on\n• Reorder, Reset and Done moved to the bottom of the list. Starting Reorder switches the list back to All ships\n• The row of four big number boxes is replaced by one line of counts: offline, open issues (with how many are urgent), all good, and pending installs when there are any. Click a count to filter the list, click again to clear it\n• The Ships table and the separate Needs attention list are gone (both live in the new ship list)\n• Removed the Dashboard > ship > tab breadcrumb from the details panel\n• Ship detail tabs scroll sideways if the panel is narrow\n• Esc no longer closes the ship details (there is nothing to close now)\n• On smaller screens the list sits above the details'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T156'),
@@ -3981,6 +3926,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             offline: new Set(r.offline.map(x => x.id)),
             issues: r.issueShips
         };
+        r.ids.pending = new Set(r.pending.map(x => x.id));
         r.ids.attention = new Set([...r.ids.offline, ...r.ids.issues]);
         r.ids.clear = new Set(r.online.filter(x => !r.issueShips.has(x.id)).map(x => x.id));
         return r;
@@ -4036,12 +3982,10 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     }, [ships, issues, globalSearch, typeFilter, today, dashShipOrder, attn]);
     
     const selIssues = useMemo(() => sel ? issues.filter(i => i.shipId === sel.id && !i.resolved) : [], [sel, issues]);
+    // The details panel always shows a ship: default to the top of the list (most urgent first)
     useEffect(() => {
-        if (!sel) return;
-        const esc = (e) => { if (e.key === 'Escape' && !document.querySelector('.modal-overlay')) setSel(null); };
-        window.addEventListener('keydown', esc);
-        return () => window.removeEventListener('keydown', esc);
-    }, [sel]);
+        if (!sel && sorted.length > 0) setSel(sorted[0]);
+    }, [sel, sorted]);
     
     const getSparklineData = (shipId) => {
         const last7 = [];
@@ -4605,36 +4549,20 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 </div>
             </div>
             
-            {/* Key numbers. Click one to filter the ship table */}
+            {/* One-line fleet summary. Click a count to filter the ship list */}
             {(() => {
-                const counted = attn.online.length + attn.offline.length + attn.unchecked.length;
-                const checked = attn.online.length + attn.offline.length > 0;
-                const pct = n => (n / (counted || 1) * 100) + '%';
-                const shipsWithIssues = attn.issueShips.size;
-                const cells = [
-                    { key: 'all', label: 'Online today', value: <>{attn.online.length}<small> / {counted}</small></>,
-                      sub: checked ? null : 'Daily checks not entered yet',
-                      bar: checked },
-                    { key: 'offline', label: 'Offline', value: attn.offline.length, color: attn.offline.length ? 'var(--red)' : undefined,
-                      sub: attn.offline.length ? attn.offline.map(s => s.name).join(', ') : 'Every ship is online' },
-                    { key: 'issues', label: 'Open issues', value: attn.issues.length, color: attn.issues.length ? 'var(--amber)' : undefined,
-                      sub: attn.issues.length ? (attn.urgent ? attn.urgent + ' urgent · ' : '') + shipsWithIssues + (shipsWithIssues === 1 ? ' ship' : ' ships') : 'Nothing open' },
-                    { key: 'clear', label: 'All clear', value: attn.ids.clear.size, color: attn.ids.clear.size ? 'var(--green)' : undefined,
-                      sub: 'Online with no open issues' },
+                const chips = [
+                    { key: 'offline', n: attn.offline.length, label: 'offline', tone: attn.offline.length ? 'red' : '' },
+                    { key: 'issues', n: attn.issues.length, label: attn.issues.length === 1 ? 'open issue' : 'open issues', tone: attn.issues.length ? 'amber' : '', extra: attn.urgent ? ' (' + attn.urgent + ' urgent)' : '' },
+                    { key: 'clear', n: attn.ids.clear.size, label: 'all good', tone: attn.ids.clear.size ? 'green' : '' },
                 ];
+                if (attn.pending.length) chips.push({ key: 'pending', n: attn.pending.length, label: 'pending install', tone: '' });
                 return (
-                    <div className="kpi-strip">
-                        {cells.map(c => (
-                            <button key={c.key} type="button" data-testid={'kpi-' + c.key} className={'kpi' + (typeFilter === c.key && c.key !== 'all' ? ' active' : '')}
-                                onClick={() => setTypeFilter(c.key === 'all' || typeFilter === c.key ? 'all' : c.key)}>
-                                <span className="kpi-label">{c.label}</span>
-                                <span className="kpi-value" style={c.color ? {color: c.color} : undefined}>{c.value}</span>
-                                {c.bar ? (
-                                    <span className="kpi-bar" title={attn.online.length + ' online, ' + attn.offline.length + ' offline'}>
-                                        <span style={{width: pct(attn.online.length), background: 'var(--green)'}}/>
-                                        <span style={{width: pct(attn.offline.length), background: 'var(--red)'}}/>
-                                    </span>
-                                ) : <span className="kpi-sub">{c.sub}</span>}
+                    <div className="dash-summary">
+                        {chips.map(c => (
+                            <button key={c.key} type="button" data-testid={'sum-' + c.key} className={'sum-chip' + (c.tone ? ' tone-' + c.tone : '') + (typeFilter === c.key ? ' active' : '')}
+                                onClick={() => setTypeFilter(typeFilter === c.key ? 'all' : c.key)}>
+                                <strong>{c.n}</strong>{c.label}{c.extra}
                             </button>
                         ))}
                     </div>
@@ -4823,82 +4751,53 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 })()}
             </div>
 
-            <div className="dash-grid dash-grid-v2">
-                <div className="dash-main">
-                    <div className="dash-card">
-                        <div className="dash-card-head">
-                            <h2 className="dash-card-title">Ships<span>{sorted.length}</span></h2>
-                            <div className="seg" role="group" aria-label="Filter ships">
-                                {[['all', 'All'], ['attention', 'Needs attention'], ['Full REAP', 'Full REAP'], ['Mini REAP', 'Mini REAP']].map(([k, l]) => (
-                                    <button key={k} type="button" className={typeFilter === k ? 'active' : ''} onClick={() => setTypeFilter(k)}>{l}</button>
-                                ))}
-                            </div>
-                            {['offline', 'issues', 'clear'].includes(typeFilter) && <button type="button" className="filter-btn active" style={{margin:0}} onClick={() => setTypeFilter('all')} title="Clear filter">{{ offline: 'Offline', issues: 'Open issues', clear: 'All clear' }[typeFilter]} ✕</button>}
-                            <span style={{marginLeft:'auto',display:'flex',gap:'6px'}}>{dashReorder ? <><button className="btn btn-sm btn-primary" onClick={() => setDashReorder(false)}>Done</button><button className="btn btn-sm btn-secondary" onClick={resetDashOrder}>Reset order</button></> : <button className="btn btn-sm btn-secondary" onClick={() => setDashReorder(true)}>Reorder</button>}</span>
+            <div className="dash-split">
+                <div className="dash-list">
+                    <div className="dash-list-head">
+                        <div className="seg" role="group" aria-label="Filter ships">
+                            {[['all', 'All'], ['attention', 'Attention'], ['Full REAP', 'Full'], ['Mini REAP', 'Mini']].map(([k, l]) => (
+                                <button key={k} type="button" className={typeFilter === k ? 'active' : ''} onClick={() => setTypeFilter(k)}>{l}</button>
+                            ))}
                         </div>
-                        <table className="ship-table">
-                            <thead><tr><th>Ship</th><th>Type</th><th className="col-port">Homeport</th><th>Today</th><th>Open issue</th></tr></thead>
-                            <tbody>
-                                {sorted.length === 0 && <tr><td colSpan="5" className="muted" style={{textAlign:'center',padding:'24px'}}>No ships match this filter.</td></tr>}
-                                {sorted.map(ship => {
-                                    const si = issues.filter(i => i.shipId === ship.id && !i.resolved);
-                                    const topIssue = si.find(i => i.threat === 'Urgent') || si[0];
-                                    const t = shipToday(ship);
-                                    const isInPort = ship.inPort && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
-                                    const st = t.state === 'pending' ? 'pend' : t.state === 'offline' ? 'off' : si.length ? 'iss' : t.state === 'unchecked' ? 'nc' : 'on';
-                                    return (
-                                        <tr key={ship.id} data-testid={'ship-row-' + ship.name} className={sel?.id === ship.id ? 'selected' : ''} onClick={() => setSel(ship)}
-                                            draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
-                                            style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, boxShadow: dashDragOver === ship.id && dashDragShip !== ship.id ? 'inset 0 2px 0 var(--primary)' : undefined}}>
-                                            <td><span className="hull"><i className={'st-dot ' + st}/>{dashReorder && <span className="muted">⋮⋮</span>}{ship.name}</span></td>
-                                            <td className="muted">{ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type}</td>
-                                            <td className="muted col-port">{ship.location || '—'}</td>
-                                            <td>
-                                                <span className={'st-text ' + (st === 'iss' ? 'on' : st)}>{t.label}</span>
-                                                {ship.pendingInstall && <button className="fleet-mini-btn" style={{marginLeft:'8px'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>Activate</button>}
-                                                {isInPort && !ship.pendingInstall && <><span className="muted" style={{marginLeft:'8px'}}>In port until {fmtDate(ship.inPortUntil)}</span><button className="fleet-mini-btn" style={{marginLeft:'8px'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>Back</button></>}
-                                            </td>
-                                            <td className="issue-cell" title={topIssue ? (topIssue.title || topIssue.details || '') : ''}>
-                                                {topIssue ? <><span className={'sev-tag ' + (topIssue.threat === 'Urgent' ? 'urgent' : 'mild')}>{topIssue.threat === 'Urgent' ? 'URGENT' : 'OPEN'}</span>{topIssue.title || topIssue.details || 'Issue'}{si.length > 1 && <span className="muted"> +{si.length - 1}</span>}</> : <span className="muted">—</span>}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
                     </div>
-
-                    {(() => {
-                        const shipById = id => ships.find(x => x.id === id);
-                        const age = d => { if (!d) return ''; const n = Math.floor((new Date() - new Date(d)) / 86400000); return n <= 0 ? 'Today' : n === 1 ? '1 day' : n + ' days'; };
-                        const items = [
-                            ...attn.offline.map(s => { const u = attn.issues.find(i => i.shipId === s.id && i.threat === 'Urgent'); return { key: 'o' + s.id, ship: s, color: 'var(--red)', text: u ? 'Offline · ' + (u.title || u.details || 'urgent issue') : 'Offline today', age: '' }; }),
-                            ...attn.issues.filter(i => !attn.ids.offline.has(i.shipId) || i.threat !== 'Urgent').map(i => ({ key: 'i' + i.id, ship: shipById(i.shipId), color: i.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)', text: i.title || i.details || 'Open issue', age: age(i.created) })),
-                        ].filter(x => x.ship);
-                        const shown = items.slice(0, 8);
-                        return (
-                            <div className="dash-card" data-testid="dash-attention">
-                                <div className="dash-card-head"><h2 className="dash-card-title">Needs attention<span>{items.length}</span></h2></div>
-                                {items.length === 0 ? <div className="attn-empty">All ships online with no open issues.</div> : (
-                                    <div className="attn-list">
-                                        {shown.map(x => (
-                                            <button key={x.key} type="button" className="attn-item" onClick={() => setSel(x.ship)}>
-                                                <span className="attn-bar" style={{background: x.color}}/>
-                                                <span className="attn-main"><strong>{x.ship.name}</strong><span className="attn-text">{x.text}</span></span>
-                                                <span className="attn-age">{x.age}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                                {items.length > shown.length && <button type="button" className="attn-foot" onClick={() => setTypeFilter('attention')}>Show all {items.length} in the table</button>}
-                            </div>
-                        );
-                    })()}
+                    <div className="dash-list-body">
+                        {sorted.length === 0 && <div className="dash-empty">No ships match this filter.</div>}
+                        {sorted.map(ship => {
+                            const si = issues.filter(i => i.shipId === ship.id && !i.resolved);
+                            const topIssue = si.find(i => i.threat === 'Urgent') || si[0];
+                            const t = shipToday(ship);
+                            const isInPort = ship.inPort && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
+                            const st = t.state === 'pending' ? 'pend' : t.state === 'offline' ? 'off' : si.length ? 'iss' : t.state === 'unchecked' ? 'nc' : 'on';
+                            const tag = t.state === 'pending' ? ['pend', t.label]
+                                : t.state === 'offline' ? ['off', 'OFFLINE']
+                                : topIssue ? (topIssue.threat === 'Urgent' ? ['urgent', 'URGENT'] : ['iss', si.length > 1 ? si.length + ' ISSUES' : 'ISSUE'])
+                                : isInPort ? ['port', 'IN PORT'] : null;
+                            const sub = topIssue ? (topIssue.title || topIssue.details || 'Open issue') + (si.length > 1 ? ' +' + (si.length - 1) + ' more' : '')
+                                : isInPort ? 'In port until ' + fmtDate(ship.inPortUntil)
+                                : (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '');
+                            return (
+                                <div key={ship.id} data-testid={'ship-row-' + ship.name} className={'ship-row' + (sel?.id === ship.id ? ' selected' : '')} onClick={() => setSel(ship)}
+                                    draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
+                                    style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, boxShadow: dashDragOver === ship.id && dashDragShip !== ship.id ? 'inset 0 2px 0 var(--primary)' : undefined}}>
+                                    <i className={'st-dot ' + st}/>
+                                    <span className="ship-row-name">{dashReorder && <span style={{color:'var(--text-muted)',marginRight:'6px'}}>⋮⋮</span>}{ship.name}</span>
+                                    {tag ? <span className={'ship-row-tag ' + tag[0]}>{tag[1]}</span> : <span/>}
+                                    <span className="ship-row-sub">
+                                        <span title={sub}>{sub}</span>
+                                        {ship.pendingInstall && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>Activate</button>}
+                                        {isInPort && !ship.pendingInstall && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>Back</button>}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="dash-list-foot">
+                        <span>{sorted.length} {sorted.length === 1 ? 'ship' : 'ships'}{typeFilter !== 'all' && <> · <a style={{color:'var(--primary)',cursor:'pointer'}} onClick={() => setTypeFilter('all')}>show all</a></>}</span>
+                        {dashReorder ? <span style={{display:'flex',gap:'6px'}}><button className="btn btn-sm btn-secondary" onClick={resetDashOrder}>Reset</button><button className="btn btn-sm btn-primary" onClick={() => setDashReorder(false)}>Done</button></span> : <button className="btn btn-sm btn-secondary" onClick={() => { setTypeFilter('all'); setDashReorder(true); }}>Reorder</button>}
+                    </div>
                 </div>
-                {sel && <div className="ship-drawer-backdrop" onClick={() => setSel(null)}/>}
-                <div className={'ship-drawer' + (sel ? ' open' : '')} role="dialog" aria-label="Ship details">
+                <div className="dash-detail" aria-label="Ship details">
                     {sel ? (<>
-                        <button className="ship-drawer-close" onClick={() => setSel(null)} title="Close (Esc)">✕</button>
                         {/* Ship Header */}
                         <div className="detail-section" style={{paddingBottom:'0'}}>
                             <div className="flex-between mb-md">
@@ -4933,7 +4832,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             {sel.contactedBy && <div className="updated-by"><span className="user-dot"></span>Last updated by <strong style={{color:'var(--text-dim)'}}>{sel.contactedBy}</strong>{sel.lastContact && <span>• {relTime(sel.lastContact)}</span>}</div>}
 
                             {/* Tabs */}
-                            <div style={{display:'flex',borderBottom:'1px solid var(--border)',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px'}}>
+                            <div style={{display:'flex',borderBottom:'1px solid var(--border)',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px',overflowX:'auto'}}>
                                 {[
                                     { id: 'info', label: 'Ship Info', iconName: 'ship' },
                                     { id: 'email', label: 'Email', iconName: 'email', badge: emailHistory.filter(h => h.shipId === sel.id).length },
@@ -4953,13 +4852,6 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
 
                         {/* Tab Content */}
                         <div className="detail-section" style={{paddingTop:'16px'}}>
-                            <div className="breadcrumb">
-                                <a onClick={() => setSel(null)}>Dashboard</a>
-                                <span className="sep">›</span>
-                                <span>{sel.name}</span>
-                                <span className="sep">›</span>
-                                <span style={{color:'var(--primary)',fontWeight:500}}>{detailTab === 'info' ? 'Ship Info' : detailTab === 'email' ? 'Email Log' : 'Issues'}</span>
-                            </div>
                             <div className="tab-content" key={detailTab}>
                             {/* INFO TAB */}
                             {detailTab === 'info' && (
