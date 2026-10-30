@@ -305,6 +305,12 @@
         .fleet-mini-btn:hover { border-color: var(--primary); color: var(--primary); }
         .dash-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
         .dash-detail { min-width: 0; }
+        .detail-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(460px, 1fr); gap: 12px; align-items: start; }
+        .detail-split > .detail-section { margin-bottom: 0; min-width: 0; }
+        .detail-col-title { display: flex; align-items: center; gap: 8px; margin: -4px 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; }
+        .detail-col-title svg { width: 16px; height: 16px; color: var(--primary); }
+        .detail-col-title span { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+        @media (max-width: 1400px) { .detail-split { grid-template-columns: 1fr; } }
         .dash-detail > .detail-section:first-child { border-top: 3px solid var(--primary); }
         @media (max-width: 1000px) { .dash-split { grid-template-columns: 1fr; } .dash-list { position: static; max-height: 420px; } }
         .detail-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; overflow: hidden; max-width: 100%; box-sizing: border-box; }
@@ -1360,6 +1366,21 @@ const fmtDateInput = (d) => {
     return `${y}-${m}-${day}`;
 };
 // Parse date string in local time (avoids UTC timezone shift)
+// Our team's email handles and names, used to tell emails we sent apart from replies by ship crews.
+// The Outlook macro often hands over only a name (earlier messages in a reply chain, internal Exchange
+// addresses), so the name counts as well as the address.
+const TEAM_EMAIL_HANDLES = ['daniel.k.brown', 'dbrown', 'clyde.a.grant', 'cgrant', 'uriel.pena', 'up_reap', 'kaazim.j.hanif', 'jayreap', 'damian.j.pierman', 'eryk.kedzierski', 'steven.m.spellman', 'mohammed.cardenas'];
+const TEAM_NAMES = ['daniel brown', 'clyde grant', 'uriel pena', 'jayleel kazimm', 'kaazim hanif', 'damian pierman', 'eryk kedzierski', 'steven spellman', 'mohammed cardenas'];
+const isTeamSender = (name, email) => {
+    const e = String(email || '').toLowerCase();
+    let n = String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (n.indexOf(',') !== -1) { const p = n.split(','); n = ((p[1] || '').trim().split(' ')[0] + ' ' + (p[0] || '').trim()).trim(); }
+    if (TEAM_NAMES.some(t => { const [first, last] = t.split(' '); return n.indexOf(first) !== -1 && n.indexOf(last) !== -1; })) return true;
+    if (TEAM_EMAIL_HANDLES.some(t => e.indexOf(t) !== -1)) return true;
+    if (/niwc|spawar|sonar\.navy|corona|mcas/.test(e)) return true;
+    return e.indexOf('navy.mil') !== -1 && !/ddg|@cg|@lcs|@lpd|@lhd|@lha|@lsd|@cvn/.test(e);
+};
+
 const parseLocalDate = (d) => {
     if (!d) return new Date();
     if (typeof d === 'string' && d.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -2169,7 +2190,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '↕ Ship List In Your Order'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• Dashboard ship list now follows your saved order exactly. The status groups (Offline, Urgent, Open issues, In port, Pending, All good) are gone\n• Every ship is shown as a full card (no more small All good tiles), so the colors, badges and tags still show which ships need attention\n• When no order has been saved, the list still puts offline ships and ships with issues first\n• Your saved order now also applies while you search or use a filter\n• Fixed: dragging a ship while a search was active could push the hidden ships out of the saved order\n• Fixed: Reset order on the Dashboard or Daily Checks now reaches coworkers right away. Before, their screens kept the old order\n• While reordering, the list says the order is saved for everyone'
+                                    '• Dashboard ship list now follows your saved order exactly. The status groups (Offline, Urgent, Open issues, In port, Pending, All good) are gone\n• Every ship is shown as a full card (no more small All good tiles), so the colors, badges and tags still show which ships need attention\n• When no order has been saved, the list still puts offline ships and ships with issues first\n• Your saved order now also applies while you search or use a filter\n• Fixed: dragging a ship while a search was active could push the hidden ships out of the saved order\n• Fixed: Reset order on the Dashboard or Daily Checks now reaches coworkers right away. Before, their screens kept the old order\n• While reordering, the list says the order is saved for everyone\n• Clicking a ship on the Dashboard now shows its emails on the left and its ship info on the right, side by side. The info side is always wide enough to read\n• The Email tab is gone from the ship tabs (email has its own column). The right side keeps Ship Info, Issues, Assets, Notes and Activity, and opens on Ship Info\n• On smaller screens the email column sits above the ship info\n• The ship header (name, badges, last updated) now spans across both columns\n• Fixed: emails our team sent could be filed as a reply from the ship. The app now checks the sender name as well as the address, because Outlook often passes only a name (earlier messages in a reply chain, internal addresses)\n• Emails already filed the wrong way now show correctly as sent by the team in the ship\'s email timeline and in suggested issues\n• Emails we send no longer replace the ship\'s Status Notes; only replies from the ship do\n• One shared team list is now used for this check and by the POC Directory'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T157'),
@@ -2466,7 +2487,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
 function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog, currentUser, allUsers, setAlerts, dismissedAlerts, quickNotes, setQuickNotes }) {
     const [sel, setSel] = useState(null);
-    const [detailTab, setDetailTab] = useState('email');
+    const [detailTab, setDetailTab] = useState('info');
     const [showConfirm, setShowConfirm] = useState(false);
     const triggerConfirm = () => { setShowConfirm(true); };
     const [modal, setModal] = useState(false);
@@ -2628,7 +2649,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     if (!findings[key]) findings[key] = { title: p.title, category: p.category, threat: p.threat, mentions: [], firstSeen: null, lastSeen: null };
                     var snippet = (email.emailText || (email.result ? email.result.emailSummary : '') || '').substring(0, 200).replace(/\n/g, ' ').trim();
                     var sender = email.result ? (email.result.sender ? email.result.sender.name : email.result.contactedBy) : 'Unknown';
-                    if (sender === '__SHIP__') sender = 'Ship';
+                    if (sender === '__SHIP__') sender = isTeamSender(email.fromName, email.fromEmail) ? (email.fromName || 'Team') : 'Ship';
                     findings[key].mentions.push({ emailId: email.id, date: email.timestamp, sender: sender, snippet: snippet });
                     if (!findings[key].firstSeen || new Date(email.timestamp) < new Date(findings[key].firstSeen)) findings[key].firstSeen = email.timestamp;
                     if (!findings[key].lastSeen || new Date(email.timestamp) > new Date(findings[key].lastSeen)) findings[key].lastSeen = email.timestamp;
@@ -3186,8 +3207,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 }
                 // Detect direction
                 var fromAddr = (data.senderEmail || data.from || '').toLowerCase();
-                var teamDomains = ['navy.mil', 'sonar.navy', 'niwc.navy', 'spawar.navy', 'mcas'];
-                data._isOutgoing = teamDomains.some(function(d) { return fromAddr.indexOf(d) !== -1 && fromAddr.indexOf('ddg') === -1; });
+                data._isOutgoing = isTeamSender(data.senderName, fromAddr);
                 data._cleanSubject = (data.subject || '').replace(/^(RE|FW|FWD):\s*/gi, '').replace(/^(RE|FW|FWD):\s*/gi, '').trim();
                 pending.push(data);
             });
@@ -3327,7 +3347,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         setShips(function(p) { return p.map(function(sh) {
             if (sh.id !== ship.id) return sh;
             var updates = {
-                lastSaid: item._cleanSubject || sh.lastSaid,
+                lastSaid: item._isOutgoing ? sh.lastSaid : (item._cleanSubject || sh.lastSaid),
                 lastContact: newEntry.timestamp,
                 waitingReply: item._isOutgoing
             };
@@ -4969,7 +4989,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 <div className="dash-detail" aria-label="Ship details">
                     {sel ? (<>
                         {/* Ship Header */}
-                        <div className="detail-section" style={{paddingBottom:'0'}}>
+                        <div className="detail-section">
                             <div className="flex-between mb-md">
                                 <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
                                     <div style={{width:'48px',height:'48px',borderRadius:'8px',background:'var(--primary-glow)',border:'2px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="ship" style={{width:'24px',height:'24px',color:'var(--primary)'}}/></div>
@@ -5001,442 +5021,457 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             {/* #16 Last updated by */}
                             {sel.contactedBy && <div className="updated-by"><span className="user-dot"></span>Last updated by <strong style={{color:'var(--text-dim)'}}>{sel.contactedBy}</strong>{sel.lastContact && <span>• {relTime(sel.lastContact)}</span>}</div>}
 
-                            {/* Tabs */}
-                            <div style={{display:'flex',borderBottom:'1px solid var(--border)',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px',overflowX:'auto'}}>
-                                {[
-                                    { id: 'info', label: 'Ship Info', iconName: 'ship' },
-                                    { id: 'email', label: 'Email', iconName: 'email', badge: emailHistory.filter(h => h.shipId === sel.id).length },
-                                    { id: 'issues', label: 'Issues', icon: '⚠️', badge: selIssues.length, badgeColor: selIssues.some(i => i.threat === 'Urgent') ? 'var(--red)' : 'var(--amber)' },
-                                    { id: 'assets', label: 'Assets', iconName: 'parts' },
-                                    { id: 'notes', label: 'Notes', icon: '📌' },
-                                    { id: 'activity', label: 'Activity', iconName: 'clock' },
-                                ].map(tab => (
-                                    <button key={tab.id} onClick={() => setDetailTab(tab.id)} style={{padding:'12px 16px',background:'none',border:'none',borderBottom: detailTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',color: detailTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',fontWeight: detailTab === tab.id ? 600 : 400,cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'6px',marginBottom:'-1px'}}>
-                                        {tab.iconName ? <Icon name={tab.iconName} style={{width:'14px',height:'14px'}}/> : <span>{tab.icon}</span>}
-                                        <span>{tab.label}</span>
-                                        {tab.badge > 0 && <span style={{background: tab.badgeColor || 'var(--primary)',color:'#fff',padding:'1px 6px',borderRadius:'10px',fontSize:'10px'}}>{tab.badge}</span>}
-                                    </button>
-                                ))}
-                            </div>
                         </div>
 
-                        {/* Tab Content */}
-                        <div className="detail-section" style={{paddingTop:'16px'}}>
-                            <div className="tab-content" key={detailTab}>
-                            {/* INFO TAB */}
-                            {detailTab === 'info' && (
-                                <div>
-                                    <div className="form-row">
-                                        <div className="form-group"><label className="form-label">Hull Number</label><input className="form-input" value={sel.name} onChange={e => setSel({...sel, name: e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">Ship Type</label><select className="form-select" value={sel.type} onChange={e => setSel({...sel, type: e.target.value})}><option>Full REAP</option><option>Mini REAP</option></select></div>
-                                        <div className="form-group"><label className="form-label">Homeport</label><select className="form-select" value={sel.location || ''} onChange={e => setSel({...sel, location: e.target.value})}><option value="">Select...</option><option>San Diego, CA</option><option>Norfolk, VA</option><option>Mayport, FL</option><option>Pearl Harbor, HI</option><option>Yokosuka, Japan</option><option>Rota, Spain</option><option>Everett, WA</option><option>Point Mugu, CA</option><option>Deployed</option><option>In Port</option><option>Other</option></select></div>
-                                    </div>
-                                    <div className="form-row">
-                                        <div className="form-group"><label className="form-label">POC Name</label><input className="form-input" placeholder="Point of contact..." value={sel.poc || ''} onChange={e => setSel({...sel, poc: e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">Email</label><input className="form-input" placeholder="ship@navy.mil" value={sel.email || ''} onChange={e => setSel({...sel, email: e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">Next Check-in</label><input type="date" className="form-input" value={fmtDateInput(sel.nextCheck)} onChange={e => setSel({...sel, nextCheck: e.target.value})}/></div>
-                                    </div>
-                                    <div className="form-group"><label className="form-label">Notes</label><textarea className="form-textarea" style={{minHeight:'60px'}} placeholder="Additional notes about this ship..." value={sel.notes || ''} onChange={e => setSel({...sel, notes: e.target.value})}/></div>
-
-                                    {/* In Port Status */}
-                                    {sel.inPort && parseLocalDate(sel.inPortUntil) >= new Date(new Date().setHours(0,0,0,0)) && (
-                                        <div style={{padding:'12px',background:'var(--blue-glow)',borderRadius:'8px',border:'1px solid var(--blue)',marginTop:'12px'}}>
-                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                                <div><span style={{color:'var(--blue)',fontWeight:600}}>⚓ IN PORT - Expected Offline</span><div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>Back online: {fmtDate(sel.inPortUntil)}</div></div>
-                                                <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, inPort: false, inPortUntil: null}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared In Port status for ${sel.name}`); toast('In Port status cleared', 'info'); }}>Clear Status</button>
+                        {/* Email on the left, ship info on the right */}
+                        {(() => {
+                            const rightTab = detailTab === 'email' ? 'info' : detailTab;
+                            // The parameter shadows detailTab so each tab block below renders for the column asking for it
+                            const renderTab = (detailTab) => (<>
+                                    {/* INFO TAB */}
+                                    {detailTab === 'info' && (
+                                        <div>
+                                            <div className="form-row">
+                                                <div className="form-group"><label className="form-label">Hull Number</label><input className="form-input" value={sel.name} onChange={e => setSel({...sel, name: e.target.value})}/></div>
+                                                <div className="form-group"><label className="form-label">Ship Type</label><select className="form-select" value={sel.type} onChange={e => setSel({...sel, type: e.target.value})}><option>Full REAP</option><option>Mini REAP</option></select></div>
+                                                <div className="form-group"><label className="form-label">Homeport</label><select className="form-select" value={sel.location || ''} onChange={e => setSel({...sel, location: e.target.value})}><option value="">Select...</option><option>San Diego, CA</option><option>Norfolk, VA</option><option>Mayport, FL</option><option>Pearl Harbor, HI</option><option>Yokosuka, Japan</option><option>Rota, Spain</option><option>Everett, WA</option><option>Point Mugu, CA</option><option>Deployed</option><option>In Port</option><option>Other</option></select></div>
                                             </div>
-                                        </div>
-                                    )}
+                                            <div className="form-row">
+                                                <div className="form-group"><label className="form-label">POC Name</label><input className="form-input" placeholder="Point of contact..." value={sel.poc || ''} onChange={e => setSel({...sel, poc: e.target.value})}/></div>
+                                                <div className="form-group"><label className="form-label">Email</label><input className="form-input" placeholder="ship@navy.mil" value={sel.email || ''} onChange={e => setSel({...sel, email: e.target.value})}/></div>
+                                                <div className="form-group"><label className="form-label">Next Check-in</label><input type="date" className="form-input" value={fmtDateInput(sel.nextCheck)} onChange={e => setSel({...sel, nextCheck: e.target.value})}/></div>
+                                            </div>
+                                            <div className="form-group"><label className="form-label">Notes</label><textarea className="form-textarea" style={{minHeight:'60px'}} placeholder="Additional notes about this ship..." value={sel.notes || ''} onChange={e => setSel({...sel, notes: e.target.value})}/></div>
 
-                                    {/* Pending Install Status */}
-                                    {sel.pendingInstall && (
-                                        <div style={{padding:'12px',background:'var(--amber-glow)',borderRadius:'8px',border:'1px solid var(--amber)',marginTop:'12px'}}>
-                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                                <div>
-                                                    <span style={{color:'var(--amber)',fontWeight:600}}>🔧 PENDING INSTALL</span>
-                                                    <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>
-                                                        REAP not yet installed — excluded from daily checks & email tracking
-                                                        {sel.installDate && <span style={{marginLeft:'8px',color:'var(--amber)',fontWeight:500}}>Est. install: {fmtDate(sel.installDate)}</span>}
+                                            {/* In Port Status */}
+                                            {sel.inPort && parseLocalDate(sel.inPortUntil) >= new Date(new Date().setHours(0,0,0,0)) && (
+                                                <div style={{padding:'12px',background:'var(--blue-glow)',borderRadius:'8px',border:'1px solid var(--blue)',marginTop:'12px'}}>
+                                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                                        <div><span style={{color:'var(--blue)',fontWeight:600}}>⚓ IN PORT - Expected Offline</span><div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>Back online: {fmtDate(sel.inPortUntil)}</div></div>
+                                                        <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, inPort: false, inPortUntil: null}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared In Port status for ${sel.name}`); toast('In Port status cleared', 'info'); }}>Clear Status</button>
                                                     </div>
                                                 </div>
-                                                <div style={{display:'flex',gap:'6px'}}>
-                                                    <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as installed`); toast(`${sel.name} marked as installed!`, 'success'); triggerConfirm(); }}>✓ Mark Installed</button>
-                                                    <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, pendingInstall: false, installDate: ''}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared pending install for ${sel.name}`); toast('Pending install cleared', 'info'); }}>Clear</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                            )}
 
-                                    {/* Pending Deinstall Status */}
-                                    {sel.pendingDeinstall && (
-                                        <div style={{padding:'12px',background:'rgba(239,68,68,0.08)',borderRadius:'8px',border:'1px solid var(--red)',marginTop:'12px'}}>
-                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                                <div>
-                                                    <span style={{color:'var(--red)',fontWeight:600}}>🔻 PENDING DEINSTALL</span>
-                                                    <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>
-                                                        REAP scheduled for removal
-                                                        {sel.deinstallDate && <span style={{marginLeft:'8px',color:'var(--red)',fontWeight:500}}>Est. deinstall: {fmtDate(sel.deinstallDate)}</span>}
-                                                    </div>
-                                                </div>
-                                                <div style={{display:'flex',gap:'6px'}}>
-                                                    <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingDeinstall: false, deinstallDate: '', pendingInstall: false}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as deinstalled`); toast(`${sel.name} marked as deinstalled`, 'success'); triggerConfirm(); }}>✓ Mark Deinstalled</button>
-                                                    <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, pendingDeinstall: false, deinstallDate: ''}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared pending deinstall for ${sel.name}`); toast('Pending deinstall cleared', 'info'); }}>Clear</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="btn-group mt-md" style={{flexWrap:'wrap'}}>
-                                        <button className="btn btn-sm" style={{background:'var(--blue)',color:'#fff'}} onClick={() => { setInPortDate(''); setInPortModal(true); }}>⚓ Set In Port</button>
-                                        {!sel.pendingInstall && <button className="btn btn-sm" style={{background:'var(--amber)',color:'#fff'}} onClick={() => { setPendingInstallDate(''); setPendingInstallModal(true); }}>🔧 Pending Install</button>}
-                                        {!sel.pendingDeinstall && <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff'}} onClick={() => { setPendingDeinstallDate(''); setPendingDeinstallModal(true); }}>🔻 Pending Deinstall</button>}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* EMAIL TAB */}
-                            {detailTab === 'email' && (
-                                <div>
-                                    {/* Summary strip */}
-                                    <div style={{display:'flex',gap:'16px',marginBottom:'20px',alignItems:'stretch',flexWrap:'wrap'}}>
-                                        <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
-                                        <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={() => scanEmailHistory(sel.id, sel.name)}>🔍 Scan History</button>
-                                        <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--blue)'}} onClick={() => setTemplateModal(sel)}>📝 Email Templates</button>
-                                        <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--red)'}} onClick={() => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } }}>🗑️ Clear History</button>
-                                        <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
-                                            <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>LAST CONTACT</div>
-                                            {(() => { var shipEmails = emailHistory.filter(function(h) { return h.shipId === sel.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); }); var lastDate = shipEmails.length > 0 ? shipEmails[0].timestamp : sel.lastContact; return React.createElement('div', {className:'rel-time tip', 'data-tip': lastDate ? fmtDate(lastDate) : 'Never', style:{fontSize:'16px',fontWeight:700,color: lastDate ? 'var(--text)' : 'var(--red)'}}, lastDate ? relTime(lastDate) : 'Never'); })()}
-                                        </div>
-                                        <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
-                                            <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>SHIP POC</div>
-                                            <div style={{fontSize:'14px',fontWeight:600,color: sel.poc ? 'var(--text)' : 'var(--text-muted)'}}>{sel.poc || '—'}</div>
-                                        </div>
-                                        <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',minWidth:'100px'}}>
-                                            <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>STATUS</div>
-                                            <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-                                                <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'4px 12px',fontSize:'10px',fontWeight:700}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
-                                                {sel.waitingReply && <span className="badge badge-info" style={{padding:'4px 10px',fontSize:'10px'}}>⏳</span>}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Suggested Issue Banner */}
-                                    {suggestedIssue && suggestedIssue.shipId === sel?.id && (
-                                        <div style={{marginBottom:'16px',borderRadius:'12px',overflow:'hidden',border:'2px solid rgba(245,158,11,0.5)',animation:'tabFade 0.3s ease'}}>
-                                            <div style={{padding:'12px 16px',background:'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.06))',display:'flex',alignItems:'center',gap:'10px'}}>
-                                                <span style={{fontSize:'20px'}}>🔍</span>
-                                                <div style={{flex:1}}>
-                                                    <div style={{fontSize:'12px',fontWeight:700,color:'var(--amber)'}}>Issue Detected from Email</div>
-                                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'1px'}}>Review and confirm to add to {suggestedIssue.shipName}'s issues</div>
-                                                </div>
-                                                <button onClick={() => setSuggestedIssue(null)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'16px',cursor:'pointer',padding:'4px'}}>✕</button>
-                                            </div>
-                                            <div style={{padding:'14px 16px',background:'var(--bg-card)'}}>
-                                                <div style={{display:'flex',gap:'8px',marginBottom:'10px',flexWrap:'wrap',alignItems:'center'}}>
-                                                    <span style={{padding:'3px 10px',borderRadius:'6px',fontSize:'10px',fontWeight:700,background: suggestedIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',color: suggestedIssue.threat === 'Urgent' ? '#fff' : '#000'}}>{suggestedIssue.threat}</span>
-                                                    <span style={{padding:'3px 8px',borderRadius:'4px',fontSize:'10px',background:'var(--bg-input)',color:'var(--text-muted)'}}>{suggestedIssue.category}</span>
-                                                </div>
-                                                <div style={{marginBottom:'10px'}}>
-                                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px',fontWeight:600}}>Issue Title</label>
-                                                    <input className="form-input" value={suggestedIssue.title} onChange={e => setSuggestedIssue({...suggestedIssue, title: e.target.value})} style={{fontSize:'13px',fontWeight:600}}/>
-                                                </div>
-                                                <div style={{marginBottom:'10px'}}>
-                                                    <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px',fontWeight:600}}>Details (from email)</label>
-                                                    <textarea className="form-textarea" style={{minHeight:'50px',fontSize:'12px'}} value={suggestedIssue.details} onChange={e => setSuggestedIssue({...suggestedIssue, details: e.target.value})}/>
-                                                </div>
-                                                <div style={{display:'flex',gap:'8px',marginBottom:'10px'}}>
-                                                    <div style={{flex:1}}>
-                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Severity</label>
-                                                        <select className="form-select" value={suggestedIssue.threat} onChange={e => setSuggestedIssue({...suggestedIssue, threat: e.target.value})}>
-                                                            <option value="Urgent">Urgent</option>
-                                                            <option value="Mild">Mild</option>
-                                                        </select>
-                                                    </div>
-                                                    <div style={{flex:1}}>
-                                                        <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Responsibility</label>
-                                                        <select className="form-select" value={suggestedIssue.responsibility} onChange={e => setSuggestedIssue({...suggestedIssue, responsibility: e.target.value})}>
-                                                            <option value="Ship">🚢 Ship</option>
-                                                            <option value="REAP">🛠️ REAP</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                {/* Diagnostic tips */}
-                                                {(() => { const diag = runDiagnostics(suggestedIssue.details + ' ' + suggestedIssue.title, [], {}); return diag.length > 0 ? (
-                                                    <details style={{marginBottom:'10px'}}>
-                                                        <summary style={{fontSize:'11px',color:'var(--primary)',cursor:'pointer',fontWeight:600,padding:'4px 0'}}>🔧 Troubleshooting Tips ({diag.length})</summary>
-                                                        <div style={{marginTop:'8px',display:'flex',flexDirection:'column',gap:'8px'}}>
-                                                            {diag.slice(0, 2).map(d => (
-                                                                <div key={d.id} style={{padding:'10px 12px',background:'var(--bg-input)',borderRadius:'8px',fontSize:'11px'}}>
-                                                                    <div style={{fontWeight:700,marginBottom:'6px'}}>{d.name}</div>
-                                                                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
-                                                                        <div>
-                                                                            <div style={{fontWeight:700,color:'var(--green)',marginBottom:'4px',fontSize:'10px'}}>✅ TRY</div>
-                                                                            {d.doThis.slice(0, 3).map((s, i) => <div key={i} style={{color:'var(--text-dim)',marginBottom:'2px',paddingLeft:'8px'}}>• {s}</div>)}
-                                                                        </div>
-                                                                        <div>
-                                                                            <div style={{fontWeight:700,color:'var(--red)',marginBottom:'4px',fontSize:'10px'}}>🚫 AVOID</div>
-                                                                            {d.dontDoThis.slice(0, 3).map((s, i) => <div key={i} style={{color:'var(--text-dim)',marginBottom:'2px',paddingLeft:'8px'}}>• {s}</div>)}
-                                                                        </div>
-                                                                    </div>
-                                                                    {d.tools && <div style={{marginTop:'6px',fontSize:'10px',color:'var(--text-muted)'}}>🧰 {d.tools.join(' • ')}</div>}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </details>
-                                                ) : null; })()}
-                                                <div style={{display:'flex',gap:'8px'}}>
-                                                    <button className="btn btn-primary" style={{flex:1,fontWeight:700}} onClick={() => {
-                                                        const newIssue = { id: genId('I'), shipId: suggestedIssue.shipId, threat: suggestedIssue.threat, title: suggestedIssue.title, details: suggestedIssue.details, category: suggestedIssue.category, responsibility: suggestedIssue.responsibility, created: new Date().toISOString(), resolved: false };
-                                                        setIssues(p => [...p, newIssue]);
-                                                        logActivity(`Auto-detected & added ${suggestedIssue.threat} issue to ${suggestedIssue.shipName}: ${suggestedIssue.title}`, { ship: suggestedIssue.shipName, threat: suggestedIssue.threat, details: suggestedIssue.details });
-                                                        toast(`Issue added to ${suggestedIssue.shipName}!`, 'success');
-                                                        setSuggestedIssue(null);
-                                                    }}>✓ Add Issue to {suggestedIssue.shipName}</button>
-                                                    <button className="btn btn-secondary" onClick={() => setSuggestedIssue(null)}>Dismiss</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Open Issues */}
-                                    {selIssues.length > 0 && (
-                                        <div style={{marginBottom:'16px',borderRadius:'10px',overflow:'hidden',border: selIssues.some(i => i.threat === 'Urgent') ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(245,158,11,0.3)',maxWidth:'400px'}}>
-                                            <div style={{padding:'8px 14px',background: selIssues.some(i => i.threat === 'Urgent') ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                                                <span style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.5px',color: selIssues.some(i => i.threat === 'Urgent') ? 'var(--red)' : 'var(--amber)'}}>{selIssues.some(i => i.threat === 'Urgent') ? '🚨' : '⚠️'} {selIssues.length} OPEN ISSUE{selIssues.length > 1 ? 'S' : ''}</span>
-                                                <button className="btn btn-sm" style={{fontSize:'9px',padding:'2px 8px'}} onClick={() => setQuickIssueModal(true)}>+ Add</button>
-                                            </div>
-                                            {selIssues.map((issue, idx) => (
-                                                <div key={issue.id} style={{padding:'10px 16px',borderTop:'1px solid var(--border)',display:'flex',alignItems:'flex-start',gap:'10px',background:'var(--bg-card)'}}>
-                                                    <span style={{fontSize:'10px',fontWeight:700,padding:'2px 8px',borderRadius:'4px',flexShrink:0,marginTop:'2px',background: issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',color: issue.threat === 'Urgent' ? '#fff' : '#000'}}>{issue.threat}</span>
-                                                    <div style={{flex:1,minWidth:0}}>
-                                                        <div style={{fontSize:'12px',fontWeight:600}}>{issue.title || issue.details}</div>
-                                                        {issue.title && issue.details && issue.title !== issue.details && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{issue.details}</div>}
-                                                        <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px',display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
-                                                            <span>{fmtDate(issue.created)}</span>
-                                                            <span style={{padding:'1px 6px',borderRadius:'4px',fontSize:'9px',fontWeight:600,background: issue.responsibility === 'REAP' ? 'var(--primary-glow)' : 'var(--bg-input)',color: issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--text-muted)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--border)'}`}}>{issue.responsibility === 'REAP' ? '🛠️ REAP' : '🚢 Ship'}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div style={{display:'flex',gap:'4px',flexShrink:0}}>
-                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details || '').substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
-                                                        <button className="btn btn-sm btn-success" style={{padding:'3px 8px',fontSize:'9px'}} onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
-                                                        <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',color:'var(--red)'}} onClick={() => { if (confirm('Delete this issue?\n\n' + (issue.title || issue.details))) { setIssues(p => p.filter(x => x.id !== issue.id)); logActivity('Deleted issue from ' + (sel ? sel.name : 'ship') + ': ' + (issue.title || issue.details || '').substring(0,40)); toast('Issue deleted', 'info'); } }}>🗑️</button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Timeline */}
-                                    {emailHistory.filter(h => h.shipId === sel.id).length === 0 ? (
-                                        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'16px',border:'1px dashed var(--border)'}}>
-                                            <div style={{width:'56px',height:'56px',borderRadius:'50%',background:'var(--bg-card)',border:'2px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',marginBottom:'16px'}}>📭</div>
-                                            <div style={{fontWeight:600,fontSize:'14px',color:'var(--text-dim)',marginBottom:'4px'}}>No emails logged yet</div>
-                                            <div style={{fontSize:'12px',marginBottom:'20px'}}>Start tracking communication with this ship</div>
-                                            <button className="btn btn-primary" onClick={openContactModal}>✉️ Log First Email</button>
-                                        </div>
-                                    ) : (
-                                        <div style={{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'600px',overflow:'auto',padding:'8px 0'}}>
-                                            
-                                            {emailHistory.filter(h => h.shipId === sel.id).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map((h, idx, arr) => {
-                                                var rawName = h.result ? (h.result.sender ? h.result.sender.name : h.result.contactedBy) : null;
-                                                var isFromShip = rawName === '__SHIP__' || rawName === 'Ship' || (rawName && rawName.indexOf('Ship') === 0);
-                                                var isTeamSent = !isFromShip;
-                                                var senderName = isFromShip ? (h.result.contactedBy || 'Ship') : (rawName || 'Team');
-                                                senderName = mapTeamName ? mapTeamName(senderName, h.fromEmail || '') : senderName;
-                                                if (senderName === '__SHIP__') senderName = 'Ship';
-                                                var summary = h.result ? (h.result.emailSummary || '') : '';
-                                                var bodyText = h.emailText || '';
-                                                if (bodyText === 'Marked as contacted' || bodyText === summary) bodyText = '';
-                                                if (bodyText) {
-                                                    bodyText = bodyText.replace(/From:.*?(?=\n|$)/gi, '').replace(/Sent:.*?(?=\n|$)/gi, '').replace(/To:.*?(?=\n|$)/gi, '').replace(/Cc:.*?(?=\n|$)/gi, '').replace(/Subject:.*?(?=\n|$)/gi, '').replace(/<[^>]*@[^>]*>/g, '').replace(/_{10,}/g, '').replace(/-{10,}/g, '').replace(/\n{3,}/g, '\n\n').trim();
-                                                }
-                                                if (!bodyText && h.result && h.result.emailSummary && h.result.emailSummary !== summary) bodyText = h.result.emailSummary;
-                                                var displayText = bodyText || summary || '';
-                                                var bubbleColor = isTeamSent ? 'var(--primary)' : 'var(--blue)';
-                                                var bubbleBg = isTeamSent ? 'rgba(25,169,116,0.12)' : 'rgba(59,130,246,0.12)';
-                                                var bubbleBorder = isTeamSent ? 'rgba(25,169,116,0.3)' : 'rgba(59,130,246,0.3)';
-                                                var isWaiting = h.result ? h.result.waitingReply : false;
-                                                
-                                                return React.createElement('div', {key: h.id, style: {display:'flex',justifyContent: isTeamSent ? 'flex-end' : 'flex-start',maxWidth:'100%'}},
-                                                    React.createElement('div', {style: {display:'flex',flexDirection:'column',alignItems:'flex-start',maxWidth:'80%'}},
-                                                    
-                                                    // Sender name + timestamp — always left edge of bubble
-                                                    React.createElement('div', {style: {display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px',fontSize:'10px',color:'var(--text-muted)'}},
-                                                        React.createElement('span', {style: {fontWeight:700,color: bubbleColor}}, isFromShip ? '\uD83D\uDEA2 ' + senderName.replace('Ship (', '').replace(')', '') : senderName),
-                                                        React.createElement('span', null, fmtDate(h.timestamp)),
-                                                        isTeamSent ? React.createElement('span', {style: {fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'rgba(25,169,116,0.15)',color:'var(--primary)',fontWeight:600}}, '\u2192 Sent') : React.createElement('span', {style: {fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'rgba(59,130,246,0.15)',color:'var(--blue)',fontWeight:600}}, '\u2190 Reply'),
-                                                        isWaiting ? React.createElement('span', {style: {fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'var(--blue-glow)',color:'var(--blue)'}}, '\u23F3 Waiting') : null
-                                                    ),
-                                                    
-                                                    // Chat bubble
-                                                    React.createElement('div', {style: {padding:'12px 16px',borderRadius: isTeamSent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',background: bubbleBg,border: '1px solid ' + bubbleBorder}},
-                                                        // Body text only — no subject in bubble
-                                                        (displayText || summary) ? React.createElement('div', {style: {fontSize:'12px',color:'var(--text-dim)',lineHeight:'1.6',whiteSpace:'pre-wrap',maxHeight:'200px',overflow:'auto'}}, displayText || summary) : null
-                                                    ),
-                                                    
-                                                    // Actions row
-                                                    React.createElement('div', {style: {display:'flex',gap:'6px',marginTop:'4px',fontSize:'10px'}},
-                                                        React.createElement('button', {className:'btn btn-sm btn-secondary', style:{padding:'2px 8px',fontSize:'9px'}, onClick: function(e) { e.stopPropagation(); setEditEmailEntry(h); setEditEmailForm({date: h.timestamp ? h.timestamp.substring(0,10) : '', time: h.timestamp ? h.timestamp.substring(11,16) : '', summary: summary, emailText: h.emailText || '', contactedBy: rawName || ''}); }}, '\u270F\uFE0F Edit'),
-                                                        React.createElement('button', {className:'btn btn-sm', style:{padding:'2px 8px',fontSize:'9px',color:'var(--red)'}, onClick: function(e) { e.stopPropagation(); if (confirm('Delete this email entry?')) { var updated = emailHistory.filter(function(x) { return x.id !== h.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); logActivity('Deleted email entry from ' + sel.name); toast('Email entry deleted', 'info'); } }}, '\uD83D\uDDD1\uFE0F')
-                                                    )
-                                                    ) // close inner wrapper
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    
-                                    {/* Status notes */}
-                                    <div style={{marginTop:'20px',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px'}}>
-                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
-                                            <span style={{fontSize:'10px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'0.5px'}}>📝 STATUS NOTES</span>
-                                            <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={() => setModal(true)}>Edit</button>
-                                        </div>
-                                        <div style={{fontSize:'12px',color: sel.lastSaid ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'pre-wrap',lineHeight:'1.6',fontStyle: sel.lastSaid ? 'normal' : 'italic'}}>{sel.lastSaid || 'No notes — click Edit to add status notes.'}</div>
-                                    </div>
-                                </div>
-                            )}
-                            {/* ISSUES TAB */}
-                            {detailTab === 'issues' && (
-                                <div>
-                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}>
-                                        <div style={{fontSize:'14px',fontWeight:600}}>Open Issues ({selIssues.length})</div>
-                                        <button className="btn btn-warning" onClick={() => setQuickIssueModal(true)}>+ Add Issue</button>
-                                    </div>
-
-                                    {selIssues.length === 0 ? (
-                                        <div style={{padding:'40px',textAlign:'center',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'8px'}}>
-                                            <div style={{fontSize:'32px',marginBottom:'8px'}}>✓</div>
-                                            <div style={{textAlign:'center',padding:'24px',color:'var(--text-muted)'}}><div style={{fontSize:'28px',marginBottom:'6px',opacity:0.5}}>🎉</div><div style={{fontSize:'12px'}}>No open issues — ship is running clean</div></div>
-                                        </div>
-                                    ) : (
-                                        <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
-                                            {selIssues.map(issue => (
-                                                <div key={issue.id} style={{padding:'12px',background: issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',borderRadius:'8px',border: `1px solid ${issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`}}>
-                                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                                                        <div style={{flex:1}}>
-                                                            <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px',flexWrap:'wrap'}}>
-                                                                <span className={`badge badge-${issue.threat.toLowerCase()}`}>{issue.threat}</span>
-                                                                <span style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',fontWeight:600,background: issue.responsibility === 'REAP' ? 'var(--primary-glow)' : 'var(--bg-input)',color: issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--text-muted)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--border)'}`}}>{issue.responsibility === 'REAP' ? '🛠️ REAP' : '🚢 Ship'}</span>
-                                                                {issue.category && <span style={{fontSize:'10px',color:'var(--text-muted)'}}>{issue.category}</span>}
-                                                                <span style={{fontSize:'10px',color:'var(--text-muted)'}}>• {fmtDate(issue.created)}</span>
+                                            {/* Pending Install Status */}
+                                            {sel.pendingInstall && (
+                                                <div style={{padding:'12px',background:'var(--amber-glow)',borderRadius:'8px',border:'1px solid var(--amber)',marginTop:'12px'}}>
+                                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                                        <div>
+                                                            <span style={{color:'var(--amber)',fontWeight:600}}>🔧 PENDING INSTALL</span>
+                                                            <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>
+                                                                REAP not yet installed — excluded from daily checks & email tracking
+                                                                {sel.installDate && <span style={{marginLeft:'8px',color:'var(--amber)',fontWeight:500}}>Est. install: {fmtDate(sel.installDate)}</span>}
                                                             </div>
-                                                            <div style={{fontSize:'13px'}}>{issue.title || issue.details}</div>
-                                                            {issue.title && issue.details && issue.title !== issue.details && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>{issue.details}</div>}
                                                         </div>
-                                                        <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
-                                                            <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} title={`Switch to ${issue.responsibility === 'REAP' ? 'Ship' : 'REAP'}`} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details || '').substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
-                                                            <button className="btn btn-sm btn-success" onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
+                                                        <div style={{display:'flex',gap:'6px'}}>
+                                                            <button className="btn btn-sm" style={{background:'var(--green)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as installed`); toast(`${sel.name} marked as installed!`, 'success'); triggerConfirm(); }}>✓ Mark Installed</button>
+                                                            <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, pendingInstall: false, installDate: ''}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared pending install for ${sel.name}`); toast('Pending install cleared', 'info'); }}>Clear</button>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                            )}
+
+                                            {/* Pending Deinstall Status */}
+                                            {sel.pendingDeinstall && (
+                                                <div style={{padding:'12px',background:'rgba(239,68,68,0.08)',borderRadius:'8px',border:'1px solid var(--red)',marginTop:'12px'}}>
+                                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                                        <div>
+                                                            <span style={{color:'var(--red)',fontWeight:600}}>🔻 PENDING DEINSTALL</span>
+                                                            <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>
+                                                                REAP scheduled for removal
+                                                                {sel.deinstallDate && <span style={{marginLeft:'8px',color:'var(--red)',fontWeight:500}}>Est. deinstall: {fmtDate(sel.deinstallDate)}</span>}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{display:'flex',gap:'6px'}}>
+                                                            <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff',fontWeight:600}} onClick={() => { const updated = {...sel, pendingDeinstall: false, deinstallDate: '', pendingInstall: false}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Marked ${sel.name} as deinstalled`); toast(`${sel.name} marked as deinstalled`, 'success'); triggerConfirm(); }}>✓ Mark Deinstalled</button>
+                                                            <button className="btn btn-sm btn-secondary" onClick={() => { const updated = {...sel, pendingDeinstall: false, deinstallDate: ''}; setSel(updated); setShips(p => p.map(s => s.id === sel.id ? updated : s)); logActivity(`Cleared pending deinstall for ${sel.name}`); toast('Pending deinstall cleared', 'info'); }}>Clear</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="btn-group mt-md" style={{flexWrap:'wrap'}}>
+                                                <button className="btn btn-sm" style={{background:'var(--blue)',color:'#fff'}} onClick={() => { setInPortDate(''); setInPortModal(true); }}>⚓ Set In Port</button>
+                                                {!sel.pendingInstall && <button className="btn btn-sm" style={{background:'var(--amber)',color:'#fff'}} onClick={() => { setPendingInstallDate(''); setPendingInstallModal(true); }}>🔧 Pending Install</button>}
+                                                {!sel.pendingDeinstall && <button className="btn btn-sm" style={{background:'var(--red)',color:'#fff'}} onClick={() => { setPendingDeinstallDate(''); setPendingDeinstallModal(true); }}>🔻 Pending Deinstall</button>}
+                                            </div>
                                         </div>
                                     )}
-                                </div>
-                            )}
 
-                            {/* ASSETS TAB */}
-                            {detailTab === 'assets' && (
-                                <div>
-                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'16px',letterSpacing:'0.5px'}}>ASSET SERIAL NUMBERS & IDENTIFIERS</div>
-                                    <div className="form-row">
-                                        <div className="form-group"><label className="form-label">Cisco Router</label><input className="form-input" placeholder="Serial number..." value={sel.ciscoRouter || ''} onChange={e => setSel({...sel, ciscoRouter: e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">HDD Star</label><input className="form-input" placeholder="Serial number..." value={sel.hddStar || sel.hdd || ''} onChange={e => setSel({...sel, hddStar: e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">HDD Data</label><input className="form-input" placeholder="Serial number..." value={sel.hddData || ''} onChange={e => setSel({...sel, hddData: e.target.value})}/></div>
-                                    </div>
-                                    <div className="form-row">
-                                        <div className="form-group"><label className="form-label">Star CRNA</label><input className="form-input" placeholder="Serial number..." value={sel.crna1 || ''} onChange={e => setSel({...sel, crna1: e.target.value})}/></div>
-                                        <div className="form-group"><label className="form-label">Data CRNA</label><input className="form-input" placeholder="Serial number..." value={sel.crna2 || ''} onChange={e => setSel({...sel, crna2: e.target.value})}/></div>
-                                    </div>
+                                    {/* EMAIL TAB */}
+                                    {detailTab === 'email' && (
+                                        <div>
+                                            {/* Summary strip */}
+                                            <div style={{display:'flex',gap:'16px',marginBottom:'20px',alignItems:'stretch',flexWrap:'wrap'}}>
+                                                <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
+                                                <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={() => scanEmailHistory(sel.id, sel.name)}>🔍 Scan History</button>
+                                                <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--blue)'}} onClick={() => setTemplateModal(sel)}>📝 Email Templates</button>
+                                                <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--red)'}} onClick={() => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } }}>🗑️ Clear History</button>
+                                                <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
+                                                    <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>LAST CONTACT</div>
+                                                    {(() => { var shipEmails = emailHistory.filter(function(h) { return h.shipId === sel.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); }); var lastDate = shipEmails.length > 0 ? shipEmails[0].timestamp : sel.lastContact; return React.createElement('div', {className:'rel-time tip', 'data-tip': lastDate ? fmtDate(lastDate) : 'Never', style:{fontSize:'16px',fontWeight:700,color: lastDate ? 'var(--text)' : 'var(--red)'}}, lastDate ? relTime(lastDate) : 'Never'); })()}
+                                                </div>
+                                                <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
+                                                    <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>SHIP POC</div>
+                                                    <div style={{fontSize:'14px',fontWeight:600,color: sel.poc ? 'var(--text)' : 'var(--text-muted)'}}>{sel.poc || '—'}</div>
+                                                </div>
+                                                <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',minWidth:'100px'}}>
+                                                    <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>STATUS</div>
+                                                    <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
+                                                        <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'4px 12px',fontSize:'10px',fontWeight:700}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
+                                                        {sel.waitingReply && <span className="badge badge-info" style={{padding:'4px 10px',fontSize:'10px'}}>⏳</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                    {/* Asset Summary */}
-                                    <div style={{marginTop:'16px',padding:'12px',background:'var(--bg-input)',borderRadius:'8px'}}>
-                                        <div style={{fontSize:'11px',color:'var(--text-muted)',marginBottom:'8px'}}>Asset Completion</div>
-                                        <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                                            {/* Suggested Issue Banner */}
+                                            {suggestedIssue && suggestedIssue.shipId === sel?.id && (
+                                                <div style={{marginBottom:'16px',borderRadius:'12px',overflow:'hidden',border:'2px solid rgba(245,158,11,0.5)',animation:'tabFade 0.3s ease'}}>
+                                                    <div style={{padding:'12px 16px',background:'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.06))',display:'flex',alignItems:'center',gap:'10px'}}>
+                                                        <span style={{fontSize:'20px'}}>🔍</span>
+                                                        <div style={{flex:1}}>
+                                                            <div style={{fontSize:'12px',fontWeight:700,color:'var(--amber)'}}>Issue Detected from Email</div>
+                                                            <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'1px'}}>Review and confirm to add to {suggestedIssue.shipName}'s issues</div>
+                                                        </div>
+                                                        <button onClick={() => setSuggestedIssue(null)} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'16px',cursor:'pointer',padding:'4px'}}>✕</button>
+                                                    </div>
+                                                    <div style={{padding:'14px 16px',background:'var(--bg-card)'}}>
+                                                        <div style={{display:'flex',gap:'8px',marginBottom:'10px',flexWrap:'wrap',alignItems:'center'}}>
+                                                            <span style={{padding:'3px 10px',borderRadius:'6px',fontSize:'10px',fontWeight:700,background: suggestedIssue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',color: suggestedIssue.threat === 'Urgent' ? '#fff' : '#000'}}>{suggestedIssue.threat}</span>
+                                                            <span style={{padding:'3px 8px',borderRadius:'4px',fontSize:'10px',background:'var(--bg-input)',color:'var(--text-muted)'}}>{suggestedIssue.category}</span>
+                                                        </div>
+                                                        <div style={{marginBottom:'10px'}}>
+                                                            <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px',fontWeight:600}}>Issue Title</label>
+                                                            <input className="form-input" value={suggestedIssue.title} onChange={e => setSuggestedIssue({...suggestedIssue, title: e.target.value})} style={{fontSize:'13px',fontWeight:600}}/>
+                                                        </div>
+                                                        <div style={{marginBottom:'10px'}}>
+                                                            <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px',fontWeight:600}}>Details (from email)</label>
+                                                            <textarea className="form-textarea" style={{minHeight:'50px',fontSize:'12px'}} value={suggestedIssue.details} onChange={e => setSuggestedIssue({...suggestedIssue, details: e.target.value})}/>
+                                                        </div>
+                                                        <div style={{display:'flex',gap:'8px',marginBottom:'10px'}}>
+                                                            <div style={{flex:1}}>
+                                                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Severity</label>
+                                                                <select className="form-select" value={suggestedIssue.threat} onChange={e => setSuggestedIssue({...suggestedIssue, threat: e.target.value})}>
+                                                                    <option value="Urgent">Urgent</option>
+                                                                    <option value="Mild">Mild</option>
+                                                                </select>
+                                                            </div>
+                                                            <div style={{flex:1}}>
+                                                                <label style={{fontSize:'10px',color:'var(--text-muted)',display:'block',marginBottom:'4px'}}>Responsibility</label>
+                                                                <select className="form-select" value={suggestedIssue.responsibility} onChange={e => setSuggestedIssue({...suggestedIssue, responsibility: e.target.value})}>
+                                                                    <option value="Ship">🚢 Ship</option>
+                                                                    <option value="REAP">🛠️ REAP</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        {/* Diagnostic tips */}
+                                                        {(() => { const diag = runDiagnostics(suggestedIssue.details + ' ' + suggestedIssue.title, [], {}); return diag.length > 0 ? (
+                                                            <details style={{marginBottom:'10px'}}>
+                                                                <summary style={{fontSize:'11px',color:'var(--primary)',cursor:'pointer',fontWeight:600,padding:'4px 0'}}>🔧 Troubleshooting Tips ({diag.length})</summary>
+                                                                <div style={{marginTop:'8px',display:'flex',flexDirection:'column',gap:'8px'}}>
+                                                                    {diag.slice(0, 2).map(d => (
+                                                                        <div key={d.id} style={{padding:'10px 12px',background:'var(--bg-input)',borderRadius:'8px',fontSize:'11px'}}>
+                                                                            <div style={{fontWeight:700,marginBottom:'6px'}}>{d.name}</div>
+                                                                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+                                                                                <div>
+                                                                                    <div style={{fontWeight:700,color:'var(--green)',marginBottom:'4px',fontSize:'10px'}}>✅ TRY</div>
+                                                                                    {d.doThis.slice(0, 3).map((s, i) => <div key={i} style={{color:'var(--text-dim)',marginBottom:'2px',paddingLeft:'8px'}}>• {s}</div>)}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div style={{fontWeight:700,color:'var(--red)',marginBottom:'4px',fontSize:'10px'}}>🚫 AVOID</div>
+                                                                                    {d.dontDoThis.slice(0, 3).map((s, i) => <div key={i} style={{color:'var(--text-dim)',marginBottom:'2px',paddingLeft:'8px'}}>• {s}</div>)}
+                                                                                </div>
+                                                                            </div>
+                                                                            {d.tools && <div style={{marginTop:'6px',fontSize:'10px',color:'var(--text-muted)'}}>🧰 {d.tools.join(' • ')}</div>}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </details>
+                                                        ) : null; })()}
+                                                        <div style={{display:'flex',gap:'8px'}}>
+                                                            <button className="btn btn-primary" style={{flex:1,fontWeight:700}} onClick={() => {
+                                                                const newIssue = { id: genId('I'), shipId: suggestedIssue.shipId, threat: suggestedIssue.threat, title: suggestedIssue.title, details: suggestedIssue.details, category: suggestedIssue.category, responsibility: suggestedIssue.responsibility, created: new Date().toISOString(), resolved: false };
+                                                                setIssues(p => [...p, newIssue]);
+                                                                logActivity(`Auto-detected & added ${suggestedIssue.threat} issue to ${suggestedIssue.shipName}: ${suggestedIssue.title}`, { ship: suggestedIssue.shipName, threat: suggestedIssue.threat, details: suggestedIssue.details });
+                                                                toast(`Issue added to ${suggestedIssue.shipName}!`, 'success');
+                                                                setSuggestedIssue(null);
+                                                            }}>✓ Add Issue to {suggestedIssue.shipName}</button>
+                                                            <button className="btn btn-secondary" onClick={() => setSuggestedIssue(null)}>Dismiss</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Open Issues */}
+                                            {selIssues.length > 0 && (
+                                                <div style={{marginBottom:'16px',borderRadius:'10px',overflow:'hidden',border: selIssues.some(i => i.threat === 'Urgent') ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(245,158,11,0.3)',maxWidth:'400px'}}>
+                                                    <div style={{padding:'8px 14px',background: selIssues.some(i => i.threat === 'Urgent') ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                                                        <span style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.5px',color: selIssues.some(i => i.threat === 'Urgent') ? 'var(--red)' : 'var(--amber)'}}>{selIssues.some(i => i.threat === 'Urgent') ? '🚨' : '⚠️'} {selIssues.length} OPEN ISSUE{selIssues.length > 1 ? 'S' : ''}</span>
+                                                        <button className="btn btn-sm" style={{fontSize:'9px',padding:'2px 8px'}} onClick={() => setQuickIssueModal(true)}>+ Add</button>
+                                                    </div>
+                                                    {selIssues.map((issue, idx) => (
+                                                        <div key={issue.id} style={{padding:'10px 16px',borderTop:'1px solid var(--border)',display:'flex',alignItems:'flex-start',gap:'10px',background:'var(--bg-card)'}}>
+                                                            <span style={{fontSize:'10px',fontWeight:700,padding:'2px 8px',borderRadius:'4px',flexShrink:0,marginTop:'2px',background: issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)',color: issue.threat === 'Urgent' ? '#fff' : '#000'}}>{issue.threat}</span>
+                                                            <div style={{flex:1,minWidth:0}}>
+                                                                <div style={{fontSize:'12px',fontWeight:600}}>{issue.title || issue.details}</div>
+                                                                {issue.title && issue.details && issue.title !== issue.details && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{issue.details}</div>}
+                                                                <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px',display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+                                                                    <span>{fmtDate(issue.created)}</span>
+                                                                    <span style={{padding:'1px 6px',borderRadius:'4px',fontSize:'9px',fontWeight:600,background: issue.responsibility === 'REAP' ? 'var(--primary-glow)' : 'var(--bg-input)',color: issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--text-muted)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--border)'}`}}>{issue.responsibility === 'REAP' ? '🛠️ REAP' : '🚢 Ship'}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+                                                                <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details || '').substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
+                                                                <button className="btn btn-sm btn-success" style={{padding:'3px 8px',fontSize:'9px'}} onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
+                                                                <button className="btn btn-sm" style={{padding:'3px 8px',fontSize:'9px',color:'var(--red)'}} onClick={() => { if (confirm('Delete this issue?\n\n' + (issue.title || issue.details))) { setIssues(p => p.filter(x => x.id !== issue.id)); logActivity('Deleted issue from ' + (sel ? sel.name : 'ship') + ': ' + (issue.title || issue.details || '').substring(0,40)); toast('Issue deleted', 'info'); } }}>🗑️</button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Timeline */}
+                                            {emailHistory.filter(h => h.shipId === sel.id).length === 0 ? (
+                                                <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'16px',border:'1px dashed var(--border)'}}>
+                                                    <div style={{width:'56px',height:'56px',borderRadius:'50%',background:'var(--bg-card)',border:'2px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',marginBottom:'16px'}}>📭</div>
+                                                    <div style={{fontWeight:600,fontSize:'14px',color:'var(--text-dim)',marginBottom:'4px'}}>No emails logged yet</div>
+                                                    <div style={{fontSize:'12px',marginBottom:'20px'}}>Start tracking communication with this ship</div>
+                                                    <button className="btn btn-primary" onClick={openContactModal}>✉️ Log First Email</button>
+                                                </div>
+                                            ) : (
+                                                <div style={{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'600px',overflow:'auto',padding:'8px 0'}}>
+                                                    
+                                                    {emailHistory.filter(h => h.shipId === sel.id).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map((h, idx, arr) => {
+                                                        var rawName = h.result ? (h.result.sender ? h.result.sender.name : h.result.contactedBy) : null;
+                                                        var filedAsShip = rawName === '__SHIP__' || rawName === 'Ship' || (rawName && rawName.indexOf('Ship') === 0);
+                                                        var isFromShip = filedAsShip && !isTeamSender(h.fromName, h.fromEmail);
+                                                        var isTeamSent = !isFromShip;
+                                                        var senderName = isFromShip ? (h.result.contactedBy || 'Ship') : filedAsShip ? (h.fromName || 'Team') : (rawName || 'Team');
+                                                        senderName = mapTeamName ? mapTeamName(senderName, h.fromEmail || '') : senderName;
+                                                        if (senderName === '__SHIP__') senderName = 'Ship';
+                                                        var summary = h.result ? (h.result.emailSummary || '') : '';
+                                                        var bodyText = h.emailText || '';
+                                                        if (bodyText === 'Marked as contacted' || bodyText === summary) bodyText = '';
+                                                        if (bodyText) {
+                                                            bodyText = bodyText.replace(/From:.*?(?=\n|$)/gi, '').replace(/Sent:.*?(?=\n|$)/gi, '').replace(/To:.*?(?=\n|$)/gi, '').replace(/Cc:.*?(?=\n|$)/gi, '').replace(/Subject:.*?(?=\n|$)/gi, '').replace(/<[^>]*@[^>]*>/g, '').replace(/_{10,}/g, '').replace(/-{10,}/g, '').replace(/\n{3,}/g, '\n\n').trim();
+                                                        }
+                                                        if (!bodyText && h.result && h.result.emailSummary && h.result.emailSummary !== summary) bodyText = h.result.emailSummary;
+                                                        var displayText = bodyText || summary || '';
+                                                        var bubbleColor = isTeamSent ? 'var(--primary)' : 'var(--blue)';
+                                                        var bubbleBg = isTeamSent ? 'rgba(25,169,116,0.12)' : 'rgba(59,130,246,0.12)';
+                                                        var bubbleBorder = isTeamSent ? 'rgba(25,169,116,0.3)' : 'rgba(59,130,246,0.3)';
+                                                        var isWaiting = h.result ? h.result.waitingReply : false;
+                                                        
+                                                        return React.createElement('div', {key: h.id, style: {display:'flex',justifyContent: isTeamSent ? 'flex-end' : 'flex-start',maxWidth:'100%'}},
+                                                            React.createElement('div', {style: {display:'flex',flexDirection:'column',alignItems:'flex-start',maxWidth:'80%'}},
+                                                            
+                                                            // Sender name + timestamp — always left edge of bubble
+                                                            React.createElement('div', {style: {display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px',fontSize:'10px',color:'var(--text-muted)'}},
+                                                                React.createElement('span', {style: {fontWeight:700,color: bubbleColor}}, isFromShip ? '\uD83D\uDEA2 ' + senderName.replace('Ship (', '').replace(')', '') : senderName),
+                                                                React.createElement('span', null, fmtDate(h.timestamp)),
+                                                                isTeamSent ? React.createElement('span', {style: {fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'rgba(25,169,116,0.15)',color:'var(--primary)',fontWeight:600}}, '\u2192 Sent') : React.createElement('span', {style: {fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'rgba(59,130,246,0.15)',color:'var(--blue)',fontWeight:600}}, '\u2190 Reply'),
+                                                                isWaiting ? React.createElement('span', {style: {fontSize:'9px',padding:'1px 6px',borderRadius:'4px',background:'var(--blue-glow)',color:'var(--blue)'}}, '\u23F3 Waiting') : null
+                                                            ),
+                                                            
+                                                            // Chat bubble
+                                                            React.createElement('div', {style: {padding:'12px 16px',borderRadius: isTeamSent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',background: bubbleBg,border: '1px solid ' + bubbleBorder}},
+                                                                // Body text only — no subject in bubble
+                                                                (displayText || summary) ? React.createElement('div', {style: {fontSize:'12px',color:'var(--text-dim)',lineHeight:'1.6',whiteSpace:'pre-wrap',maxHeight:'200px',overflow:'auto'}}, displayText || summary) : null
+                                                            ),
+                                                            
+                                                            // Actions row
+                                                            React.createElement('div', {style: {display:'flex',gap:'6px',marginTop:'4px',fontSize:'10px'}},
+                                                                React.createElement('button', {className:'btn btn-sm btn-secondary', style:{padding:'2px 8px',fontSize:'9px'}, onClick: function(e) { e.stopPropagation(); setEditEmailEntry(h); setEditEmailForm({date: h.timestamp ? h.timestamp.substring(0,10) : '', time: h.timestamp ? h.timestamp.substring(11,16) : '', summary: summary, emailText: h.emailText || '', contactedBy: rawName || ''}); }}, '\u270F\uFE0F Edit'),
+                                                                React.createElement('button', {className:'btn btn-sm', style:{padding:'2px 8px',fontSize:'9px',color:'var(--red)'}, onClick: function(e) { e.stopPropagation(); if (confirm('Delete this email entry?')) { var updated = emailHistory.filter(function(x) { return x.id !== h.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); logActivity('Deleted email entry from ' + sel.name); toast('Email entry deleted', 'info'); } }}, '\uD83D\uDDD1\uFE0F')
+                                                            )
+                                                            ) // close inner wrapper
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            
+                                            {/* Status notes */}
+                                            <div style={{marginTop:'20px',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px'}}>
+                                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                                                    <span style={{fontSize:'10px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'0.5px'}}>📝 STATUS NOTES</span>
+                                                    <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'4px 10px'}} onClick={() => setModal(true)}>Edit</button>
+                                                </div>
+                                                <div style={{fontSize:'12px',color: sel.lastSaid ? 'var(--text)' : 'var(--text-muted)',whiteSpace:'pre-wrap',lineHeight:'1.6',fontStyle: sel.lastSaid ? 'normal' : 'italic'}}>{sel.lastSaid || 'No notes — click Edit to add status notes.'}</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {/* ISSUES TAB */}
+                                    {detailTab === 'issues' && (
+                                        <div>
+                                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}}>
+                                                <div style={{fontSize:'14px',fontWeight:600}}>Open Issues ({selIssues.length})</div>
+                                                <button className="btn btn-warning" onClick={() => setQuickIssueModal(true)}>+ Add Issue</button>
+                                            </div>
+
+                                            {selIssues.length === 0 ? (
+                                                <div style={{padding:'40px',textAlign:'center',color:'var(--text-muted)',background:'var(--bg-input)',borderRadius:'8px'}}>
+                                                    <div style={{fontSize:'32px',marginBottom:'8px'}}>✓</div>
+                                                    <div style={{textAlign:'center',padding:'24px',color:'var(--text-muted)'}}><div style={{fontSize:'28px',marginBottom:'6px',opacity:0.5}}>🎉</div><div style={{fontSize:'12px'}}>No open issues — ship is running clean</div></div>
+                                                </div>
+                                            ) : (
+                                                <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                                                    {selIssues.map(issue => (
+                                                        <div key={issue.id} style={{padding:'12px',background: issue.threat === 'Urgent' ? 'var(--red-glow)' : 'var(--amber-glow)',borderRadius:'8px',border: `1px solid ${issue.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)'}`}}>
+                                                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                                                                <div style={{flex:1}}>
+                                                                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px',flexWrap:'wrap'}}>
+                                                                        <span className={`badge badge-${issue.threat.toLowerCase()}`}>{issue.threat}</span>
+                                                                        <span style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',fontWeight:600,background: issue.responsibility === 'REAP' ? 'var(--primary-glow)' : 'var(--bg-input)',color: issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--text-muted)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--primary)' : 'var(--border)'}`}}>{issue.responsibility === 'REAP' ? '🛠️ REAP' : '🚢 Ship'}</span>
+                                                                        {issue.category && <span style={{fontSize:'10px',color:'var(--text-muted)'}}>{issue.category}</span>}
+                                                                        <span style={{fontSize:'10px',color:'var(--text-muted)'}}>• {fmtDate(issue.created)}</span>
+                                                                    </div>
+                                                                    <div style={{fontSize:'13px'}}>{issue.title || issue.details}</div>
+                                                                    {issue.title && issue.details && issue.title !== issue.details && <div style={{fontSize:'11px',color:'var(--text-muted)',marginTop:'4px'}}>{issue.details}</div>}
+                                                                </div>
+                                                                <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
+                                                                    <button className="btn btn-sm" style={{padding:'2px 6px',fontSize:'9px',background: issue.responsibility === 'REAP' ? 'var(--amber-glow)' : 'var(--primary-glow)',color: issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)',border: `1px solid ${issue.responsibility === 'REAP' ? 'var(--amber)' : 'var(--primary)'}`}} title={`Switch to ${issue.responsibility === 'REAP' ? 'Ship' : 'REAP'}`} onClick={() => { const newResp = issue.responsibility === 'REAP' ? 'Ship' : 'REAP'; setIssues(p => p.map(x => x.id === issue.id ? {...x, responsibility: newResp} : x)); logActivity(`Changed ${sel?.name || 'ship'} issue ownership to ${newResp}: ${(issue.title || issue.details || '').substring(0,40)}`); }}>{issue.responsibility === 'REAP' ? '→ Ship' : '→ REAP'}</button>
+                                                                    <button className="btn btn-sm btn-success" onClick={() => { setResolveIssueModal(issue); setResolveNotes(''); }}>✓ Resolve</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ASSETS TAB */}
+                                    {detailTab === 'assets' && (
+                                        <div>
+                                            <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'16px',letterSpacing:'0.5px'}}>ASSET SERIAL NUMBERS & IDENTIFIERS</div>
+                                            <div className="form-row">
+                                                <div className="form-group"><label className="form-label">Cisco Router</label><input className="form-input" placeholder="Serial number..." value={sel.ciscoRouter || ''} onChange={e => setSel({...sel, ciscoRouter: e.target.value})}/></div>
+                                                <div className="form-group"><label className="form-label">HDD Star</label><input className="form-input" placeholder="Serial number..." value={sel.hddStar || sel.hdd || ''} onChange={e => setSel({...sel, hddStar: e.target.value})}/></div>
+                                                <div className="form-group"><label className="form-label">HDD Data</label><input className="form-input" placeholder="Serial number..." value={sel.hddData || ''} onChange={e => setSel({...sel, hddData: e.target.value})}/></div>
+                                            </div>
+                                            <div className="form-row">
+                                                <div className="form-group"><label className="form-label">Star CRNA</label><input className="form-input" placeholder="Serial number..." value={sel.crna1 || ''} onChange={e => setSel({...sel, crna1: e.target.value})}/></div>
+                                                <div className="form-group"><label className="form-label">Data CRNA</label><input className="form-input" placeholder="Serial number..." value={sel.crna2 || ''} onChange={e => setSel({...sel, crna2: e.target.value})}/></div>
+                                            </div>
+
+                                            {/* Asset Summary */}
+                                            <div style={{marginTop:'16px',padding:'12px',background:'var(--bg-input)',borderRadius:'8px'}}>
+                                                <div style={{fontSize:'11px',color:'var(--text-muted)',marginBottom:'8px'}}>Asset Completion</div>
+                                                <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                                                    {[
+                                                        { label: 'Router', value: sel.ciscoRouter },
+                                                        { label: 'HDD Star', value: sel.hddStar || sel.hdd },
+                                                        { label: 'HDD Data', value: sel.hddData },
+                                                        { label: 'Star CRNA', value: sel.crna1 },
+                                                        { label: 'Data CRNA', value: sel.crna2 },
+                                                    ].map(asset => (
+                                                        <span key={asset.label} style={{padding:'4px 10px',borderRadius:'4px',fontSize:'11px',background: asset.value ? 'var(--green-glow)' : 'var(--bg-card)',border: `1px solid ${asset.value ? 'var(--green)' : 'var(--border)'}`,color: asset.value ? 'var(--green)' : 'var(--text-muted)'}}>{asset.value ? '✓' : '○'} {asset.label}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ACTIVITY TAB */}
+                                    {/* NOTES TAB */}
+                                    {detailTab === 'notes' && (() => {
+                                        var shipNotes = quickNotes.filter(function(n) { return n.shipId === sel.id; }).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
+                                        return React.createElement('div', null,
+                                            React.createElement('div', {style: {display:'flex',gap:'8px',marginBottom:'16px'}},
+                                                React.createElement('input', {id: 'noteInput', style: {flex:1,padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, placeholder: 'Add a quick note...', onKeyDown: function(e) { if (e.key === 'Enter' && e.target.value.trim()) { var note = { id: 'N_' + Date.now(), shipId: sel.id, shipName: sel.name, text: e.target.value.trim(), color: 'yellow', user: currentUser ? currentUser.username : 'Unknown', date: new Date().toISOString() }; setQuickNotes(function(p) { return [note].concat(p); }); e.target.value = ''; logActivity('Added note to ' + sel.name + ': ' + note.text.substring(0,30)); } }}),
+                                                React.createElement('button', {className:'btn btn-primary', style:{borderRadius:'8px',padding:'10px 16px',fontWeight:700}, onClick: function() { var inp = document.getElementById('noteInput'); if (inp && inp.value.trim()) { var note = { id: 'N_' + Date.now(), shipId: sel.id, shipName: sel.name, text: inp.value.trim(), color: 'yellow', user: currentUser ? currentUser.username : 'Unknown', date: new Date().toISOString() }; setQuickNotes(function(p) { return [note].concat(p); }); inp.value = ''; logActivity('Added note to ' + sel.name); } }}, '+ Add')
+                                            ),
+                                            shipNotes.length === 0 ? React.createElement('div', {style: {textAlign:'center',padding:'30px',color:'var(--text-muted)'}}, React.createElement('div', {style: {fontSize:'24px',marginBottom:'8px'}}, '\uD83D\uDCCC'), React.createElement('div', {style: {fontSize:'12px'}}, 'No notes yet for this ship')) :
+                                            React.createElement('div', {style: {display:'flex',flexDirection:'column',gap:'8px'}},
+                                                shipNotes.map(function(note) {
+                                                    var colors = { yellow: {bg:'rgba(250,204,21,0.1)',border:'rgba(250,204,21,0.3)',accent:'#facc15'}, blue: {bg:'rgba(59,130,246,0.1)',border:'rgba(59,130,246,0.3)',accent:'#3b82f6'}, red: {bg:'rgba(239,68,68,0.1)',border:'rgba(239,68,68,0.3)',accent:'#ef4444'}, green: {bg:'rgba(16,185,129,0.1)',border:'rgba(16,185,129,0.3)',accent:'#10b981'} };
+                                                    var c = colors[note.color] || colors.yellow;
+                                                    return React.createElement('div', {key: note.id, style: {padding:'12px 16px',background:c.bg,border:'1px solid ' + c.border,borderLeft:'3px solid ' + c.accent,borderRadius:'8px'}},
+                                                        React.createElement('div', {style: {display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
+                                                            React.createElement('div', {style: {fontSize:'13px',color:'var(--text)',lineHeight:'1.5',flex:1}}, note.text),
+                                                            React.createElement('div', {style: {display:'flex',gap:'4px',marginLeft:'8px',flexShrink:0}},
+                                                                ['yellow','blue','red','green'].map(function(clr) { return React.createElement('div', {key:clr, onClick: function() { setQuickNotes(function(p) { return p.map(function(n) { return n.id === note.id ? Object.assign({},n,{color:clr}) : n; }); }); }, style: {width:'12px',height:'12px',borderRadius:'50%',background: colors[clr].accent,cursor:'pointer',border: note.color === clr ? '2px solid var(--text)' : '2px solid transparent'}}); }),
+                                                                React.createElement('button', {onClick: function() { setQuickNotes(function(p) { return p.filter(function(n) { return n.id !== note.id; }); }); toast('Note deleted','info'); }, style: {background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:'11px',padding:'0 4px'}}, '\uD83D\uDDD1\uFE0F')
+                                                            )
+                                                        ),
+                                                        React.createElement('div', {style: {fontSize:'10px',color:'var(--text-muted)',marginTop:'6px'}}, (note.user || 'Unknown') + ' • ' + fmtDate(note.date))
+                                                    );
+                                                })
+                                            )
+                                        );
+                                    })()}
+
+                                    {detailTab === 'activity' && (
+                                        <div>
+                                            <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'16px',letterSpacing:'0.5px'}}>RECENT ACTIVITY FOR {sel.name}</div>
+                                            <div className="activity-log">
+                                                {activityLog.filter(a => a.text.includes(sel.name)).slice(0, 10).map(a => (
+                                                    <div key={a.id} className="activity-item" style={{flexDirection:'column',gap:'4px'}}>
+                                                        <div style={{display:'flex',gap:'8px',alignItems:'flex-start'}}>
+                                                            <div style={{width:'22px',height:'22px',borderRadius:'6px',background:'var(--primary-glow)',border:'1px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'8px',fontWeight:800,color:'var(--primary)',flexShrink:0,marginTop:'1px'}}>{(a.user || 'SY').substring(0,2).toUpperCase()}</div>
+                                                            <div style={{flex:1}}>
+                                                                <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'2px'}}>
+                                                                    <span style={{fontSize:'11px',fontWeight:700,color:'var(--primary)'}}>{a.user || 'System'}</span>
+                                                                    <span className="activity-time" style={{fontSize:'10px'}}>{fmtTime(a.time)}</span>
+                                                                </div>
+                                                                <span className="activity-text">{a.text}</span>
+                                                            </div>
+                                                        </div>
+                                                        {a.details && (
+                                                            <div style={{marginLeft:'70px',padding:'8px',background:'var(--bg-input)',borderRadius:'6px',fontSize:'11px',color:'var(--text-dim)'}}>
+                                                                {a.details.resolution && <div style={{marginBottom:'4px'}}>↳ <strong>Resolution:</strong> {a.details.resolution}</div>}
+                                                                {a.details.reply && <div style={{marginBottom:'4px'}}>↳ <strong>Their Reply:</strong> "{a.details.reply}"</div>}
+                                                                {a.details.details && <div style={{marginBottom:'4px'}}>↳ <strong>Issue:</strong> {a.details.details}</div>}
+                                                                {a.details.threat && <div style={{marginBottom:'4px'}}>↳ <strong>Threat:</strong> <span className={`badge badge-${a.details.threat.toLowerCase()}`}>{a.details.threat}</span></div>}
+                                                                {a.details.notes && <div style={{marginBottom:'4px'}}>↳ <strong>Notes:</strong> {a.details.notes}</div>}
+                                                                {a.details.contactedBy && <div style={{marginBottom:'4px'}}>↳ <strong>By:</strong> {a.details.contactedBy}</div>}
+                                                                {a.details.waitingReply && <div style={{marginBottom:'4px'}}>↳ <strong>Status:</strong> Waiting on reply</div>}
+                                                                {a.details.inPortUntil && <div>↳ <strong>Back online:</strong> {fmtDate(a.details.inPortUntil)}</div>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {activityLog.filter(a => a.text.includes(sel.name)).length === 0 && <div style={{textAlign:'center',padding:'20px',color:'var(--text-muted)'}}><div style={{fontSize:'24px',marginBottom:'4px',opacity:0.5}}>📋</div><div style={{fontSize:'11px'}}>No recent activity for this ship</div></div>}
+                                            </div>
+                                        </div>
+                                    )}
+                            </>);
+                            return (
+                                <div className="detail-split">
+                                    <div className="detail-section detail-email">
+                                        <div className="detail-col-title"><Icon name="email"/>Email<span>{emailHistory.filter(h => h.shipId === sel.id).length}</span></div>
+                                        {renderTab('email')}
+                                    </div>
+                                    <div className="detail-section detail-info">
+                                        {/* Tabs */}
+                                        <div style={{display:'flex',borderBottom:'1px solid var(--border)',marginLeft:'-16px',marginRight:'-16px',paddingLeft:'16px',overflowX:'auto'}}>
                                             {[
-                                                { label: 'Router', value: sel.ciscoRouter },
-                                                { label: 'HDD Star', value: sel.hddStar || sel.hdd },
-                                                { label: 'HDD Data', value: sel.hddData },
-                                                { label: 'Star CRNA', value: sel.crna1 },
-                                                { label: 'Data CRNA', value: sel.crna2 },
-                                            ].map(asset => (
-                                                <span key={asset.label} style={{padding:'4px 10px',borderRadius:'4px',fontSize:'11px',background: asset.value ? 'var(--green-glow)' : 'var(--bg-card)',border: `1px solid ${asset.value ? 'var(--green)' : 'var(--border)'}`,color: asset.value ? 'var(--green)' : 'var(--text-muted)'}}>{asset.value ? '✓' : '○'} {asset.label}</span>
+                                                { id: 'info', label: 'Ship Info', iconName: 'ship' },
+                                                { id: 'issues', label: 'Issues', icon: '⚠️', badge: selIssues.length, badgeColor: selIssues.some(i => i.threat === 'Urgent') ? 'var(--red)' : 'var(--amber)' },
+                                                { id: 'assets', label: 'Assets', iconName: 'parts' },
+                                                { id: 'notes', label: 'Notes', icon: '📌' },
+                                                { id: 'activity', label: 'Activity', iconName: 'clock' },
+                                            ].map(tab => (
+                                                <button key={tab.id} onClick={() => setDetailTab(tab.id)} style={{padding:'12px 16px',background:'none',border:'none',borderBottom: rightTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',color: rightTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',fontWeight: rightTab === tab.id ? 600 : 400,cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'6px',marginBottom:'-1px'}}>
+                                                    {tab.iconName ? <Icon name={tab.iconName} style={{width:'14px',height:'14px'}}/> : <span>{tab.icon}</span>}
+                                                    <span>{tab.label}</span>
+                                                    {tab.badge > 0 && <span style={{background: tab.badgeColor || 'var(--primary)',color:'#fff',padding:'1px 6px',borderRadius:'10px',fontSize:'10px'}}>{tab.badge}</span>}
+                                                </button>
                                             ))}
+                                        </div>
+                                        <div className="tab-content" key={rightTab} style={{paddingTop:'16px'}}>
+                                            {renderTab(rightTab)}
+                                        {/* Last updated footer */}
+                                        <div style={{marginTop:'16px',paddingTop:'12px',borderTop:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'10px',color:'var(--text-muted)'}}>
+                                            <span>{sel.contactedBy ? `Last updated by ${sel.contactedBy}` : 'No updates recorded'}</span>
+                                            <span>{sel.lastContact ? relTime(sel.lastContact) : ''}</span>
+                                        </div>
                                         </div>
                                     </div>
                                 </div>
-                            )}
-
-                            {/* ACTIVITY TAB */}
-                            {/* NOTES TAB */}
-                            {detailTab === 'notes' && (() => {
-                                var shipNotes = quickNotes.filter(function(n) { return n.shipId === sel.id; }).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
-                                return React.createElement('div', null,
-                                    React.createElement('div', {style: {display:'flex',gap:'8px',marginBottom:'16px'}},
-                                        React.createElement('input', {id: 'noteInput', style: {flex:1,padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'13px'}, placeholder: 'Add a quick note...', onKeyDown: function(e) { if (e.key === 'Enter' && e.target.value.trim()) { var note = { id: 'N_' + Date.now(), shipId: sel.id, shipName: sel.name, text: e.target.value.trim(), color: 'yellow', user: currentUser ? currentUser.username : 'Unknown', date: new Date().toISOString() }; setQuickNotes(function(p) { return [note].concat(p); }); e.target.value = ''; logActivity('Added note to ' + sel.name + ': ' + note.text.substring(0,30)); } }}),
-                                        React.createElement('button', {className:'btn btn-primary', style:{borderRadius:'8px',padding:'10px 16px',fontWeight:700}, onClick: function() { var inp = document.getElementById('noteInput'); if (inp && inp.value.trim()) { var note = { id: 'N_' + Date.now(), shipId: sel.id, shipName: sel.name, text: inp.value.trim(), color: 'yellow', user: currentUser ? currentUser.username : 'Unknown', date: new Date().toISOString() }; setQuickNotes(function(p) { return [note].concat(p); }); inp.value = ''; logActivity('Added note to ' + sel.name); } }}, '+ Add')
-                                    ),
-                                    shipNotes.length === 0 ? React.createElement('div', {style: {textAlign:'center',padding:'30px',color:'var(--text-muted)'}}, React.createElement('div', {style: {fontSize:'24px',marginBottom:'8px'}}, '\uD83D\uDCCC'), React.createElement('div', {style: {fontSize:'12px'}}, 'No notes yet for this ship')) :
-                                    React.createElement('div', {style: {display:'flex',flexDirection:'column',gap:'8px'}},
-                                        shipNotes.map(function(note) {
-                                            var colors = { yellow: {bg:'rgba(250,204,21,0.1)',border:'rgba(250,204,21,0.3)',accent:'#facc15'}, blue: {bg:'rgba(59,130,246,0.1)',border:'rgba(59,130,246,0.3)',accent:'#3b82f6'}, red: {bg:'rgba(239,68,68,0.1)',border:'rgba(239,68,68,0.3)',accent:'#ef4444'}, green: {bg:'rgba(16,185,129,0.1)',border:'rgba(16,185,129,0.3)',accent:'#10b981'} };
-                                            var c = colors[note.color] || colors.yellow;
-                                            return React.createElement('div', {key: note.id, style: {padding:'12px 16px',background:c.bg,border:'1px solid ' + c.border,borderLeft:'3px solid ' + c.accent,borderRadius:'8px'}},
-                                                React.createElement('div', {style: {display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
-                                                    React.createElement('div', {style: {fontSize:'13px',color:'var(--text)',lineHeight:'1.5',flex:1}}, note.text),
-                                                    React.createElement('div', {style: {display:'flex',gap:'4px',marginLeft:'8px',flexShrink:0}},
-                                                        ['yellow','blue','red','green'].map(function(clr) { return React.createElement('div', {key:clr, onClick: function() { setQuickNotes(function(p) { return p.map(function(n) { return n.id === note.id ? Object.assign({},n,{color:clr}) : n; }); }); }, style: {width:'12px',height:'12px',borderRadius:'50%',background: colors[clr].accent,cursor:'pointer',border: note.color === clr ? '2px solid var(--text)' : '2px solid transparent'}}); }),
-                                                        React.createElement('button', {onClick: function() { setQuickNotes(function(p) { return p.filter(function(n) { return n.id !== note.id; }); }); toast('Note deleted','info'); }, style: {background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:'11px',padding:'0 4px'}}, '\uD83D\uDDD1\uFE0F')
-                                                    )
-                                                ),
-                                                React.createElement('div', {style: {fontSize:'10px',color:'var(--text-muted)',marginTop:'6px'}}, (note.user || 'Unknown') + ' • ' + fmtDate(note.date))
-                                            );
-                                        })
-                                    )
-                                );
-                            })()}
-
-                            {detailTab === 'activity' && (
-                                <div>
-                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginBottom:'16px',letterSpacing:'0.5px'}}>RECENT ACTIVITY FOR {sel.name}</div>
-                                    <div className="activity-log">
-                                        {activityLog.filter(a => a.text.includes(sel.name)).slice(0, 10).map(a => (
-                                            <div key={a.id} className="activity-item" style={{flexDirection:'column',gap:'4px'}}>
-                                                <div style={{display:'flex',gap:'8px',alignItems:'flex-start'}}>
-                                                    <div style={{width:'22px',height:'22px',borderRadius:'6px',background:'var(--primary-glow)',border:'1px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'8px',fontWeight:800,color:'var(--primary)',flexShrink:0,marginTop:'1px'}}>{(a.user || 'SY').substring(0,2).toUpperCase()}</div>
-                                                    <div style={{flex:1}}>
-                                                        <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'2px'}}>
-                                                            <span style={{fontSize:'11px',fontWeight:700,color:'var(--primary)'}}>{a.user || 'System'}</span>
-                                                            <span className="activity-time" style={{fontSize:'10px'}}>{fmtTime(a.time)}</span>
-                                                        </div>
-                                                        <span className="activity-text">{a.text}</span>
-                                                    </div>
-                                                </div>
-                                                {a.details && (
-                                                    <div style={{marginLeft:'70px',padding:'8px',background:'var(--bg-input)',borderRadius:'6px',fontSize:'11px',color:'var(--text-dim)'}}>
-                                                        {a.details.resolution && <div style={{marginBottom:'4px'}}>↳ <strong>Resolution:</strong> {a.details.resolution}</div>}
-                                                        {a.details.reply && <div style={{marginBottom:'4px'}}>↳ <strong>Their Reply:</strong> "{a.details.reply}"</div>}
-                                                        {a.details.details && <div style={{marginBottom:'4px'}}>↳ <strong>Issue:</strong> {a.details.details}</div>}
-                                                        {a.details.threat && <div style={{marginBottom:'4px'}}>↳ <strong>Threat:</strong> <span className={`badge badge-${a.details.threat.toLowerCase()}`}>{a.details.threat}</span></div>}
-                                                        {a.details.notes && <div style={{marginBottom:'4px'}}>↳ <strong>Notes:</strong> {a.details.notes}</div>}
-                                                        {a.details.contactedBy && <div style={{marginBottom:'4px'}}>↳ <strong>By:</strong> {a.details.contactedBy}</div>}
-                                                        {a.details.waitingReply && <div style={{marginBottom:'4px'}}>↳ <strong>Status:</strong> Waiting on reply</div>}
-                                                        {a.details.inPortUntil && <div>↳ <strong>Back online:</strong> {fmtDate(a.details.inPortUntil)}</div>}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {activityLog.filter(a => a.text.includes(sel.name)).length === 0 && <div style={{textAlign:'center',padding:'20px',color:'var(--text-muted)'}}><div style={{fontSize:'24px',marginBottom:'4px',opacity:0.5}}>📋</div><div style={{fontSize:'11px'}}>No recent activity for this ship</div></div>}
-                                    </div>
-                                </div>
-                            )}
-                            {/* Last updated footer */}
-                            <div style={{marginTop:'16px',paddingTop:'12px',borderTop:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'10px',color:'var(--text-muted)'}}>
-                                <span>{sel.contactedBy ? `Last updated by ${sel.contactedBy}` : 'No updates recorded'}</span>
-                                <span>{sel.lastContact ? relTime(sel.lastContact) : ''}</span>
-                            </div>
-                            </div>{/* end tab-content */}
-                        </div>
+                            );
+                        })()}
                     </>) : null}
                 </div>
             </div>
@@ -9927,7 +9962,7 @@ function POCDirectory({ ships, toast }) {
         try {
             var history = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
             var seen = {};
-            var teamEmails = ['daniel.k.brown', 'dbrown', 'clyde.a.grant', 'cgrant', 'uriel.pena', 'up_reap', 'kaazim.j.hanif', 'jayreap', 'damian.j.pierman', 'eryk.kedzierski', 'steven.m.spellman', 'mohammed.cardenas'];
+            var teamEmails = TEAM_EMAIL_HANDLES;
             history.forEach(function(h) {
                 if (h.fromEmail && h.fromEmail.indexOf('@') !== -1) {
                     var key = h.fromEmail.toLowerCase();
