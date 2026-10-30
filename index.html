@@ -254,37 +254,40 @@
         .list-group-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px 7px; background: var(--bg-card); border: none; border-bottom: 1px solid var(--border); color: var(--gc, var(--text-dim)); font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; text-align: left; }
         .lg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 0 3px var(--gg, transparent); }
         .lg-count { margin-left: auto; min-width: 22px; text-align: center; padding: 1px 7px; border-radius: 10px; background: var(--gg, var(--bg-input)); color: var(--gc, var(--text-muted)); font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0; }
-        .ship-row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) 22px; gap: 10px; align-items: center; margin: 6px 8px 0; padding: 9px 6px 9px 10px; border-radius: 9px; border: 1px solid var(--border); border-left: 3px solid var(--tc, var(--border)); background: linear-gradient(90deg, var(--tg, transparent), transparent 70%), var(--bg-card); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; outline: none; }
-        .ship-row:hover { border-color: var(--border-focus); border-left-color: var(--tc, var(--border-focus)); transform: translateX(2px); }
-        .ship-row.selected { border-color: var(--primary); border-left-color: var(--tc, var(--primary)); box-shadow: 0 0 0 1px var(--primary), 0 6px 18px rgba(0,0,0,0.25); }
+        .ship-row { position: relative; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 20px; gap: 12px; align-items: center; padding: 10px 6px 10px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; outline: none; }
+        .ship-row::before { content: ''; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: var(--tc); opacity: 0; }
+        .ship-row:hover { background: var(--bg-card-hover); }
+        .ship-row.tone-off::before, .ship-row.tone-urgent::before, .ship-row.tone-iss::before, .ship-row.tone-port::before { opacity: 1; }
+        .ship-row.selected { background: var(--primary-glow); }
+        .ship-row.selected::before { opacity: 1; background: var(--primary); }
         .tone-off, .tone-urgent { --tc: var(--red); --tg: var(--red-glow); }
         .tone-iss { --tc: var(--amber); --tg: var(--amber-glow); }
         .tone-port { --tc: var(--blue); --tg: var(--blue-glow); }
-        .tone-pend { --tc: var(--text-muted); --tg: transparent; }
+        .tone-pend { --tc: var(--text-muted); --tg: var(--bg-input); }
         .tone-on { --tc: var(--green); --tg: var(--green-glow); }
-        .ship-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--tg, var(--bg-input)); border: 1px solid var(--tc, var(--border)); color: var(--tc, var(--text-muted)); font-family: 'JetBrains Mono', monospace; line-height: 1; }
-        .ship-avatar b { font-size: 14px; font-weight: 800; }
-        .ship-avatar small { font-size: 8px; font-weight: 700; letter-spacing: .5px; margin-top: 3px; opacity: .85; }
-        .ship-row-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-        .ship-row-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
-        .ship-row-name { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; white-space: nowrap; }
-        .type-chip { font-size: 9px; font-weight: 700; letter-spacing: .6px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-muted); }
-        .ship-row-meta { margin-left: auto; display: flex; align-items: center; gap: 6px; }
-        .ship-row-tag { font-size: 9px; font-weight: 800; letter-spacing: .5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; background: var(--tc); color: #000; }
-        .ship-row-tag.pend { background: var(--bg-input); color: var(--text-muted); }
-        .ship-row-age { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--tc, var(--text-muted)); }
-        .ship-row-bottom { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .ship-row-sub { flex: 1; min-width: 0; font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tone-nc { --tc: var(--text-muted); --tg: var(--bg-input); }
+        .ship-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 0 3px var(--tg); }
+        .tone-on .ship-dot { box-shadow: none; opacity: .75; }
+        .tone-pend .ship-dot { background: none; border: 1.5px dashed var(--text-muted); box-shadow: none; box-sizing: border-box; }
+        .ship-row-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .ship-row-name { font-family: 'JetBrains Mono', monospace; font-size: 13.5px; font-weight: 700; color: var(--text); white-space: nowrap; letter-spacing: .2px; }
+        .ship-row-name .cls { color: var(--text-muted); font-weight: 500; margin-right: 5px; }
+        .ship-row-sub { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tone-off .ship-row-sub, .tone-urgent .ship-row-sub, .tone-iss .ship-row-sub { color: var(--text-dim); }
+        .ship-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+        .status-pill { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--tg); color: var(--tc); white-space: nowrap; }
         .week { display: inline-flex; align-items: flex-end; gap: 2px; flex-shrink: 0; }
-        .week i { width: 5px; height: 12px; border-radius: 2px; background: var(--bg-input); }
-        .week i.up { background: var(--green); } .week i.down { background: var(--red); }
-        .week i:last-child { height: 15px; }
-        .ship-row-kebab { width: 22px; height: 22px; border-radius: 5px; border: none; background: none; color: var(--text-muted); font-size: 15px; line-height: 1; cursor: pointer; opacity: .45; align-self: start; }
-        .ship-row:hover .ship-row-kebab, .ship-row.selected .ship-row-kebab, .ship-row.menu-open .ship-row-kebab { opacity: 1; }
+        .week i { width: 4px; height: 9px; border-radius: 1.5px; background: var(--border); }
+        .week i.up { background: var(--green); opacity: .4; }
+        .week i.down { background: var(--red); }
+        .week i:last-child { height: 12px; }
+        .ship-row-kebab { width: 20px; height: 22px; border-radius: 5px; border: none; background: none; color: var(--text-muted); font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; }
+        .ship-row:hover .ship-row-kebab, .ship-row.selected .ship-row-kebab, .ship-row.menu-open .ship-row-kebab, .ship-row-kebab:focus-visible { opacity: 1; }
         .ship-row-kebab:hover, .ship-row.menu-open .ship-row-kebab { background: var(--bg-input); color: var(--text); }
-        .ship-row-actions { position: absolute; bottom: 7px; right: 32px; display: none; gap: 4px; padding-left: 14px; background: linear-gradient(90deg, transparent, var(--bg-card) 12px); }
+        .ship-row-actions { position: absolute; top: 50%; right: 30px; transform: translateY(-50%); display: none; gap: 4px; padding-left: 16px; background: linear-gradient(90deg, transparent, var(--bg-card-hover) 14px); }
+        .ship-row.selected .ship-row-actions { background: none; }
         .ship-row:hover .ship-row-actions { display: flex; }
-        .ship-row-actions button { font-family: inherit; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text); cursor: pointer; white-space: nowrap; }
+        .ship-row-actions button { font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); cursor: pointer; white-space: nowrap; }
         .ship-row-actions button:hover { border-color: var(--primary); color: var(--primary); }
         .list-search { position: relative; flex: 1; min-width: 120px; }
         .list-search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted); }
@@ -582,7 +585,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T160";
+    var APP_BUILD = "2026-10-30T161";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2195,7 +2198,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T160'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T161'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2206,7 +2209,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T160');
+                                    localStorage.setItem('lastSeenBuild', 'T161');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2216,6 +2219,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T161'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '✨ Cleaner Ship List'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Dashboard ship list redesigned to be calm and easy to scan: plain rows with thin dividers instead of big colored cards\n• Healthy ships are quiet: a small green dot, the hull number, and type and homeport underneath\n• Only ships that need attention get color: a colored edge on the left and a soft status pill (Offline · 3d, Urgent · 4d, Issue · 1d, In port, Install)\n• Hull numbers are easier to read: the class (DDG, CG) is dimmed and the number stands out\n• The 7-day strip is subtler: online days are faint green so offline days (red) stand out\n• Ships with no check entered today show a grey dot\n• The big status badges and FULL/MINI tags are gone, so more ships fit on screen\n• The ⋮ menu button only appears when you hover or select a ship'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T160'),
@@ -4096,7 +4106,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             return { ...base, group: 'offline', tone: 'off', glyph: '✕', st: 'off', tag: ['off', 'OFFLINE'], age: n > 1 ? n + 'd' : '', ageTip: n > 1 ? 'Offline ' + n + ' days in a row' : '', sub: issueText || 'No ping today' };
         }
         if (topIssue) return { ...base, group: topIssue.threat === 'Urgent' ? 'urgent' : 'issues', tone: topIssue.threat === 'Urgent' ? 'urgent' : 'iss', glyph: topIssue.threat === 'Urgent' ? '!!' : '!', st: 'iss', tag: topIssue.threat === 'Urgent' ? ['urgent', 'URGENT'] : ['iss', si.length > 1 ? si.length + ' ISSUES' : 'ISSUE'], age: issueAge + 'd', ageTip: 'Open ' + issueAge + (issueAge === 1 ? ' day' : ' days'), sub: issueText };
-        return { ...base, group: 'good', tone: 'on', glyph: '✓', st: t.state === 'unchecked' ? 'nc' : 'on', tag: null, sub: (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
+        return { ...base, group: 'good', tone: t.state === 'unchecked' ? 'nc' : 'on', glyph: '✓', st: t.state === 'unchecked' ? 'nc' : 'on', tag: null, sub: (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
     };
     const listView = useMemo(() => {
         const q = listQuery.trim().toLowerCase();
@@ -4934,20 +4944,14 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                 {...menuProps(ship)}
                                                 draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
                                                 style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, boxShadow: dashDragOver === ship.id && dashDragShip !== ship.id ? 'inset 0 2px 0 var(--primary)' : undefined}}>
-                                                <span className="ship-avatar"><b>{dashReorder ? '⋮⋮' : info.glyph}</b></span>
+                                                <i className="ship-dot"/>
                                                 <span className="ship-row-main">
-                                                    <span className="ship-row-top">
-                                                        <span className="ship-row-name">{ship.name}</span>
-                                                        <span className="type-chip">{ship.type === 'Full REAP' ? 'FULL' : ship.type === 'Mini REAP' ? 'MINI' : (ship.type || '').toUpperCase()}</span>
-                                                        <span className="ship-row-meta">
-                                                            {info.age && <span className="ship-row-age" title={info.ageTip}>{info.age}</span>}
-                                                            {info.tag && <span className={'ship-row-tag ' + info.tag[0]}>{info.tag[1]}</span>}
-                                                        </span>
-                                                    </span>
-                                                    <span className="ship-row-bottom">
-                                                        <span className="ship-row-sub" title={info.sub}>{info.sub}</span>
-                                                        {weekStrip(info)}
-                                                    </span>
+                                                    <span className="ship-row-name">{(() => { const m = ship.name.match(/^([A-Za-z]+)\s*(.*)$/); return m ? <><span className="cls">{m[1]}</span>{m[2]}</> : ship.name; })()}</span>
+                                                    <span className="ship-row-sub" title={info.sub}>{info.sub}</span>
+                                                </span>
+                                                <span className="ship-row-right">
+                                                    {info.tag && <span className="status-pill" title={info.ageTip || undefined}>{info.tag[1].charAt(0) + info.tag[1].slice(1).toLowerCase()}{info.age ? ' · ' + info.age : ''}</span>}
+                                                    {weekStrip(info)}
                                                 </span>
                                                 {!dashReorder ? <button type="button" className="ship-row-kebab" aria-label={'Actions for ' + ship.name} title="More actions (or right-click the ship)"
                                                     onClick={(e) => { e.stopPropagation(); if (rowMenu?.ship.id === ship.id) { setRowMenu(null); return; } setSel(ship); const r = e.currentTarget.getBoundingClientRect(); openRowMenu(ship, r.right - 230, r.bottom + 4); }}>⋮</button> : <span/>}
