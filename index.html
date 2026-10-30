@@ -582,7 +582,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T159";
+    var APP_BUILD = "2026-10-30T160";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2142,7 +2142,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     return (
         <div className="app">
             <header className="topbar">
-                <div className="topbar-logo"><svg width="28" height="16" viewBox="0 0 120 60" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 42 L15 38 L105 38 L115 42 L108 45 L12 45 Z" fill="currentColor" fillOpacity="0.15"/><path d="M5 42 L15 38 L105 38 L115 42"/><path d="M15 38 L8 35 L5 42"/><path d="M105 38 L112 35 L115 42"/><path d="M18 38 L18 35 L102 35 L102 38"/><circle cx="28" cy="33" r="4"/><path d="M28 33 L28 26"/><path d="M52 35 L52 22 L72 22 L72 35"/><path d="M62 22 L62 10"/><path d="M76 35 L76 26 L88 26 L88 35"/><path d="M82 26 L82 18"/></svg><span>SHIP TRACKER</span></div>
+                <div className="topbar-logo"><svg width="76" height="23" viewBox="0 0 160 48" fill="currentColor" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-label="Destroyer"><path d="M3 30 L3 34.5 L8 38.5 L139 38.5 Q149 34 157 23 L126 26.5 L60 28.5 L3 30 Z" stroke="none"/><path d="M23 29.5 L25 21.5 L49 21.5 L51 29 Z" stroke="none"/><path d="M54 29 L57 18 L64.5 18 L67 28.8 Z" stroke="none"/><path d="M55.5 20.5 L65.5 20.5" fill="none" stroke="var(--sidebar, #0c1015)" strokeWidth="1"/><path d="M66 28.8 L66 23.5 L76 23.5 L76 28.5 Z" stroke="none"/><path d="M76 28.5 L79 16.5 L86.5 16.5 L89 28.3 Z" stroke="none"/><path d="M77.5 19 L87.5 19" fill="none" stroke="var(--sidebar, #0c1015)" strokeWidth="1"/><path d="M89 28.3 L89 15 L96 11 L109 11 L114 17 L119 19 L119 27.2 Z" stroke="none"/><path d="M106 12.5 L112 19" fill="none" stroke="var(--sidebar, #0c1015)" strokeWidth="1.4"/><path d="M100.5 11 L99 1" fill="none" strokeWidth="2"/><path d="M94.5 4.5 L104 4.5" fill="none" strokeWidth="1.6"/><path d="M96 8 L103 8" fill="none" strokeWidth="1.4"/><path d="M95.5 11 L99.5 3 L104.5 11" fill="none" strokeWidth="1.4"/><path d="M129 26.6 Q129.5 23 133 22.8 Q136.5 23 137 26.2 Z" stroke="none"/><path d="M135 24 L146 21.5" fill="none" strokeWidth="1.8"/><path d="M1 43 Q20 41.5 40 43 T80 43 T120 43 T159 43" fill="none" strokeWidth="1.4" opacity="0.4"/></svg><span>SHIP TRACKER</span></div>
                 <nav className="topnav" aria-label="Main">
                     {navItems.map(item => (
                         <button key={item.id} type="button" data-testid={'nav-' + item.id} className={'topnav-btn' + (page === item.id ? ' active' : '')} aria-current={page === item.id ? 'page' : undefined} onClick={() => setPage(item.id)} title={item.label}>
@@ -2195,7 +2195,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T159'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T160'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2206,7 +2206,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T159');
+                                    localStorage.setItem('lastSeenBuild', 'T160');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2216,6 +2216,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T160'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🚢 New Logo'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• The logo at the top left is now a destroyer (DDG) side view: flared bow, forward gun, tall bridge with the radar face, tripod mast, two raked funnels, hangar and flight deck\n• The logo is a little larger so the details show'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T159'),
