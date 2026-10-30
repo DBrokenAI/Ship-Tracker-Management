@@ -250,42 +250,56 @@
         .seg { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--bg-input); border: 1px solid var(--border); }
         .seg button { border: none; background: none; color: var(--text-dim); font-family: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
         .seg button.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
-        .ship-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 12px 10px 14px; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; cursor: pointer; }
-        .ship-row:hover { background: var(--bg-card-hover); }
-        .ship-row.selected { background: var(--primary-glow); border-left-color: var(--primary); }
-        .ship-row-name { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .ship-row-sub { grid-column: 2 / 4; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px; min-width: 0; }
-        .ship-row-sub > span { overflow: hidden; text-overflow: ellipsis; }
-        .ship-row-tag { font-size: 10px; font-weight: 700; letter-spacing: .4px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
-        .ship-row-tag.off, .ship-row-tag.urgent { background: var(--red-glow); color: var(--red); }
-        .ship-row-tag.iss { background: var(--amber-glow); color: var(--amber); }
+        .list-group { padding-bottom: 4px; }
+        .list-group-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px 7px; background: var(--bg-card); border: none; border-bottom: 1px solid var(--border); color: var(--gc, var(--text-dim)); font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; cursor: pointer; text-align: left; }
+        .list-group-head:hover { filter: brightness(1.15); }
+        .lg-caret { width: 10px; color: var(--text-muted); font-size: 10px; }
+        .lg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 0 3px var(--gg, transparent); }
+        .lg-count { margin-left: auto; min-width: 22px; text-align: center; padding: 1px 7px; border-radius: 10px; background: var(--gg, var(--bg-input)); color: var(--gc, var(--text-muted)); font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0; }
+        .ship-row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) 22px; gap: 10px; align-items: center; margin: 6px 8px 0; padding: 9px 6px 9px 10px; border-radius: 9px; border: 1px solid var(--border); border-left: 3px solid var(--tc, var(--border)); background: linear-gradient(90deg, var(--tg, transparent), transparent 70%), var(--bg-card); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; outline: none; }
+        .ship-row:hover { border-color: var(--border-focus); border-left-color: var(--tc, var(--border-focus)); transform: translateX(2px); }
+        .ship-row.selected { border-color: var(--primary); border-left-color: var(--tc, var(--primary)); box-shadow: 0 0 0 1px var(--primary), 0 6px 18px rgba(0,0,0,0.25); }
+        .tone-off, .tone-urgent { --tc: var(--red); --tg: var(--red-glow); }
+        .tone-iss { --tc: var(--amber); --tg: var(--amber-glow); }
+        .tone-port { --tc: var(--blue); --tg: var(--blue-glow); }
+        .tone-pend { --tc: var(--text-muted); --tg: transparent; }
+        .tone-on { --tc: var(--green); --tg: var(--green-glow); }
+        .ship-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--tg, var(--bg-input)); border: 1px solid var(--tc, var(--border)); color: var(--tc, var(--text-muted)); font-family: 'JetBrains Mono', monospace; line-height: 1; }
+        .ship-avatar b { font-size: 14px; font-weight: 800; }
+        .ship-avatar small { font-size: 8px; font-weight: 700; letter-spacing: .5px; margin-top: 3px; opacity: .85; }
+        .ship-row-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+        .ship-row-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .ship-row-name { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; white-space: nowrap; }
+        .type-chip { font-size: 9px; font-weight: 700; letter-spacing: .6px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-muted); }
+        .ship-row-meta { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+        .ship-row-tag { font-size: 9px; font-weight: 800; letter-spacing: .5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; background: var(--tc); color: #000; }
         .ship-row-tag.pend { background: var(--bg-input); color: var(--text-muted); }
-        .ship-row-tag.port { background: var(--blue-glow); color: var(--blue); }
+        .ship-row-age { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--tc, var(--text-muted)); }
+        .ship-row-bottom { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .ship-row-sub { flex: 1; min-width: 0; font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .week { display: inline-flex; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+        .week i { width: 5px; height: 12px; border-radius: 2px; background: var(--bg-input); }
+        .week i.up { background: var(--green); } .week i.down { background: var(--red); }
+        .week i:last-child { height: 15px; }
+        .ship-row-kebab { width: 22px; height: 22px; border-radius: 5px; border: none; background: none; color: var(--text-muted); font-size: 15px; line-height: 1; cursor: pointer; opacity: .45; align-self: start; }
+        .ship-row:hover .ship-row-kebab, .ship-row.selected .ship-row-kebab, .ship-row.menu-open .ship-row-kebab { opacity: 1; }
+        .ship-row-kebab:hover, .ship-row.menu-open .ship-row-kebab { background: var(--bg-input); color: var(--text); }
+        .ship-row-actions { position: absolute; bottom: 7px; right: 32px; display: none; gap: 4px; padding-left: 14px; background: linear-gradient(90deg, transparent, var(--bg-card) 12px); }
+        .ship-row:hover .ship-row-actions { display: flex; }
+        .ship-row-actions button { font-family: inherit; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text); cursor: pointer; white-space: nowrap; }
+        .ship-row-actions button:hover { border-color: var(--primary); color: var(--primary); }
+        .good-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 8px; }
+        .good-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 9px; border-radius: 8px; border: 1px solid var(--border); border-top: 2px solid var(--green); background: var(--bg-card); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; text-align: left; min-width: 0; transition: border-color .15s, transform .15s; }
+        .good-chip:hover { border-color: var(--border-focus); border-top-color: var(--green); transform: translateY(-1px); }
+        .good-chip.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+        .good-chip.nc { border-top-color: var(--border); }
+        .good-chip span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .good-chip .week i { width: 4px; height: 8px; } .good-chip .week i:last-child { height: 11px; }
         .list-search { position: relative; flex: 1; min-width: 120px; }
         .list-search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted); }
         .list-search input { width: 100%; padding: 6px 26px 6px 30px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: inherit; font-size: 12px; }
         .list-search input:focus { outline: none; border-color: var(--primary); }
         .list-search button { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 4px; }
-        .list-group-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 12px; background: var(--bg-input); border: none; border-bottom: 1px solid var(--border); color: var(--text-dim); font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; cursor: pointer; text-align: left; }
-        .list-group-head:hover { color: var(--text); }
-        .lg-caret { width: 10px; color: var(--text-muted); font-size: 10px; }
-        .lg-dot { width: 6px; height: 6px; border-radius: 50%; }
-        .lg-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-muted); letter-spacing: 0; }
-        .ship-row { position: relative; grid-template-columns: 8px minmax(0, 1fr) auto 22px; padding-right: 6px; outline: none; }
-        .ship-row.compact { padding-top: 7px; padding-bottom: 7px; }
-        .ship-row.compact .ship-row-name { font-weight: 500; color: var(--text-dim); }
-        .ship-row.compact.selected .ship-row-name { color: var(--text); }
-        .ship-row-sub { grid-column: 2 / 5; }
-        .ship-row-meta { display: flex; align-items: center; gap: 6px; }
-        .ship-row-age { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); }
-        .ship-row-kebab { width: 22px; height: 22px; border-radius: 5px; border: none; background: none; color: var(--text-muted); font-size: 15px; line-height: 1; cursor: pointer; opacity: .45; }
-        .ship-row:hover .ship-row-kebab, .ship-row.selected .ship-row-kebab, .ship-row.menu-open .ship-row-kebab { opacity: 1; }
-        .ship-row-kebab:hover, .ship-row.menu-open .ship-row-kebab { background: var(--bg-input); color: var(--text); }
-        .ship-row-actions { position: absolute; top: 6px; right: 32px; display: none; gap: 4px; padding-left: 10px; background: linear-gradient(90deg, transparent, var(--bg-card-hover) 10px); }
-        .ship-row.compact .ship-row-actions { top: 4px; }
-        .ship-row:hover .ship-row-actions { display: flex; }
-        .ship-row-actions button { font-family: inherit; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); cursor: pointer; white-space: nowrap; }
-        .ship-row-actions button:hover { border-color: var(--primary); color: var(--primary); }
         .row-menu-catch { position: fixed; inset: 0; z-index: 950; }
         .row-menu { position: fixed; z-index: 951; width: 230px; padding: 4px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,0.4); }
         .row-menu-title { display: flex; align-items: center; gap: 8px; padding: 8px 10px 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
@@ -2164,7 +2178,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🧭 New Dashboard Layout'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• Dashboard rebuilt from scratch: ship list on the left, the selected ship\'s full details on the right, side by side (same colors as before)\n• Ship details are always visible in the right panel. The slide-in drawer, its close button and its dark backdrop are gone\n• The Dashboard opens with the most urgent ship already selected (offline ships first, then urgent issues)\n• Each ship in the list shows a status dot, a tag (OFFLINE, URGENT, ISSUE, IN PORT or Pending install) and a second line with its top open issue, or its type and homeport when nothing is wrong\n• The ship list stays in view while you scroll the details, and scrolls on its own when the fleet is long\n• Reorder, Reset and Done moved to the bottom of the list. Starting Reorder switches the list back to All ships\n• The row of four big number boxes is replaced by one line of counts: offline, open issues (with how many are urgent), all good, and pending installs when there are any. Click a count to filter the list, click again to clear it\n• The Ships table and the separate Needs attention list are gone (both live in the new ship list)\n• Removed the Dashboard > ship > tab breadcrumb from the details panel\n• Ship detail tabs scroll sideways if the panel is narrow\n• Esc no longer closes the ship details (there is nothing to close now)\n• On smaller screens the list sits above the details\n• Daily Checks has two new check boxes for every ship: Diode Up (is the diode up?) and Data Transfer (is data being transferred?)\n• Both new boxes appear in the table view (new Diode Up and Data Transfer columns) and the card view, start checked like Primary and Alternate, and are logged in Activity when changed\n• End of Day report: the Diode column now comes from the Diode Up box, so it shows Down when the box is unchecked, even if the ship is online\n• Dashboard ship list is now grouped: Offline, Urgent issues, Open issues, In port, Pending install, then All good at the bottom. Each group shows a count and can be folded shut (the app remembers which ones you folded)\n• All good ships take up one short line, so problem ships stand out\n• Offline ships show how many days in a row they have been offline, and ships with issues show how many days the top issue has been open\n• Hover a ship to get quick buttons: + Issue and Emailed (Back online for in-port ships, Activate for pending installs)\n• Every ship has a ⋮ menu (or right-click the ship): Add issue, Mark emailed, View open issues, View notes, Email the POC, Copy POC email, and Set in port / Back online / Mark installed\n• New Find a ship box at the top of the list (searches hull, homeport and POC). Filters are now All, Full, Mini; the old Attention filter is covered by the groups\n• The bottom of the list shows how many ships are listed'
+                                    '• Dashboard rebuilt from scratch: ship list on the left, the selected ship\'s full details on the right, side by side (same colors as before)\n• Ship details are always visible in the right panel. The slide-in drawer, its close button and its dark backdrop are gone\n• The Dashboard opens with the most urgent ship already selected (offline ships first, then urgent issues)\n• Each ship in the list shows a status dot, a tag (OFFLINE, URGENT, ISSUE, IN PORT or Pending install) and a second line with its top open issue, or its type and homeport when nothing is wrong\n• The ship list stays in view while you scroll the details, and scrolls on its own when the fleet is long\n• Reorder, Reset and Done moved to the bottom of the list. Starting Reorder switches the list back to All ships\n• The row of four big number boxes is replaced by one line of counts: offline, open issues (with how many are urgent), all good, and pending installs when there are any. Click a count to filter the list, click again to clear it\n• The Ships table and the separate Needs attention list are gone (both live in the new ship list)\n• Removed the Dashboard > ship > tab breadcrumb from the details panel\n• Ship detail tabs scroll sideways if the panel is narrow\n• Esc no longer closes the ship details (there is nothing to close now)\n• On smaller screens the list sits above the details\n• Daily Checks has two new check boxes for every ship: Diode Up (is the diode up?) and Data Transfer (is data being transferred?)\n• Both new boxes appear in the table view (new Diode Up and Data Transfer columns) and the card view, start checked like Primary and Alternate, and are logged in Activity when changed\n• End of Day report: the Diode column now comes from the Diode Up box, so it shows Down when the box is unchecked, even if the ship is online\n• Dashboard ship list is now grouped: Offline, Urgent issues, Open issues, In port, Pending install, then All good at the bottom. Each group shows a count and can be folded shut (the app remembers which ones you folded)\n• Ship list restyled: each ship is its own card with a colored edge and a soft tint (red offline or urgent, amber issues, blue in port)\n• Each card has a status badge on the left (✕ offline, !! urgent, ! issue, ⚓ in port, + pending), a bigger hull number, and a FULL or MINI tag\n• New 7-day strip on every ship: one bar per day, green online, red offline, grey not entered. Today\'s bar is the tall one on the right\n• Group headers are colored to match, with a colored count bubble\n• All good ships are shown as small tiles, three across, each with its 7-day strip\n• The selected ship is outlined in green\n• Offline ships show how many days in a row they have been offline, and ships with issues show how many days the top issue has been open\n• Hover a ship to get quick buttons: + Issue and Emailed (Back online for in-port ships, Activate for pending installs)\n• Every ship has a ⋮ menu (or right-click the ship): Add issue, Mark emailed, View open issues, View notes, Email the POC, Copy POC email, and Set in port / Back online / Mark installed\n• New Find a ship box at the top of the list (searches hull, homeport and POC). Filters are now All, Full, Mini; the old Attention filter is covered by the groups\n• The bottom of the list shows how many ships are listed'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T156'),
@@ -4039,25 +4053,31 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         const isInPort = !!ship.inPort && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
         const issueText = topIssue ? (topIssue.title || topIssue.details || 'Open issue') + (si.length > 1 ? ' +' + (si.length - 1) + ' more' : '') : '';
         const issueAge = topIssue ? daysSince(topIssue.created) : 0;
-        const base = { si, topIssue, isInPort };
+        const week = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = parseLocalDate(today); d.setDate(d.getDate() - i);
+            const c = checkByKey[ship.id + '|' + toDateString(d)];
+            week.push(!c ? 'none' : hasPing(c.pingAM) || hasPing(c.pingPM) ? 'up' : 'down');
+        }
+        const base = { si, topIssue, isInPort, week };
         if (t.state === 'pending') {
             const when = ship.pendingDeinstall ? ship.deinstallDate : ship.installDate;
-            return { ...base, group: 'pending', st: 'pend', tag: ['pend', ship.pendingDeinstall ? 'DEINSTALL' : 'INSTALL'], sub: t.label + (when ? ' · est. ' + fmtDate(when) : '') };
+            return { ...base, week: null, group: 'pending', tone: 'pend', glyph: '+', st: 'pend', tag: ['pend', ship.pendingDeinstall ? 'DEINSTALL' : 'INSTALL'], sub: t.label + (when ? ' · est. ' + fmtDate(when) : '') };
         }
-        if (isInPort) return { ...base, group: 'port', st: si.length ? 'iss' : 'nc', tag: ['port', 'IN PORT'], sub: issueText || 'Back ' + fmtDate(ship.inPortUntil) };
+        if (isInPort) return { ...base, group: 'port', tone: 'port', glyph: '⚓', st: si.length ? 'iss' : 'nc', tag: ['port', 'IN PORT'], sub: issueText || 'Back ' + fmtDate(ship.inPortUntil) };
         if (t.state === 'offline') {
             const n = offlineDays(ship);
-            return { ...base, group: 'offline', st: 'off', tag: ['off', 'OFFLINE'], age: n > 1 ? n + 'd' : '', ageTip: n > 1 ? 'Offline ' + n + ' days in a row' : '', sub: issueText || 'No ping today' };
+            return { ...base, group: 'offline', tone: 'off', glyph: '✕', st: 'off', tag: ['off', 'OFFLINE'], age: n > 1 ? n + 'd' : '', ageTip: n > 1 ? 'Offline ' + n + ' days in a row' : '', sub: issueText || 'No ping today' };
         }
-        if (topIssue) return { ...base, group: topIssue.threat === 'Urgent' ? 'urgent' : 'issues', st: 'iss', tag: topIssue.threat === 'Urgent' ? ['urgent', 'URGENT'] : ['iss', si.length > 1 ? si.length + ' ISSUES' : 'ISSUE'], age: issueAge + 'd', ageTip: 'Open ' + issueAge + (issueAge === 1 ? ' day' : ' days'), sub: issueText };
-        return { ...base, group: 'good', st: t.state === 'unchecked' ? 'nc' : 'on', tag: null, sub: (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
+        if (topIssue) return { ...base, group: topIssue.threat === 'Urgent' ? 'urgent' : 'issues', tone: topIssue.threat === 'Urgent' ? 'urgent' : 'iss', glyph: topIssue.threat === 'Urgent' ? '!!' : '!', st: 'iss', tag: topIssue.threat === 'Urgent' ? ['urgent', 'URGENT'] : ['iss', si.length > 1 ? si.length + ' ISSUES' : 'ISSUE'], age: issueAge + 'd', ageTip: 'Open ' + issueAge + (issueAge === 1 ? ' day' : ' days'), sub: issueText };
+        return { ...base, group: 'good', tone: 'on', glyph: '✓', st: t.state === 'unchecked' ? 'nc' : 'on', tag: null, sub: (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
     };
-    const LIST_GROUPS = [['offline', 'Offline', 'var(--red)'], ['urgent', 'Urgent issues', 'var(--red)'], ['issues', 'Open issues', 'var(--amber)'], ['port', 'In port', 'var(--blue)'], ['pending', 'Pending install', 'var(--text-muted)'], ['good', 'All good', 'var(--green)']];
+    const LIST_GROUPS = [['offline', 'Offline', 'var(--red)', 'var(--red-glow)'], ['urgent', 'Urgent issues', 'var(--red)', 'var(--red-glow)'], ['issues', 'Open issues', 'var(--amber)', 'var(--amber-glow)'], ['port', 'In port', 'var(--blue)', 'var(--blue-glow)'], ['pending', 'Pending install', 'var(--text-muted)', 'var(--bg-input)'], ['good', 'All good', 'var(--green)', 'var(--green-glow)']];
     const listView = useMemo(() => {
         const q = listQuery.trim().toLowerCase();
         const rows = sorted.filter(s => !q || s.name.toLowerCase().includes(q) || (s.location || '').toLowerCase().includes(q) || (s.poc || '').toLowerCase().includes(q)).map(s => ({ ship: s, info: shipInfo(s) }));
-        if (dashReorder) return { groups: [{ key: 'reorder', label: 'Drag ships to reorder', color: 'var(--primary)', rows }], flat: rows.map(r => r.ship) };
-        const groups = LIST_GROUPS.map(([key, label, color]) => ({ key, label, color, rows: rows.filter(r => r.info.group === key) })).filter(g => g.rows.length);
+        if (dashReorder) return { groups: [{ key: 'reorder', label: 'Drag ships to reorder', color: 'var(--primary)', glow: 'var(--primary-glow)', rows }], flat: rows.map(r => r.ship) };
+        const groups = LIST_GROUPS.map(([key, label, color, glow]) => ({ key, label, color, glow, rows: rows.filter(r => r.info.group === key) })).filter(g => g.rows.length);
         return { groups, flat: groups.flatMap(g => collapsedGroups[g.key] ? [] : g.rows.map(r => r.ship)) };
     }, [sorted, listQuery, dashReorder, collapsedGroups, issues, checkByKey, today]);
 
@@ -4868,32 +4888,56 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         {listView.groups.length === 0 && <div className="dash-empty">No ships match{listQuery ? ' "' + listQuery + '"' : ' this filter'}.</div>}
                         {listView.groups.map(g => {
                             const collapsed = !dashReorder && !!collapsedGroups[g.key];
+                            const weekStrip = (info) => info.week && (
+                                <span className="week" title={'Last 7 days: ' + info.week.filter(w => w === 'up').length + ' online, ' + info.week.filter(w => w === 'down').length + ' offline'}>
+                                    {info.week.map((w, i) => <i key={i} className={w}/>)}
+                                </span>
+                            );
+                            const menuProps = (ship) => ({
+                                onClick: () => { setRowMenu(null); setSel(ship); },
+                                onContextMenu: dashReorder ? undefined : (e) => { e.preventDefault(); setSel(ship); openRowMenu(ship, e.clientX, e.clientY); },
+                            });
                             return (
-                                <div key={g.key} className="list-group">
+                                <div key={g.key} className="list-group" style={{'--gc': g.color, '--gg': g.glow}}>
                                     <button type="button" className="list-group-head" onClick={() => !dashReorder && toggleGroup(g.key)} aria-expanded={!collapsed}>
                                         {!dashReorder && <span className="lg-caret">{collapsed ? '▸' : '▾'}</span>}
-                                        <span className="lg-dot" style={{background: g.color}}/>
+                                        <span className="lg-dot"/>
                                         <span>{g.label}</span>
                                         <span className="lg-count">{g.rows.length}</span>
                                     </button>
-                                    {!collapsed && g.rows.map(({ ship, info }) => {
-                                        const compact = g.key === 'good';
+                                    {!collapsed && g.key === 'good' && !dashReorder ? (
+                                        <div className="good-grid">
+                                            {g.rows.map(({ ship, info }) => (
+                                                <button key={ship.id} type="button" data-testid={'ship-row-' + ship.name} title={info.sub} className={'good-chip' + (info.st === 'nc' ? ' nc' : '') + (sel?.id === ship.id ? ' selected' : '')} {...menuProps(ship)}>
+                                                    <span>{ship.name}</span>
+                                                    {weekStrip(info)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : !collapsed && g.rows.map(({ ship, info }) => {
                                         const quick = ship.pendingInstall ? [['activate', 'Activate', 'Mark installed and start monitoring']] : info.isInPort ? [['back', 'Back online', 'Clear in-port status']] : [['issue', '+ Issue', 'Add an issue'], ['emailed', 'Emailed', 'Mark as emailed']];
                                         return (
-                                            <div key={ship.id} data-testid={'ship-row-' + ship.name} className={'ship-row' + (compact ? ' compact' : '') + (sel?.id === ship.id ? ' selected' : '') + (rowMenu?.ship.id === ship.id ? ' menu-open' : '')}
-                                                onClick={() => { setRowMenu(null); setSel(ship); }}
-                                                onContextMenu={dashReorder ? undefined : (e) => { e.preventDefault(); setSel(ship); openRowMenu(ship, e.clientX, e.clientY); }}
+                                            <div key={ship.id} data-testid={'ship-row-' + ship.name} className={'ship-row tone-' + info.tone + (sel?.id === ship.id ? ' selected' : '') + (rowMenu?.ship.id === ship.id ? ' menu-open' : '')}
+                                                {...menuProps(ship)}
                                                 draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
                                                 style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, boxShadow: dashDragOver === ship.id && dashDragShip !== ship.id ? 'inset 0 2px 0 var(--primary)' : undefined}}>
-                                                <i className={'st-dot ' + info.st}/>
-                                                <span className="ship-row-name">{dashReorder && <span style={{color:'var(--text-muted)',marginRight:'6px'}}>⋮⋮</span>}{ship.name}</span>
-                                                <span className="ship-row-meta">
-                                                    {info.tag && <span className={'ship-row-tag ' + info.tag[0]}>{info.tag[1]}</span>}
-                                                    {info.age && <span className="ship-row-age" title={info.ageTip}>{info.age}</span>}
+                                                <span className="ship-avatar"><b>{dashReorder ? '⋮⋮' : info.glyph}</b></span>
+                                                <span className="ship-row-main">
+                                                    <span className="ship-row-top">
+                                                        <span className="ship-row-name">{ship.name}</span>
+                                                        <span className="type-chip">{ship.type === 'Full REAP' ? 'FULL' : ship.type === 'Mini REAP' ? 'MINI' : (ship.type || '').toUpperCase()}</span>
+                                                        <span className="ship-row-meta">
+                                                            {info.age && <span className="ship-row-age" title={info.ageTip}>{info.age}</span>}
+                                                            {info.tag && <span className={'ship-row-tag ' + info.tag[0]}>{info.tag[1]}</span>}
+                                                        </span>
+                                                    </span>
+                                                    <span className="ship-row-bottom">
+                                                        <span className="ship-row-sub" title={info.sub}>{info.sub}</span>
+                                                        {weekStrip(info)}
+                                                    </span>
                                                 </span>
-                                                {!dashReorder && <button type="button" className="ship-row-kebab" aria-label={'Actions for ' + ship.name} title="More actions (or right-click the ship)"
-                                                    onClick={(e) => { e.stopPropagation(); if (rowMenu?.ship.id === ship.id) { setRowMenu(null); return; } setSel(ship); const r = e.currentTarget.getBoundingClientRect(); openRowMenu(ship, r.right - 230, r.bottom + 4); }}>⋮</button>}
-                                                {!compact && <span className="ship-row-sub" title={info.sub}>{info.sub}</span>}
+                                                {!dashReorder ? <button type="button" className="ship-row-kebab" aria-label={'Actions for ' + ship.name} title="More actions (or right-click the ship)"
+                                                    onClick={(e) => { e.stopPropagation(); if (rowMenu?.ship.id === ship.id) { setRowMenu(null); return; } setSel(ship); const r = e.currentTarget.getBoundingClientRect(); openRowMenu(ship, r.right - 230, r.bottom + 4); }}>⋮</button> : <span/>}
                                                 {!dashReorder && (
                                                     <span className="ship-row-actions" onClick={e => e.stopPropagation()}>
                                                         {quick.map(([a, label, tip]) => <button key={a} type="button" title={tip} onClick={() => rowAction(a, ship)}>{label}</button>)}
