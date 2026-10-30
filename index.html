@@ -665,7 +665,7 @@ const changeMyPassword = () => {
     const cred = firebase.auth.EmailAuthProvider.credential(user.email, current);
     user.reauthenticateWithCredential(cred)
         .then(() => user.updatePassword(next))
-        .then(() => alert('Password changed.'))
+        .then(() => { window.dispatchEvent(new CustomEvent('st-activity', { detail: 'Changed their password' })); alert('Password changed.'); })
         .catch(err => alert(authErrorMessage(err)));
 };
 
@@ -678,7 +678,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T166";
+    var APP_BUILD = "2026-10-30T167";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -908,7 +908,7 @@ const useFirestore = (collectionName, initialData = []) => {
             }
         });
         if (ops.length === 0) return;
-        auditRecord(collectionName, ops.map(op => ({ docId: op.id, before: op.before, after: op.type === 'set' ? op.item : null })));
+        auditRecord(collectionName, ops.map(op => ({ docId: op.id, before: op.before, after: op.type === 'set' ? op.item : null })), { system: auditSystemDepth > 0 });
 
         // Commit in chunks so large collections never hit the 500-write limit
         for (let i = 0; i < ops.length; i += FIRESTORE_BATCH_LIMIT) {
@@ -935,7 +935,7 @@ const useFirestore = (collectionName, initialData = []) => {
 // Every change to shared data is written to the `auditLog` collection: who, when, which records, and each record's
 // full before/after, so any change can be reverted. Rapid edits to the same records by the same person (typing a
 // ping, a run of clicks) are merged into one entry: first "before", last "after".
-const AUDIT_SKIP = new Set(['activityLog', 'auditLog', 'presence', 'outlookLinks', 'eodLogs']);
+const AUDIT_SKIP = new Set(['activityLog', 'auditLog', 'presence', 'outlookLinks']);
 const AUDIT_IDLE_MS = 4000, AUDIT_BURST_MS = 1500, AUDIT_MAX_MS = 60000, AUDIT_MAX_BYTES = 800000;
 // Bookkeeping fields whose changes alone aren't worth an entry (logins are already in the activity log)
 const AUDIT_IGNORE_FIELDS = { users: ['lastLogin'] };
@@ -956,6 +956,8 @@ const auditFlush = () => {
         notes: p.notes, noteIds: p.noteIds, count: changes.length, changes, revertable: !changes.some(c => c.beforeUnknown),
     };
     if (p.revertOf) entry.revertOf = p.revertOf;
+    if (p.local) { entry.local = true; entry.revertable = false; }
+    if (p.auto) entry.auto = true;
     if (JSON.stringify(entry).length > AUDIT_MAX_BYTES) {
         // Too big for one Firestore doc: keep which fields changed, drop the full copies
         entry.revertable = false;
@@ -977,9 +979,9 @@ const auditRecord = (collection, changes, opts = {}) => {
     // (typing in one field) or a quick burst (a bulk action saves one record at a time)
     const p0 = auditPending;
     const sameRecords = p0 && changes.every(c => p0.changes.has(c.docId));
-    if (p0 && (opts.immediate || p0.revertOf || p0.collection !== collection || p0.user !== auditActor.user || now - p0.start > AUDIT_MAX_MS || (!sameRecords && now - p0.last > AUDIT_BURST_MS))) auditFlush();
+    if (p0 && (opts.immediate || p0.revertOf || p0.collection !== collection || p0.user !== auditActor.user || !!p0.auto !== !!opts.system || !!p0.local !== !!opts.local || now - p0.start > AUDIT_MAX_MS || (!sameRecords && now - p0.last > AUDIT_BURST_MS))) auditFlush();
     if (!auditPending) {
-        auditPending = { id: genId('AU'), collection, user: auditActor.user, uid: auditActor.uid, start: now, at: new Date(now).toISOString(), changes: new Map(), notes: [], noteIds: [], revertOf: opts.revertOf || null };
+        auditPending = { id: genId('AU'), collection, user: auditActor.user, uid: auditActor.uid, start: now, at: new Date(now).toISOString(), changes: new Map(), notes: [], noteIds: [], revertOf: opts.revertOf || null, local: !!opts.local, auto: !!opts.system };
     }
     const p = auditPending;
     p.atEnd = new Date(now).toISOString();
@@ -991,7 +993,7 @@ const auditRecord = (collection, changes, opts = {}) => {
         ch.after = auditParse(c.after);
         p.changes.set(c.docId, ch);
     });
-    const note = opts.note || (now - auditNote.at < 1500 ? auditNote.text : '');
+    const note = opts.note || (!opts.system && now - auditNote.at < 1500 ? auditNote.text : '');
     if (note) auditAddNote(p, note, opts.note ? null : auditNote.id);
     clearTimeout(p.timer);
     if (opts.immediate) auditFlush();
@@ -1018,12 +1020,46 @@ window.addEventListener('pagehide', auditFlush);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') auditFlush(); });
 // Writes made straight to Firestore (user approvals, settings, contacts, emails...) are audited too. The record's
 // current copy is read first (local cache when possible) so the entry has a real "before".
-const AUDIT_DIRECT_SKIP = new Set([...AUDIT_SKIP, 'incomingEmails']);
+const AUDIT_DIRECT_SKIP = AUDIT_SKIP;
+// Writes the app makes on its own (junk-email clean-up, contact sync) are logged as automatic, not as the person's own edit
+let auditSystemDepth = 0;
+const auditAsSystem = (fn) => { auditSystemDepth++; try { return fn(); } finally { auditSystemDepth--; } };
+// Lists kept only in this browser (email history, site notes): logged so they're accountable, but they can't be
+// reverted from here because the data lives on that person's computer. Removals that only trim the list to its size cap
+// (the list didn't get shorter) are not logged as deletes.
+const auditLocalList = (area, prev, next) => {
+    const byId = (list) => new Map((Array.isArray(list) ? list : []).filter(x => x && x.id).map(x => [x.id, x]));
+    const a = byId(prev), b = byId(next);
+    const shrank = b.size < a.size;
+    const changes = [];
+    b.forEach((item, id) => { const old = a.get(id); if (!old || JSON.stringify(old) !== JSON.stringify(item)) changes.push({ docId: id, before: old || null, after: item }); });
+    if (shrank) a.forEach((item, id) => { if (!b.has(id)) changes.push({ docId: id, before: item, after: null }); });
+    if (changes.length) auditRecord(area, changes, { local: true });
+};
+// An action written straight to the activity log, for places outside the app screen (logout, password change)
+const logActivityDirect = (text) => {
+    if (!auditActor.uid) return Promise.resolve();
+    const id = genId('A') + Math.random().toString(36).slice(2, 6);
+    return db.collection('activityLog').doc(id).set({ id, text, details: null, user: auditActor.user, time: new Date().toISOString() }).catch(() => {});
+};
+window.addEventListener('st-activity', (e) => logActivityDirect(auditActor.user + ' ' + e.detail.replace(/^./, c => c.toLowerCase())));
+// Logs each change to a browser-only key → value object (skips the first render, which is just loading it)
+const useLocalAudit = (area, value) => {
+    const prev = useRef(value);
+    useEffect(() => { if (prev.current !== value) auditLocalMap(area, prev.current, value); prev.current = value; }, [value]);
+};
+// Same for key → value objects (site notes / contacts / addresses keyed by site)
+const auditLocalMap = (area, prev, next) => {
+    const a = prev || {}, b = next || {};
+    const changes = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => JSON.stringify(a[k]) !== JSON.stringify(b[k]))
+        .map(k => ({ docId: k, before: a[k] === undefined ? null : { value: a[k] }, after: b[k] === undefined ? null : { value: b[k] } }));
+    if (changes.length) auditRecord(area, changes, { local: true });
+};
 (() => {
     const fs = firebase.firestore;
     if (!fs || !fs.DocumentReference || !fs.CollectionReference) return;
     const DR = fs.DocumentReference.prototype, CR = fs.CollectionReference.prototype;
-    const audited = (ref) => ref.parent && !ref.parent.parent && !AUDIT_DIRECT_SKIP.has(ref.parent.id);
+    const audited = (ref) => ref.parent && !ref.parent.parent && !AUDIT_DIRECT_SKIP.has(ref.parent.id) && !(ref.parent.id === 'eodLogs' && ref.id.includes('-xlsx-'));
     // Cache-only read, queued before the write so it sees the old copy. A cache miss means "before" is unknown.
     const readBefore = (ref) => ref.get({ source: 'cache' }).then(s => s.exists ? s.data() : null).catch(() => undefined);
     const wrap = (name, makeAfter) => {
@@ -1032,13 +1068,14 @@ const AUDIT_DIRECT_SKIP = new Set([...AUDIT_SKIP, 'incomingEmails']);
             const ref = this;
             if (!audited(ref)) return orig.apply(ref, args);
             const col = ref.parent.id;
+            const system = auditSystemDepth > 0;
             const beforeP = readBefore(ref);
             const write = orig.apply(ref, args);
             Promise.all([beforeP, write]).then(([before]) => {
                 try {
                     const unknown = before === undefined;
                     const after = makeAfter(unknown ? {} : before, args);
-                    auditRecord(col, [{ docId: ref.id, before: unknown ? null : before, after, beforeUnknown: unknown }]);
+                    auditRecord(col, [{ docId: ref.id, before: unknown ? null : before, after, beforeUnknown: unknown }], { system });
                 } catch (e) { console.error('Audit error:', e); }
             }).catch(() => {});
             return write;
@@ -1050,8 +1087,9 @@ const AUDIT_DIRECT_SKIP = new Set([...AUDIT_SKIP, 'incomingEmails']);
     const origAdd = CR.add;
     CR.add = function(data) {
         const col = this;
+        const system = auditSystemDepth > 0;
         return origAdd.call(col, data).then(ref => {
-            if (!col.parent && !AUDIT_DIRECT_SKIP.has(col.id)) { try { auditRecord(col.id, [{ docId: ref.id, before: null, after: data }]); } catch (e) {} }
+            if (!col.parent && !AUDIT_DIRECT_SKIP.has(col.id)) { try { auditRecord(col.id, [{ docId: ref.id, before: null, after: data }], { system }); } catch (e) {} }
             return ref;
         });
     };
@@ -1399,11 +1437,16 @@ function AuthWrapper() {
         if (currentUser?.username) {
             db.collection('presence').doc(currentUser.username).delete().catch(() => {});
         }
+        // Record the logout first (the write must reach the server while still signed in), waiting at most 1.5s
+        const bye = currentUser?.username && reason !== 'Account not approved'
+            ? logActivityDirect(currentUser.username + (reason === 'Session expired' ? ' was logged out (session timed out)' : ' logged out'))
+            : Promise.resolve();
+        auditFlush();
         localStorage.removeItem('shipTrackerSession');
         session.current = null;
         setSessionWarning(false);
         setShowAdmin(false);
-        auth.signOut().catch(() => {});
+        Promise.race([bye, new Promise(r => setTimeout(r, 1500))]).finally(() => auth.signOut().catch(() => {}));
         if (reason) console.log('Logout:', reason);
     };
 
@@ -2434,7 +2477,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T166'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T167'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2445,7 +2488,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T166');
+                                    localStorage.setItem('lastSeenBuild', 'T167');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2455,6 +2498,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T167'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔍 Activity Log: The Remaining Gaps Closed'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Email history is now logged: logging a contact, applying a parsed email, follow-ups, editing an entry, deleting one, Clear history, Clean junk and blocking a sender all show who did it, when, and the full entry. Email history is saved on each person\'s own computer, so these are marked "Saved on [name]\'s computer only" and can\'t be reverted from the log\n• Incoming emails: accepting, rejecting and deleting them is now logged (and can be reverted)\n• End of Day: every report sent is now logged\n• Logouts are logged (including "session timed out"), and so are password changes\n• Trips page: site notes, site contacts and site addresses are now logged (also saved per computer, so not revertable)\n• Changes the app makes on its own (auto-expiring old incoming emails, auto-rejecting junk, cleaning junk from email history, syncing ship POCs into Contacts, trip status updates, setting up default parts) are now shown as "Automatic", not as an edit by the person whose browser ran them, and don\'t count toward anyone\'s change total'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T166'),
@@ -3289,6 +3339,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             return cleaned;
         } catch(e) { return []; }
     });
+    // Email history lives in each browser; edits people make to it (log, edit, delete, clear) still go to the audit log
+    const setEmailHistoryLogged = (next) => {
+        if (typeof next === 'function') return setEmailHistory(prev => { const n = next(prev); auditLocalList('emailHistory', prev, n); return n; });
+        auditLocalList('emailHistory', emailHistory, next);
+        setEmailHistory(next);
+    };
     
     // Sync blocked senders from Firebase (persists across devices/sessions)
     useEffect(function() {
@@ -3302,7 +3358,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 fbBlocked.forEach(function(s) { if (merged.indexOf(s) === -1) { merged.push(s); changed = true; } });
                 // And push local-only entries to Firebase
                 if (merged.length > fbBlocked.length) {
-                    db.collection('settings').doc('blockedSenders').set({ list: merged }, { merge: true });
+                    auditAsSystem(() => db.collection('settings').doc('blockedSenders').set({ list: merged }, { merge: true }));
                 }
                 if (changed) {
                     localStorage.setItem('ignoredEmailSenders', JSON.stringify(merged));
@@ -3421,13 +3477,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 // AUTO-EXPIRE — emails older than 7 days get auto-dismissed
                 var emailAge = data.receivedAt ? (Date.now() - new Date(data.receivedAt).getTime()) : 0;
                 if (emailAge > 7 * 24 * 60 * 60 * 1000) {
-                    db.collection('incomingEmails').doc(doc.id).update({ processed: true, accepted: false, rejectedReason: 'auto-expired', processedAt: new Date().toISOString() });
+                    auditAsSystem(() => db.collection('incomingEmails').doc(doc.id).update({ processed: true, accepted: false, rejectedReason: 'auto-expired', processedAt: new Date().toISOString() }));
                     return;
                 }
 
                 // AUTO-REJECT JUNK — mark processed immediately, skip inbox
                 if (isJunkEmail(data)) {
-                    db.collection('incomingEmails').doc(doc.id).update({ processed: true, accepted: false, rejectedReason: 'auto-junk', processedAt: new Date().toISOString() });
+                    auditAsSystem(() => db.collection('incomingEmails').doc(doc.id).update({ processed: true, accepted: false, rejectedReason: 'auto-junk', processedAt: new Date().toISOString() }));
                     return;
                 }
 
@@ -3795,12 +3851,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         return r.sender && feSender === r.sender && r.subject && feSubj.indexOf(r.subject) !== -1;
                     })) {
                         // Auto-clean: delete this from Firebase acceptedEmails since it was rejected
-                        doc.ref.delete();
+                        auditAsSystem(() => doc.ref.delete());
                         return;
                     }
                     // Skip if it's junk
                     if (isJunkHistoryEmail(fe)) {
-                        doc.ref.delete(); // Clean junk from Firebase too
+                        auditAsSystem(() => doc.ref.delete()); // Clean junk from Firebase too
                         return;
                     }
                     firebaseEmails.push(fe);
@@ -4465,7 +4521,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             changes: [contactForm.waitingReply ? 'Waiting on reply' : 'Marked as contacted', `By: ${contactForm.name}`]
         };
         const newHistory = [historyEntry, ...emailHistory].slice(0, 100);
-        setEmailHistory(newHistory);
+        setEmailHistoryLogged(newHistory);
         localStorage.setItem('emailParseHistory', JSON.stringify(newHistory));
         
         logActivity(`${contactForm.name} marked ${sel.name} as ${contactForm.waitingReply ? 'waiting on reply' : 'contacted'} on ${fmtDate(contactDate)}`, { ship: sel.name, contactedBy: contactForm.name, notes: contactForm.notes, waitingReply: contactForm.waitingReply });
@@ -4950,7 +5006,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             changes: changes
         };
         const newHistory = [historyEntry, ...emailHistory].slice(0, 50); // Keep last 50
-        setEmailHistory(newHistory);
+        setEmailHistoryLogged(newHistory);
         localStorage.setItem('emailParseHistory', JSON.stringify(newHistory));
         
         toast(`Applied: ${changes.join(', ')}`, 'success');
@@ -5051,7 +5107,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     });
                                     var removed = hist.length - cleaned.length;
                                     localStorage.setItem('emailParseHistory', JSON.stringify(cleaned));
-                                    setEmailHistory(cleaned);
+                                    setEmailHistoryLogged(cleaned);
                                     // Also clean from Firebase acceptedEmails (includes blocked senders)
                                     db.collection('acceptedEmails').get().then(function(snap){
                                         var fbRemoved = 0;
@@ -5121,7 +5177,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     });
                                                 });
                                                 // Remove from local history too
-                                                setEmailHistory(function(prev) {
+                                                setEmailHistoryLogged(function(prev) {
                                                     var filtered = prev.filter(function(h) { return (h.fromEmail || '').toLowerCase().indexOf(sender) === -1; });
                                                     localStorage.setItem('emailParseHistory', JSON.stringify(filtered));
                                                     return filtered;
@@ -5165,7 +5221,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     }
                                                 });
                                             });
-                                            setEmailHistory(function(prev) {
+                                            setEmailHistoryLogged(function(prev) {
                                                 var filtered = prev.filter(function(h) { return (h.fromEmail || '').toLowerCase().indexOf(sender) === -1; });
                                                 localStorage.setItem('emailParseHistory', JSON.stringify(filtered));
                                                 return filtered;
@@ -5393,7 +5449,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     items={[
                                                         { label: '🔍 Scan history', onClick: () => scanEmailHistory(sel.id, sel.name) },
                                                         { label: '📝 Email templates', onClick: () => setTemplateModal(sel) },
-                                                        { label: '🗑️ Clear history…', danger: true, onClick: () => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } } },
+                                                        { label: '🗑️ Clear history…', danger: true, onClick: () => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistoryLogged(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } } },
                                                     ]}/>
                                                 <div className="email-facts">
                                                     <span><em>Last contact</em> {(() => { var shipEmails = emailHistory.filter(function(h) { return h.shipId === sel.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); }); var lastDate = shipEmails.length > 0 ? shipEmails[0].timestamp : sel.lastContact; return React.createElement('div', {className:'rel-time tip', 'data-tip': lastDate ? fmtDate(lastDate) : 'Never', style:{fontWeight:600,display:'inline',color: lastDate ? 'var(--text)' : 'var(--red)'}}, lastDate ? relTime(lastDate) : 'Never'); })()}</span>
@@ -5560,7 +5616,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                             // Actions row
                                                             React.createElement('div', {style: {display:'flex',gap:'6px',marginTop:'4px',fontSize:'10px'}},
                                                                 React.createElement('button', {className:'btn btn-sm btn-secondary', style:{padding:'2px 8px',fontSize:'9px'}, onClick: function(e) { e.stopPropagation(); setEditEmailEntry(h); setEditEmailForm({date: h.timestamp ? h.timestamp.substring(0,10) : '', time: h.timestamp ? h.timestamp.substring(11,16) : '', summary: summary, emailText: h.emailText || '', contactedBy: rawName || ''}); }}, '\u270F\uFE0F Edit'),
-                                                                React.createElement('button', {className:'btn btn-sm', style:{padding:'2px 8px',fontSize:'9px',color:'var(--red)'}, onClick: function(e) { e.stopPropagation(); if (confirm('Delete this email entry?')) { var updated = emailHistory.filter(function(x) { return x.id !== h.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); logActivity('Deleted email entry from ' + sel.name); toast('Email entry deleted', 'info'); } }}, '\uD83D\uDDD1\uFE0F')
+                                                                React.createElement('button', {className:'btn btn-sm', style:{padding:'2px 8px',fontSize:'9px',color:'var(--red)'}, onClick: function(e) { e.stopPropagation(); if (confirm('Delete this email entry?')) { var updated = emailHistory.filter(function(x) { return x.id !== h.id; }); setEmailHistoryLogged(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); logActivity('Deleted email entry from ' + sel.name); toast('Email entry deleted', 'info'); } }}, '\uD83D\uDDD1\uFE0F')
                                                             )
                                                             ) // close inner wrapper
                                                         );
@@ -6209,7 +6265,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     h.id === item.id ? { ...h, result: { ...h.result, waitingReply: false } } : h
                                 );
                                 const newHistory = [historyEntry, ...updatedHistory].slice(0, 100);
-                                setEmailHistory(newHistory);
+                                setEmailHistoryLogged(newHistory);
                                 localStorage.setItem('emailParseHistory', JSON.stringify(newHistory));
                                 
                                 if (item.shipId) {
@@ -6286,7 +6342,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                         sender: editEmailForm.contactedBy ? { name: editEmailForm.contactedBy } : h.result?.sender
                                     }
                                 } : h);
-                                setEmailHistory(updated);
+                                setEmailHistoryLogged(updated);
                                 localStorage.setItem('emailParseHistory', JSON.stringify(updated));
                                 
                                 // Update ship lastContact if this is the most recent entry for this ship
@@ -6628,7 +6684,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                 {h.result?.inPort && <span className="badge" style={{background:'var(--blue)',color:'#fff'}}>⚓ In Port</span>}
                                                 {h.result?.issue?.hasIssue && <span className={`badge badge-${(h.result.issue.threat || 'mild').toLowerCase()}`}>Issue</span>}
                                                 {h.result?.waitingReply && <span className="badge badge-info">Waiting</span>}
-                                                <button className="btn btn-sm btn-danger" style={{padding:'2px 6px',fontSize:'10px'}} onClick={(e) => { e.stopPropagation(); if(confirm('Delete this log entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(h.timestamp)}`); toast('Entry deleted', 'info'); } }}>✕</button>
+                                                <button className="btn btn-sm btn-danger" style={{padding:'2px 6px',fontSize:'10px'}} onClick={(e) => { e.stopPropagation(); if(confirm('Delete this log entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistoryLogged(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(h.timestamp)}`); toast('Entry deleted', 'info'); } }}>✕</button>
                                             </div>
                                         </div>
                                         {h.result?.emailSummary && <div onClick={() => setViewingHistoryItem(h)} style={{cursor:'pointer',fontSize:'11px',color:'var(--text-dim)',marginTop:'8px',padding:'8px',background:'var(--bg-card)',borderRadius:'4px'}}>{h.result.emailSummary}</div>}
@@ -6753,7 +6809,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     changes: changes
                                 };
                                 const newHistory = [historyEntry, ...emailHistory].slice(0, 50);
-                                setEmailHistory(newHistory);
+                                setEmailHistoryLogged(newHistory);
                                 localStorage.setItem('emailParseHistory', JSON.stringify(newHistory));
                                 
                                 logActivity(`Manual log for ${sel.name}: ${changes.join(', ')}`, { ship: sel.name, notes: manualLogForm.notes });
@@ -6771,7 +6827,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         </div>
                         
                         <div style={{padding:'16px',background:'var(--bg-input)',borderRadius:'8px',marginBottom:'16px',position:'relative'}}>
-                            <button className="btn btn-sm btn-danger" style={{position:'absolute',top:'12px',right:'12px',padding:'4px 8px',fontSize:'10px'}} onClick={() => { if(confirm('Delete this log entry?')) { const filtered = emailHistory.filter(x => x.id !== viewingHistoryItem.id); setEmailHistory(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(viewingHistoryItem.timestamp)}`); setViewingHistoryItem(null); toast('Entry deleted', 'info'); } }}>🗑️ Delete</button>
+                            <button className="btn btn-sm btn-danger" style={{position:'absolute',top:'12px',right:'12px',padding:'4px 8px',fontSize:'10px'}} onClick={() => { if(confirm('Delete this log entry?')) { const filtered = emailHistory.filter(x => x.id !== viewingHistoryItem.id); setEmailHistoryLogged(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(viewingHistoryItem.timestamp)}`); setViewingHistoryItem(null); toast('Entry deleted', 'info'); } }}>🗑️ Delete</button>
                             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',paddingRight:'80px'}}>
                                 <div>
                                     <div style={{fontWeight:600,fontSize:'14px'}}>{new Date(viewingHistoryItem.timestamp).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
@@ -6918,7 +6974,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     changes: changes
                                 };
                                 const newHistory = [historyEntry, ...emailHistory].slice(0, 100);
-                                setEmailHistory(newHistory);
+                                setEmailHistoryLogged(newHistory);
                                 localStorage.setItem('emailParseHistory', JSON.stringify(newHistory));
 
                                 logActivity(`Logged email for ${sel.name}`, { ship: sel.name, changes });
@@ -8444,6 +8500,9 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
         try { return JSON.parse(localStorage.getItem('siteAddresses') || '{}'); } catch { return {}; }
     });
     useEffect(() => { localStorage.setItem('siteAddresses', JSON.stringify(siteAddresses)); }, [siteAddresses]);
+    useLocalAudit('siteNotes', siteNotes);
+    useLocalAudit('sitePOCs', sitePOCs);
+    useLocalAudit('siteAddresses', siteAddresses);
     const [addrForm, setAddrForm] = useState({ label: '', address: '', type: 'directions' });
     const [showAddrForm, setShowAddrForm] = useState(false);
     
@@ -8484,7 +8543,7 @@ function Installs({ ships, installs, setInstalls, toast, logActivity }) {
             }
             return trip;
         });
-        if (changed) { autoStatusRan.current = true; setInstalls(updated); }
+        if (changed) { autoStatusRan.current = true; auditAsSystem(() => setInstalls(updated)); }
     }, [installs]);
     
     const siteData = {
@@ -9537,7 +9596,7 @@ function Parts({ parts, setParts, toast, logActivity }) {
         { id: 'P031', category: 'Peripheral', name: 'Phones (Made Not in China)', inStock: 5, need: 8, perBuild: 1 },
     ];
 
-    useEffect(() => { if (parts.length === 0) setParts(defaultParts); }, []);
+    useEffect(() => { if (parts.length === 0) auditAsSystem(() => setParts(defaultParts)); }, []);
 
     const categories = ['CPU', 'RAM', 'Motherboard', 'Power Supply', 'SSD', 'Storage', 'Case', 'Cooling', 'Network Card', 'Cable', 'Tape Drive', 'Optical', 'Peripheral', 'Other'];
 
@@ -9892,6 +9951,12 @@ const AUDIT_AREAS = {
     pocContacts: { label: 'Contact', plural: 'contacts', icon: '📇', color: '#06b6d4' },
     acceptedEmails: { label: 'Accepted email', plural: 'accepted emails', icon: '✉️', color: 'var(--green)' },
     rejectedEmails: { label: 'Rejected email', plural: 'rejected emails', icon: '🚫', color: 'var(--red)' },
+    incomingEmails: { label: 'Incoming email', plural: 'incoming emails', icon: '📥', color: 'var(--blue)' },
+    eodLogs: { label: 'End of Day report', plural: 'End of Day reports', icon: '📧', color: 'var(--primary)' },
+    emailHistory: { label: 'Email log entry', plural: 'email log entries', icon: '✉️', color: 'var(--green)' },
+    siteNotes: { label: 'Site note', plural: 'site notes', icon: '📝', color: '#8b5cf6' },
+    sitePOCs: { label: 'Site contact', plural: 'site contacts', icon: '📇', color: '#8b5cf6' },
+    siteAddresses: { label: 'Site address', plural: 'site addresses', icon: '📍', color: '#8b5cf6' },
 };
 const AUDIT_FIELD_NAMES = {
     statusAM: 'Primary', statusPM: 'Alternate', pingAM: 'AM ping', pingPM: 'PM ping', hdSpace: 'HD space', diodeUp: 'Diode up',
@@ -9936,6 +10001,10 @@ function ActivityLog({ activityLog, allUsers, currentUser, isAdmin, ships, toast
         if (col === 'quickNotes') return join(shipName(d.shipId), (d.text || '').slice(0, 60));
         if (col === 'users') return d.username || c.docId;
         if (col === 'settings' || col === 'config') return auditFieldName(c.docId);
+        if (col === 'emailHistory' || col === 'acceptedEmails') return join(d.shipName || shipName(d.shipId), ((d.result && d.result.emailSummary) || d.subject || '').slice(0, 60));
+        if (col === 'incomingEmails' || col === 'rejectedEmails') return join(d.subject || d._cleanSubject, d.senderEmail || d.from);
+        if (col === 'eodLogs') return 'End of Day ' + c.docId;
+        if (col.startsWith('site')) return c.docId;
         return join(d.name || d.title || d.subject || d.email || (d.text || '').slice(0, 60));
     };
 
@@ -9955,7 +10024,7 @@ function ActivityLog({ activityLog, allUsers, currentUser, isAdmin, ships, toast
                 text: [summary, ...(e.notes || []), ...labels].join(' ').toLowerCase() };
         });
         const actions = activityLog.filter(a => a.time && !usedNotes.has(a.id)).map(a => ({ kind: 'action', id: a.id, time: a.time, user: a.user || 'System', summary: a.text, details: a.details,
-            area: /logged in/i.test(a.text) ? { label: 'Login', icon: '🔑', color: 'var(--blue)' } : /export|report|copied|download|backup|print/i.test(a.text) ? { label: 'Report', icon: '📊', color: '#06b6d4' } : { label: 'Action', icon: '•', color: 'var(--text-muted)' },
+            area: /logged (in|out)|password/i.test(a.text) ? { label: 'Account', icon: '🔑', color: 'var(--blue)' } : /export|report|copied|download|backup|print/i.test(a.text) ? { label: 'Report', icon: '📊', color: '#06b6d4' } : { label: 'Action', icon: '•', color: 'var(--text-muted)' },
             text: (a.text + ' ' + (a.user || '')).toLowerCase() }));
         return [...changes, ...actions].sort((a, b) => String(b.time).localeCompare(String(a.time)));
     }, [auditEntries, activityLog, ships]);
@@ -9980,6 +10049,7 @@ function ActivityLog({ activityLog, allUsers, currentUser, isAdmin, ships, toast
         const st = {};
         items.forEach(i => {
             const s = st[i.user] || (st[i.user] = { changes: 0, today: 0, last: null, reverted: 0 });
+            if (i.kind === 'change' && i.entry.auto) return;
             if (i.kind === 'change') { s.changes++; if (i.entry.revertedAt) s.reverted++; }
             if (toDateString(new Date(i.time)) === todayStr) s.today++;
             if (!s.last || i.time > s.last) s.last = i.time;
@@ -10130,12 +10200,14 @@ function ActivityLog({ activityLog, allUsers, currentUser, isAdmin, ships, toast
                                 <div className="al-row" onClick={i.kind === 'change' ? () => setOpen(o => ({ ...o, [i.id]: !o[i.id] })) : undefined}>
                                     <span className="al-icon" style={{color: i.area.color, borderColor: i.area.color}}>{e && e.revertOf ? '↩' : i.area.icon}</span>
                                     <span className="al-main">
-                                        <span className="al-line"><b>{i.user}</b> {(e && e.notes && e.notes.length) ? e.notes[e.notes.length - 1] : i.summary}</span>
+                                        <span className="al-line"><b>{e && e.auto ? 'Automatic' : i.user}</b> {(e && e.notes && e.notes.length) ? e.notes[e.notes.length - 1] : i.summary}</span>
                                         <span className="al-sub">
                                             {i.kind === 'change' && e.notes && e.notes.length ? <span>{i.summary}{e.notes.length > 1 ? ` · +${e.notes.length - 1} more` : ''}</span> : null}
                                             {i.kind === 'action' && <span>{i.area.label}{i.details && i.details.ship ? ' · ' + i.details.ship : ''}</span>}
                                             {e && e.revertedAt && <span className="al-tag amber">Reverted by {e.revertedBy} · {fullTime(e.revertedAt)}</span>}
                                             {e && e.revertOf && <span className="al-tag">Undo of an earlier change</span>}
+                                            {e && e.auto && <span className="al-tag">Automatic · ran on {e.user}'s browser</span>}
+                                            {e && e.local && <span className="al-tag" title="This data is saved only on that person's computer, so it can't be reverted from here">Saved on {e.user}'s computer only</span>}
                                         </span>
                                     </span>
                                     <span className="al-time" title={fullTime(i.time)}>
@@ -10249,10 +10321,10 @@ function POCDirectory({ ships, toast }) {
         });
         ships.forEach(function(s) {
             if (s.email && s.email.indexOf('@') !== -1) {
-                db.collection('pocContacts').doc('auto_' + s.id).set({
+                auditAsSystem(() => db.collection('pocContacts').doc('auto_' + s.id).set({
                     name: s.poc || '', email: s.email, ship: s.name, shipId: s.id,
                     rank: '', role: 'Ship POC', phone: '', notes: '', source: 'auto'
-                }, { merge: true });
+                }, { merge: true }));
             }
         });
         try {
@@ -10268,10 +10340,10 @@ function POCDirectory({ ships, toast }) {
                         var senderName = h.fromName || '';
                         if (senderName === '__SHIP__') senderName = '';
                         if (senderName && h.shipId) {
-                            db.collection('pocContacts').doc('em_' + key.replace(/[^a-z0-9]/g,'')).set({
+                            auditAsSystem(() => db.collection('pocContacts').doc('em_' + key.replace(/[^a-z0-9]/g,'')).set({
                                 name: senderName, email: h.fromEmail, ship: h.shipName || '', shipId: h.shipId || '',
                                 rank: '', role: '', phone: '', notes: '', source: 'email'
-                            }, { merge: true });
+                            }, { merge: true }));
                         }
                     }
                 }
