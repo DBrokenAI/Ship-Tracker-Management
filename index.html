@@ -30,6 +30,18 @@
             --sidebar: #f7fafc;
         }
         body { font-family: 'Outfit', sans-serif; background: var(--bg-deep); color: var(--text); min-height: 100vh; transition: all 0.3s; overflow-x: hidden; }
+
+        /* Scrollbars: slim, themed, everywhere (the page itself, lists, modals, dropdowns, textareas) */
+        :root { --sb-thumb: #2f3b4c; --sb-thumb-hover: #46566c; --sb-track: transparent; color-scheme: dark; }
+        html:has(> body.light-mode) { --sb-thumb: #c3ccda; --sb-thumb-hover: #9aa7ba; color-scheme: light; }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--sb-track); }
+        ::-webkit-scrollbar-thumb { background: var(--sb-thumb); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; min-height: 40px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--sb-thumb-hover); border: 2px solid transparent; background-clip: padding-box; }
+        ::-webkit-scrollbar-thumb:active { background: var(--primary); border: 2px solid transparent; background-clip: padding-box; }
+        ::-webkit-scrollbar-corner { background: transparent; }
+        ::-webkit-scrollbar-button { display: none; }
+        @supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: var(--sb-thumb) var(--sb-track); } }
         .app { display: flex; min-height: 100vh; }
         
         /* Notification Banner */
@@ -277,6 +289,56 @@
         .dc-dot.amber { background: var(--amber); }
         .dc-dot.red { background: var(--red); }
         .dc-dot.none { border: 1.5px solid var(--text-muted); }
+        /* Activity Log */
+        .al-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .al-person { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s; }
+        .al-person:hover { border-color: var(--text-muted); }
+        .al-person.active { border-color: var(--primary); background: var(--primary-glow); }
+        .al-avatar { width: 36px; height: 36px; border-radius: 9px; background: var(--bg-input); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: var(--text-dim); flex-shrink: 0; }
+        .al-person.active .al-avatar { background: var(--primary); color: #000; border-color: var(--primary); }
+        .al-person-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .al-person-name { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .al-person-sub { font-size: 10px; color: var(--text-muted); }
+        .al-person-nums { font-size: 10px; color: var(--text-muted); text-align: right; line-height: 1.5; }
+        .al-person-nums b { color: var(--text); font-family: 'JetBrains Mono', monospace; }
+        .al-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+        .al-count { margin-left: auto; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .al-day { margin-bottom: 18px; }
+        .al-day-head { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 8px; }
+        .al-day-head i { flex: 1; height: 1px; background: var(--border); }
+        .al-day-head span:last-child { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .al-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px; overflow: hidden; }
+        .al-item.action { background: transparent; }
+        .al-item.is-reverted { opacity: 0.6; }
+        .al-item.is-revert { border-left: 3px solid var(--amber); }
+        .al-row { display: flex; align-items: center; gap: 12px; padding: 9px 12px; }
+        .al-item.change .al-row { cursor: pointer; }
+        .al-item.change .al-row:hover { background: var(--bg-card-hover); }
+        .al-icon { width: 30px; height: 30px; border-radius: 8px; border: 1px solid; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; opacity: 0.9; }
+        .al-item.action .al-icon { width: 22px; height: 22px; font-size: 11px; border-color: var(--border) !important; margin: 0 4px; }
+        .al-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .al-line { font-size: 12.5px; color: var(--text); line-height: 1.4; }
+        .al-line b { font-weight: 700; margin-right: 2px; }
+        .al-item.action .al-line { color: var(--text-dim); font-size: 12px; }
+        .al-sub { display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--text-muted); }
+        .al-tag { padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); }
+        .al-tag.amber { color: var(--amber); border-color: var(--amber); }
+        .al-time { font-size: 11px; color: var(--text-dim); text-align: right; white-space: nowrap; display: flex; flex-direction: column; font-family: 'JetBrains Mono', monospace; }
+        .al-time small { font-size: 9.5px; color: var(--text-muted); }
+        .al-actions { display: flex; align-items: center; gap: 6px; }
+        .al-chevron { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 4px; }
+        .al-details { border-top: 1px solid var(--border); padding: 10px 12px 12px 54px; display: flex; flex-direction: column; gap: 10px; background: var(--bg-input); max-height: 420px; overflow-y: auto; }
+        .al-record-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .al-pill { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-muted); font-weight: 700; }
+        .al-pill.added { color: var(--green); border-color: var(--green); }
+        .al-pill.deleted { color: var(--red); border-color: var(--red); }
+        .al-diff { display: grid; grid-template-columns: max-content auto auto 1fr; gap: 3px 10px; font-size: 11.5px; align-items: baseline; }
+        .al-field { color: var(--text-muted); grid-column: 1; }
+        .al-from { color: var(--red); text-decoration: line-through; text-decoration-color: rgba(255,82,82,0.5); word-break: break-word; }
+        .al-arrow { color: var(--text-muted); }
+        .al-to { color: var(--green); word-break: break-word; }
+        .al-note { font-size: 11px; color: var(--text-muted); font-style: italic; }
+        @media (max-width: 600px) { .al-details { padding-left: 12px; } .al-diff { grid-template-columns: max-content 1fr; } .al-arrow { display: none; } .al-from, .al-to { grid-column: 2; } .al-row { flex-wrap: wrap; } }
         @media (max-width: 600px) { .dc-hero { gap: 16px; justify-content: center; } .dc-ring { width: 108px; height: 108px; } .dc-hero-date { font-size: 18px; } .dc-day .ct { display: none; } }
         .list-group { padding-bottom: 4px; }
         .list-group-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px 7px; background: var(--bg-card); border: none; border-bottom: 1px solid var(--border); color: var(--gc, var(--text-dim)); font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; text-align: left; }
@@ -616,7 +678,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T165";
+    var APP_BUILD = "2026-10-30T166";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -835,17 +897,18 @@ const useFirestore = (collectionName, initialData = []) => {
             keepIds.add(item.id);
             const json = JSON.stringify(item);
             if (syncedJson.current.get(item.id) !== json) {
-                ops.push({ type: 'set', id: item.id, item });
+                ops.push({ type: 'set', id: item.id, item, before: syncedJson.current.get(item.id) || null });
                 syncedJson.current.set(item.id, json);
             }
         });
         deletable.forEach(id => {
             if (!keepIds.has(id)) {
-                ops.push({ type: 'delete', id });
+                ops.push({ type: 'delete', id, before: syncedJson.current.get(id) || null });
                 syncedJson.current.delete(id);
             }
         });
         if (ops.length === 0) return;
+        auditRecord(collectionName, ops.map(op => ({ docId: op.id, before: op.before, after: op.type === 'set' ? op.item : null })));
 
         // Commit in chunks so large collections never hit the 500-write limit
         for (let i = 0; i < ops.length; i += FIRESTORE_BATCH_LIMIT) {
@@ -866,6 +929,139 @@ const useFirestore = (collectionName, initialData = []) => {
     }, [collectionName]);
 
     return [data, setDataWithSync, loading];
+};
+
+// ===== AUDIT LOG =====
+// Every change to shared data is written to the `auditLog` collection: who, when, which records, and each record's
+// full before/after, so any change can be reverted. Rapid edits to the same records by the same person (typing a
+// ping, a run of clicks) are merged into one entry: first "before", last "after".
+const AUDIT_SKIP = new Set(['activityLog', 'auditLog', 'presence', 'outlookLinks', 'eodLogs']);
+const AUDIT_IDLE_MS = 4000, AUDIT_BURST_MS = 1500, AUDIT_MAX_MS = 60000, AUDIT_MAX_BYTES = 800000;
+// Bookkeeping fields whose changes alone aren't worth an entry (logins are already in the activity log)
+const AUDIT_IGNORE_FIELDS = { users: ['lastLogin'] };
+const auditActor = { user: 'Unknown', uid: null };
+const auditNote = { text: '', id: null, at: 0 };
+let auditPending = null;
+const auditParse = (v) => { if (v == null) return null; if (typeof v !== 'string') return JSON.parse(JSON.stringify(v)); try { return JSON.parse(v); } catch (e) { return null; } };
+const auditFlush = () => {
+    const p = auditPending; auditPending = null;
+    if (!p) return;
+    clearTimeout(p.timer);
+    const ignored = AUDIT_IGNORE_FIELDS[p.collection] || [];
+    const changes = [...p.changes.values()].filter(c => auditFieldDiff(c.before, c.after).some(d => !ignored.includes(d.field)) || (!c.before !== !c.after));
+    if (!changes.length) return;
+    const entry = {
+        at: p.at, atEnd: p.atEnd, user: p.user, uid: p.uid, collection: p.collection,
+        action: changes.every(c => !c.before) ? 'create' : changes.every(c => !c.after) ? 'delete' : 'update',
+        notes: p.notes, noteIds: p.noteIds, count: changes.length, changes, revertable: !changes.some(c => c.beforeUnknown),
+    };
+    if (p.revertOf) entry.revertOf = p.revertOf;
+    if (JSON.stringify(entry).length > AUDIT_MAX_BYTES) {
+        // Too big for one Firestore doc: keep which fields changed, drop the full copies
+        entry.revertable = false;
+        entry.changes = changes.map(c => ({ docId: c.docId, before: null, after: null, fields: auditFieldDiff(c.before, c.after).map(d => d.field), wasCreate: !c.before, wasDelete: !c.after }));
+    }
+    db.collection('auditLog').doc(p.id).set(entry).catch(err => console.error('Audit write error:', err));
+};
+// Up to 10 description lines per entry; the newest always kept last (a bulk action's summary comes after its per-record lines)
+const auditAddNote = (p, text, noteId) => {
+    if (noteId && !p.noteIds.includes(noteId)) p.noteIds.push(noteId);
+    if (p.notes.includes(text)) return;
+    if (p.notes.length >= 10) p.notes[9] = text; else p.notes.push(text);
+};
+// changes: [{ docId, before, after }]; before/after are objects, JSON strings, or null (null before = created, null after = deleted)
+const auditRecord = (collection, changes, opts = {}) => {
+    if (AUDIT_SKIP.has(collection) || !changes.length) return;
+    const now = Date.now();
+    // Keep adding to the open entry while it's the same person and collection, and either the same records
+    // (typing in one field) or a quick burst (a bulk action saves one record at a time)
+    const p0 = auditPending;
+    const sameRecords = p0 && changes.every(c => p0.changes.has(c.docId));
+    if (p0 && (opts.immediate || p0.revertOf || p0.collection !== collection || p0.user !== auditActor.user || now - p0.start > AUDIT_MAX_MS || (!sameRecords && now - p0.last > AUDIT_BURST_MS))) auditFlush();
+    if (!auditPending) {
+        auditPending = { id: genId('AU'), collection, user: auditActor.user, uid: auditActor.uid, start: now, at: new Date(now).toISOString(), changes: new Map(), notes: [], noteIds: [], revertOf: opts.revertOf || null };
+    }
+    const p = auditPending;
+    p.atEnd = new Date(now).toISOString();
+    p.last = now;
+    changes.forEach(c => {
+        const prev = p.changes.get(c.docId);
+        const ch = prev || { docId: c.docId, before: auditParse(c.before) };
+        if (!prev && c.beforeUnknown) ch.beforeUnknown = true;
+        ch.after = auditParse(c.after);
+        p.changes.set(c.docId, ch);
+    });
+    const note = opts.note || (now - auditNote.at < 1500 ? auditNote.text : '');
+    if (note) auditAddNote(p, note, opts.note ? null : auditNote.id);
+    clearTimeout(p.timer);
+    if (opts.immediate) auditFlush();
+    else p.timer = setTimeout(auditFlush, AUDIT_IDLE_MS);
+    return p.id;
+};
+// Puts every record in an audit entry back to its "before" copy (deleting records the entry created).
+// Returns the records that were changed again after the entry, so the caller can warn first.
+const auditStable = (v) => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => (o[key] = x[key], o), {}) : x);
+const auditCheckRevert = (entry) => Promise.all(entry.changes.map(c => db.collection(entry.collection).doc(c.docId).get().then(s => ({ c, current: s.exists ? s.data() : null }))))
+    .then(rows => ({ rows, conflicts: rows.filter(r => auditStable(r.current) !== auditStable(r.c.after)) }));
+const auditApplyRevert = (entry, rows, note) => {
+    const batch = db.batch();
+    rows.forEach(({ c }) => {
+        const ref = db.collection(entry.collection).doc(c.docId);
+        if (c.before) batch.set(ref, c.before); else batch.delete(ref);
+    });
+    return batch.commit().then(() => {
+        const revertId = auditRecord(entry.collection, rows.map(r => ({ docId: r.c.docId, before: r.current, after: r.c.before })), { immediate: true, revertOf: entry.id, note });
+        return db.collection('auditLog').doc(entry.id).update({ revertedBy: auditActor.user, revertedByUid: auditActor.uid, revertedAt: new Date().toISOString(), revertId: revertId || '' });
+    });
+};
+window.addEventListener('pagehide', auditFlush);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') auditFlush(); });
+// Writes made straight to Firestore (user approvals, settings, contacts, emails...) are audited too. The record's
+// current copy is read first (local cache when possible) so the entry has a real "before".
+const AUDIT_DIRECT_SKIP = new Set([...AUDIT_SKIP, 'incomingEmails']);
+(() => {
+    const fs = firebase.firestore;
+    if (!fs || !fs.DocumentReference || !fs.CollectionReference) return;
+    const DR = fs.DocumentReference.prototype, CR = fs.CollectionReference.prototype;
+    const audited = (ref) => ref.parent && !ref.parent.parent && !AUDIT_DIRECT_SKIP.has(ref.parent.id);
+    // Cache-only read, queued before the write so it sees the old copy. A cache miss means "before" is unknown.
+    const readBefore = (ref) => ref.get({ source: 'cache' }).then(s => s.exists ? s.data() : null).catch(() => undefined);
+    const wrap = (name, makeAfter) => {
+        const orig = DR[name];
+        DR[name] = function(...args) {
+            const ref = this;
+            if (!audited(ref)) return orig.apply(ref, args);
+            const col = ref.parent.id;
+            const beforeP = readBefore(ref);
+            const write = orig.apply(ref, args);
+            Promise.all([beforeP, write]).then(([before]) => {
+                try {
+                    const unknown = before === undefined;
+                    const after = makeAfter(unknown ? {} : before, args);
+                    auditRecord(col, [{ docId: ref.id, before: unknown ? null : before, after, beforeUnknown: unknown }]);
+                } catch (e) { console.error('Audit error:', e); }
+            }).catch(() => {});
+            return write;
+        };
+    };
+    wrap('set', (before, [data, opts]) => (opts && (opts.merge || opts.mergeFields)) ? { ...(before || {}), ...data } : data);
+    wrap('update', (before, [data]) => ({ ...(before || {}), ...data }));
+    wrap('delete', () => null);
+    const origAdd = CR.add;
+    CR.add = function(data) {
+        const col = this;
+        return origAdd.call(col, data).then(ref => {
+            if (!col.parent && !AUDIT_DIRECT_SKIP.has(col.id)) { try { auditRecord(col.id, [{ docId: ref.id, before: null, after: data }]); } catch (e) {} }
+            return ref;
+        });
+    };
+})();
+
+// Field-by-field differences between two versions of a record
+const auditFieldDiff = (before, after) => {
+    const a = before || {}, b = after || {};
+    const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => k !== 'id');
+    return keys.filter(k => JSON.stringify(a[k]) !== JSON.stringify(b[k])).map(k => ({ field: k, from: a[k], to: b[k] }));
 };
 
 const useStorage = (key, init) => {
@@ -2099,9 +2295,16 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
     const [alerts, setAlerts] = useState([]);
     const [dismissedAlerts, setDismissedAlerts] = useStorage('dismissedAlerts', []);
     
-    const logActivity = (text, details = null) => { 
+    // Who the audit log credits for this session's changes
+    auditActor.user = currentUser?.username || 'Unknown';
+    auditActor.uid = currentUser?.uid || null;
+
+    const logActivity = (text, details = null) => {
         const newEntry = { id: genId('A'), text, details, user: currentUser?.username || 'Unknown', time: new Date().toISOString() };
-        setActivityLog(prev => [newEntry, ...newestFirst(prev).slice(0, 499)]); 
+        // The next (or just-made) data change carries this text as its description in the audit log
+        Object.assign(auditNote, { text, id: newEntry.id, at: Date.now() });
+        if (auditPending && Date.now() - auditPending.last < 1500) auditAddNote(auditPending, text, newEntry.id);
+        setActivityLog(prev => [newEntry, ...newestFirst(prev).slice(0, 1999)]);
     };
     
     // Log login once per session
@@ -2110,7 +2313,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
         if (currentUser?.username && !loginLogged.current && activityLog !== undefined) {
             loginLogged.current = true;
             const entry = { id: genId('A'), text: `${currentUser.username} logged in`, details: null, user: currentUser.username, time: new Date().toISOString() };
-            setActivityLog(prev => [entry, ...newestFirst(prev).slice(0, 499)]);
+            setActivityLog(prev => [entry, ...newestFirst(prev).slice(0, 1999)]);
         }
     }, [currentUser]);
     
@@ -2231,7 +2434,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T165'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T166'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2242,7 +2445,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T165');
+                                    localStorage.setItem('lastSeenBuild', 'T166');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2252,6 +2455,18 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T166'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🕵️ Activity Log Rebuilt: Every Change, Who, When, and Revert'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Every change to shared data is now recorded automatically: ships, daily checks, issues, notes, installs, parts, suggestions, contacts, settings, accepted/rejected emails and user accounts (approve, deny, deactivate, delete)\n• Each entry shows who made it, the exact date and time (to the second), and which records changed\n• Click an entry to see every field that changed: the old value (red, crossed out) and the new value (green). Added and deleted records show their contents\n• Revert button: puts the records back exactly as they were before that change. If a record was changed again later, it warns you first. The revert is logged too, and the original entry is marked "Reverted by [name]" with the time\n• Admins can revert anyone\'s change; everyone else can revert their own\n• Fast edits are grouped: typing a ping, or a bulk action like All online, shows as one entry instead of dozens\n• Logins, reports, exports and copies still appear in the same timeline as actions\n• Filters: person (click their card), Today / 7 days / 30 days / All, Everything / Changes / Actions / Reverted, area (Ships, Daily checks, Issues…), and search (ship, field, person, text)\n• Person cards show each user\'s number of changes, how many today, how many were reverted, and when they were last active\n• Export CSV of whatever is shown, with full details\n• Fixed: the old log deleted everything past the newest 500 entries. The change history is now never trimmed, and the actions list keeps 2000\n• Fixed: the ship-name filter didn\'t update the list\n• The history can\'t be edited or deleted by anyone (only the "reverted by" stamp can be added)'
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🎨 Themed Scrollbars Everywhere'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• The plain white scrollbars are gone: every scrollbar (the page, lists, pop-ups, dropdowns, text boxes) is now slim, rounded and dark to match the app\n• Hovering a scrollbar brightens it, and dragging it turns it green\n• Light mode gets matching light-grey scrollbars\n• Built-in browser controls (dropdown lists, date pickers) now follow the dark theme as well'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T165'),
@@ -2573,7 +2788,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                 {page === 6 && <Parts parts={parts} setParts={setParts} toast={toast} logActivity={logActivity}/>}
                 {page === 9 && <POCDirectory ships={ships} toast={toast}/>}
                 {page === 10 && isAdmin && <Suggestions suggestions={suggestions} setSuggestions={setSuggestions} toast={toast}/>}
-                {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser}/>}
+                {page === 11 && <ActivityLog activityLog={activityLog} allUsers={allUsers} currentUser={currentUser} isAdmin={isAdmin} ships={ships} toast={toast}/>}
             </main>
             <Toast toasts={toasts} remove={id => setToasts(t => t.filter(x => x.id !== id))} alerts={alerts} dismissAlert={id => setDismissedAlerts(prev => [...prev, id])}/>
             
@@ -9661,235 +9876,286 @@ function Parts({ parts, setParts, toast, logActivity }) {
     );
 }
 
-function ActivityLog({ activityLog, allUsers, currentUser }) {
+// Activity Log: every change to shared data (from the audit log) plus every action (logins, exports, reports),
+// with who and when, field-by-field before/after, and Revert.
+const AUDIT_AREAS = {
+    ships: { label: 'Ship', plural: 'ships', icon: '🚢', color: 'var(--blue)' },
+    dailyChecks: { label: 'Daily check', plural: 'daily checks', icon: '📋', color: 'var(--primary)' },
+    issues: { label: 'Issue', plural: 'issues', icon: '⚠️', color: 'var(--amber)' },
+    quickNotes: { label: 'Note', plural: 'notes', icon: '📝', color: 'var(--text-dim)' },
+    installs: { label: 'Install', plural: 'installs', icon: '🔧', color: '#8b5cf6' },
+    parts: { label: 'Part', plural: 'parts', icon: '🔩', color: 'var(--amber)' },
+    suggestions: { label: 'Suggestion', plural: 'suggestions', icon: '💡', color: '#06b6d4' },
+    users: { label: 'User account', plural: 'user accounts', icon: '👤', color: 'var(--red)' },
+    settings: { label: 'Setting', plural: 'settings', icon: '⚙️', color: 'var(--text-dim)' },
+    config: { label: 'Setting', plural: 'settings', icon: '⚙️', color: 'var(--text-dim)' },
+    pocContacts: { label: 'Contact', plural: 'contacts', icon: '📇', color: '#06b6d4' },
+    acceptedEmails: { label: 'Accepted email', plural: 'accepted emails', icon: '✉️', color: 'var(--green)' },
+    rejectedEmails: { label: 'Rejected email', plural: 'rejected emails', icon: '🚫', color: 'var(--red)' },
+};
+const AUDIT_FIELD_NAMES = {
+    statusAM: 'Primary', statusPM: 'Alternate', pingAM: 'AM ping', pingPM: 'PM ping', hdSpace: 'HD space', diodeUp: 'Diode up',
+    dataTransfer: 'Data transfer', inPort: 'In port', inPortUntil: 'In port until', pendingInstall: 'Pending install',
+    pendingDeinstall: 'Pending deinstall', installDate: 'Install date', deinstallDate: 'Deinstall date', lastContact: 'Last contact',
+    waitingReply: 'Waiting on reply', poc: 'POC', shipId: 'Ship', isAdmin: 'Admin', ciscoRouter: 'Cisco router', hddStar: 'HDD (star)',
+    hdd: 'HDD', hddData: 'HDD data', crna1: 'CRNA 1', crna2: 'CRNA 2',
+};
+const auditFieldName = (f) => AUDIT_FIELD_NAMES[f] || f.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+const auditValue = (field, v) => {
+    if (v === undefined || v === null || v === '') return '—';
+    if (typeof v === 'boolean') return field === 'statusAM' || field === 'statusPM' ? (v ? 'Online' : 'Offline') : (v ? 'Yes' : 'No');
+    if (typeof v === 'object') { const j = JSON.stringify(v); return j.length > 160 ? j.slice(0, 160) + '…' : j; }
+    const str = String(v);
+    return str.length > 240 ? str.slice(0, 240) + '…' : str;
+};
+
+function ActivityLog({ activityLog, allUsers, currentUser, isAdmin, ships, toast }) {
+    const [auditEntries, setAuditEntries] = useState([]);
+    const [auditLimit, setAuditLimit] = useState(300);
+    const [auditError, setAuditError] = useState('');
     const [userFilter, setUserFilter] = useState('all');
-    const [typeFilter, setTypeFilter] = useState('all');
-    const [dateFilter, setDateFilter] = useState('all');
+    const [kindFilter, setKindFilter] = useState('all');
+    const [areaFilter, setAreaFilter] = useState('all');
+    const [dateFilter, setDateFilter] = useState('week');
     const [search, setSearch] = useState('');
-    const [shipFilter, setShipFilter] = useState('all');
-    
-    const users = useMemo(() => {
-        const names = new Set();
-        activityLog.forEach(a => { if (a.user) names.add(a.user); });
-        return [...names].sort();
-    }, [activityLog]);
-    
-    const getActionType = (text) => {
-        const t = text.toLowerCase();
-        if (t.includes('logged in')) return { type: 'login', icon: '🔑', color: 'var(--blue)', label: 'Login' };
-        if (t.includes('email') || t.includes('contacted') || t.includes('waiting') || t.includes('parsed email')) return { type: 'email', icon: '✉️', color: 'var(--green)', label: 'Email' };
-        if (t.includes('issue') || t.includes('resolved') || t.includes('ownership')) return { type: 'issue', icon: '⚠️', color: 'var(--amber)', label: 'Issue' };
-        if (t.includes('daily') || t.includes('online') || t.includes('offline') || t.includes('bulk') || t.includes('check')) return { type: 'check', icon: '📋', color: 'var(--primary)', label: 'Check' };
-        if (t.includes('ship') || t.includes('installed') || t.includes('deinstall') || t.includes('in port') || t.includes('pending')) return { type: 'ship', icon: '🚢', color: 'var(--blue)', label: 'Ship' };
-        if (t.includes('part') || t.includes('stock') || t.includes('photo')) return { type: 'parts', icon: '🔧', color: 'var(--amber)', label: 'Parts' };
-        if (t.includes('trip') || t.includes('schedul') || t.includes('contact') || t.includes('address') || t.includes('shipping')) return { type: 'trip', icon: '✈️', color: '#8b5cf6', label: 'Trip' };
-        if (t.includes('export') || t.includes('report') || t.includes('copied') || t.includes('download') || t.includes('backup')) return { type: 'export', icon: '📊', color: '#06b6d4', label: 'Export' };
-        if (t.includes('reset') || t.includes('import') || t.includes('delete') || t.includes('clear')) return { type: 'system', icon: '⚙️', color: 'var(--red)', label: 'System' };
-        return { type: 'other', icon: '📝', color: 'var(--text-muted)', label: 'Other' };
+    const [open, setOpen] = useState({});
+    const [busy, setBusy] = useState('');
+
+    useEffect(() => db.collection('auditLog').orderBy('at', 'desc').limit(auditLimit).onSnapshot(
+        snap => { setAuditEntries(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setAuditError(''); },
+        err => { console.error('Audit log read error:', err); setAuditError(err.code === 'permission-denied' ? 'The change history can\'t be read yet: the Firestore rules for auditLog haven\'t been published.' : 'Could not load the change history.'); }
+    ), [auditLimit]);
+
+    const shipName = (id) => (ships.find(s => s.id === id) || {}).name || '';
+    const recordLabel = (col, c) => {
+        const d = c.after || c.before || {};
+        const join = (...xs) => xs.filter(Boolean).join(' · ') || c.docId;
+        if (col === 'ships') return d.name || c.docId;
+        if (col === 'dailyChecks') return join(shipName(d.shipId), d.date && fmtDate(d.date));
+        if (col === 'issues') return join(shipName(d.shipId), d.title || (d.details || '').slice(0, 60));
+        if (col === 'quickNotes') return join(shipName(d.shipId), (d.text || '').slice(0, 60));
+        if (col === 'users') return d.username || c.docId;
+        if (col === 'settings' || col === 'config') return auditFieldName(c.docId);
+        return join(d.name || d.title || d.subject || d.email || (d.text || '').slice(0, 60));
     };
-    
-    const actionTypes = ['all', 'email', 'issue', 'check', 'ship', 'parts', 'trip', 'export', 'login', 'system'];
-    
-    const filtered = useMemo(() => {
-        let result = [...activityLog];
-        if (userFilter !== 'all') result = result.filter(a => a.user === userFilter);
-        if (typeFilter !== 'all') result = result.filter(a => getActionType(a.text).type === typeFilter);
-        if (dateFilter === 'today') {
-            const t = toDateString(new Date());
-            result = result.filter(a => a.time && toDateString(new Date(a.time)) === t);
-        } else if (dateFilter === 'week') {
-            const weekAgo = Date.now() - 7 * 86400000;
-            result = result.filter(a => a.time && new Date(a.time).getTime() > weekAgo);
-        } else if (dateFilter === 'month') {
-            const monthAgo = Date.now() - 30 * 86400000;
-            result = result.filter(a => a.time && new Date(a.time).getTime() > monthAgo);
-        }
-        if (shipFilter !== 'all') result = result.filter(a => a.text.includes(shipFilter));
-        if (search.trim()) {
-            const s = search.toLowerCase();
-            result = result.filter(a => a.text.toLowerCase().includes(s) || a.user?.toLowerCase().includes(s));
-        }
-        return result;
-    }, [activityLog, userFilter, typeFilter, dateFilter, search]);
-    
-    // User stats
-    const userStats = useMemo(() => {
-        const stats = {};
-        const todayStr = toDateString(new Date());
-        activityLog.forEach(a => {
-            if (!a.user) return;
-            if (!stats[a.user]) stats[a.user] = { total: 0, today: 0, lastAction: null, types: {} };
-            stats[a.user].total++;
-            if (a.time && toDateString(new Date(a.time)) === todayStr) stats[a.user].today++;
-            if (!stats[a.user].lastAction || (a.time && new Date(a.time) > new Date(stats[a.user].lastAction))) stats[a.user].lastAction = a.time;
-            const type = getActionType(a.text).type;
-            stats[a.user].types[type] = (stats[a.user].types[type] || 0) + 1;
+
+    // One timeline: changes (revertable) + actions that weren't already attached to a change as its description
+    const items = useMemo(() => {
+        const usedNotes = new Set();
+        const changes = auditEntries.map(e => {
+            (e.noteIds || []).forEach(id => usedNotes.add(id));
+            const area = AUDIT_AREAS[e.collection] || { label: e.collection, plural: e.collection, icon: '📄', color: 'var(--text-muted)' };
+            const fields = [...new Set((e.changes || []).flatMap(c => c.fields || auditFieldDiff(c.before, c.after).map(d => d.field)))];
+            const verb = e.revertOf ? 'Reverted' : e.action === 'create' ? 'Added' : e.action === 'delete' ? 'Deleted' : 'Edited';
+            const what = e.count === 1 ? `${area.label.toLowerCase()} ${recordLabel(e.collection, e.changes[0])}` : `${e.count} ${area.plural}`;
+            const fieldText = e.action === 'update' && !e.revertOf && fields.length ? ' · ' + fields.slice(0, 6).map(auditFieldName).join(', ') + (fields.length > 6 ? ` +${fields.length - 6}` : '') : '';
+            const summary = `${verb} ${what}${fieldText}`;
+            const labels = (e.changes || []).map(c => recordLabel(e.collection, c));
+            return { kind: 'change', id: e.id, time: e.at, user: e.user || 'Unknown', uid: e.uid, area, entry: e, summary, labels,
+                text: [summary, ...(e.notes || []), ...labels].join(' ').toLowerCase() };
         });
-        return stats;
-    }, [activityLog]);
-    
+        const actions = activityLog.filter(a => a.time && !usedNotes.has(a.id)).map(a => ({ kind: 'action', id: a.id, time: a.time, user: a.user || 'System', summary: a.text, details: a.details,
+            area: /logged in/i.test(a.text) ? { label: 'Login', icon: '🔑', color: 'var(--blue)' } : /export|report|copied|download|backup|print/i.test(a.text) ? { label: 'Report', icon: '📊', color: '#06b6d4' } : { label: 'Action', icon: '•', color: 'var(--text-muted)' },
+            text: (a.text + ' ' + (a.user || '')).toLowerCase() }));
+        return [...changes, ...actions].sort((a, b) => String(b.time).localeCompare(String(a.time)));
+    }, [auditEntries, activityLog, ships]);
+
+    const users = useMemo(() => [...new Set(items.map(i => i.user))].sort(), [items]);
+    const areas = useMemo(() => [...new Set(auditEntries.map(e => e.collection))].filter(c => AUDIT_AREAS[c]), [auditEntries]);
+
+    const filtered = useMemo(() => {
+        const now = Date.now();
+        const since = dateFilter === 'today' ? new Date(new Date().setHours(0, 0, 0, 0)).getTime() : dateFilter === 'week' ? now - 7 * 86400000 : dateFilter === 'month' ? now - 30 * 86400000 : 0;
+        const q = search.trim().toLowerCase();
+        return items.filter(i =>
+            (userFilter === 'all' || i.user === userFilter) &&
+            (kindFilter === 'all' || (kindFilter === 'changes' && i.kind === 'change') || (kindFilter === 'actions' && i.kind === 'action') || (kindFilter === 'reverted' && i.kind === 'change' && (i.entry.revertedAt || i.entry.revertOf))) &&
+            (areaFilter === 'all' || (i.kind === 'change' && i.entry.collection === areaFilter)) &&
+            (!since || new Date(i.time).getTime() >= since) &&
+            (!q || i.text.includes(q) || i.user.toLowerCase().includes(q)));
+    }, [items, userFilter, kindFilter, areaFilter, dateFilter, search]);
+
+    const userStats = useMemo(() => {
+        const todayStr = toDateString(new Date());
+        const st = {};
+        items.forEach(i => {
+            const s = st[i.user] || (st[i.user] = { changes: 0, today: 0, last: null, reverted: 0 });
+            if (i.kind === 'change') { s.changes++; if (i.entry.revertedAt) s.reverted++; }
+            if (toDateString(new Date(i.time)) === todayStr) s.today++;
+            if (!s.last || i.time > s.last) s.last = i.time;
+        });
+        return st;
+    }, [items]);
+
+    const grouped = useMemo(() => {
+        const out = [];
+        const today = toDateString(new Date()), yesterday = toDateString(new Date(Date.now() - 86400000));
+        filtered.forEach(i => {
+            const d = toDateString(new Date(i.time));
+            const label = d === today ? 'Today' : d === yesterday ? 'Yesterday' : new Date(i.time).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+            if (!out.length || out[out.length - 1].label !== label) out.push({ label, items: [] });
+            out[out.length - 1].items.push(i);
+        });
+        return out;
+    }, [filtered]);
+
     const timeAgo = (date) => {
-        const mins = Math.floor((new Date() - new Date(date)) / 60000);
-        if (mins < 1) return 'Just now';
+        const mins = Math.floor((Date.now() - new Date(date)) / 60000);
+        if (mins < 1) return 'just now';
         if (mins < 60) return `${mins}m ago`;
         const hours = Math.floor(mins / 60);
         if (hours < 24) return `${hours}h ago`;
-        const days = Math.floor(hours / 24);
-        return `${days}d ago`;
+        return `${Math.floor(hours / 24)}d ago`;
     };
-    
-    // Group by date
-    const grouped = useMemo(() => {
-        const groups = {};
-        filtered.forEach(a => {
-            if (!a.time) return;
-            const d = toDateString(new Date(a.time));
-            const today = toDateString(new Date());
-            const yesterday = toDateString(new Date(Date.now() - 86400000));
-            const label = d === today ? 'Today' : d === yesterday ? 'Yesterday' : new Date(a.time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-            if (!groups[label]) groups[label] = [];
-            groups[label].push(a);
+    const fullTime = (t) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+
+    const canRevert = (e) => e.revertable !== false && !e.revertedAt && (isAdmin || (e.uid && e.uid === currentUser?.uid));
+    const revert = (e) => {
+        setBusy(e.id);
+        auditCheckRevert(e).then(({ rows, conflicts }) => {
+            const what = e.count === 1 ? recordLabel(e.collection, e.changes[0]) : `${e.count} records`;
+            let msg = `Revert ${e.user}'s change from ${fullTime(e.at)}?\n\n${what} will be put back the way it was before this change.`;
+            if (conflicts.length) msg += `\n\n⚠ ${conflicts.length === rows.length && rows.length === 1 ? 'This record has' : conflicts.length + ' of these records have'} been changed again since. Reverting will also undo those later changes.`;
+            if (!confirm(msg)) { setBusy(''); return; }
+            return auditApplyRevert(e, rows, `Reverted ${e.user}'s change from ${fullTime(e.at)}`).then(() => toast('Change reverted', 'success'));
+        }).catch(err => { console.error('Revert error:', err); toast('Could not revert: ' + (err.code === 'permission-denied' ? 'not allowed' : err.message), 'error'); })
+          .finally(() => setBusy(''));
+    };
+
+    const exportCsv = () => {
+        const esc = (v) => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+        const rows = [['Time', 'User', 'Type', 'Area', 'What', 'Description', 'Details', 'Reverted by', 'Reverted at']];
+        filtered.forEach(i => {
+            if (i.kind === 'action') { rows.push([fullTime(i.time), i.user, 'Action', i.area.label, i.summary, '', '', '', '']); return; }
+            const e = i.entry;
+            const details = (e.changes || []).map(c => recordLabel(e.collection, c) + ': ' + (c.fields ? c.fields.map(auditFieldName).join(', ') : !c.before ? 'added' : !c.after ? 'deleted' : auditFieldDiff(c.before, c.after).map(d => `${auditFieldName(d.field)} ${auditValue(d.field, d.from)} → ${auditValue(d.field, d.to)}`).join('; '))).join(' | ');
+            rows.push([fullTime(i.time), i.user, 'Change', i.area.label, i.summary, (e.notes || []).join(' / '), details, e.revertedBy || '', e.revertedAt ? fullTime(e.revertedAt) : '']);
         });
-        return groups;
-    }, [filtered]);
+        const blob = new Blob([rows.map(r => r.map(esc).join(',')).join('\n')], { type: 'text/csv' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Activity_Log_${toDateString(new Date())}.csv`; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    };
+
+    const ChangeDetails = ({ e }) => (
+        <div className="al-details">
+            {(e.changes || []).map(c => {
+                const diffs = c.fields ? null : auditFieldDiff(c.before, c.after);
+                const state = !c.before && !c.beforeUnknown ? 'added' : !c.after ? 'deleted' : 'edited';
+                const shown = state === 'edited' ? diffs : auditFieldDiff(state === 'added' ? {} : c.before, state === 'added' ? c.after : {});
+                return (
+                    <div key={c.docId} className="al-record">
+                        <div className="al-record-head"><span>{recordLabel(e.collection, c)}</span><span className={`al-pill ${state}`}>{state}</span></div>
+                        {c.fields ? <div className="al-note">Changed: {c.fields.map(auditFieldName).join(', ')} (too large to keep a full copy, so this one can't be reverted)</div> : (
+                            <div className="al-diff">
+                                {shown.map(d => (
+                                    <React.Fragment key={d.field}>
+                                        <span className="al-field">{auditFieldName(d.field)}</span>
+                                        {state !== 'added' && <span className="al-from" title={typeof d.from === 'string' ? d.from : undefined}>{auditValue(d.field, d.from)}</span>}
+                                        {state === 'edited' && <span className="al-arrow">→</span>}
+                                        {state !== 'deleted' && <span className="al-to" title={typeof d.to === 'string' ? d.to : undefined}>{auditValue(d.field, d.to)}</span>}
+                                    </React.Fragment>
+                                ))}
+                                {!shown.length && <span className="al-note">No field changes</span>}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+            {e.beforeUnknown || (e.changes || []).some(c => c.beforeUnknown) ? <div className="al-note">The earlier copy wasn't available on this device, so this change can't be reverted.</div> : null}
+        </div>
+    );
 
     return (
         <div className="page active">
             <div className="page-header">
                 <div className="page-header-left">
                     <h1 className="page-title">Activity Log</h1>
-                    <p className="page-sub">{activityLog.length} actions tracked • {users.length} team members</p>
+                    <p className="page-sub">Every change and action, who made it and when. Open a change to see exactly what changed, and revert it if it was wrong.</p>
                 </div>
+                <button className="btn btn-sm btn-secondary" onClick={exportCsv}>⬇ Export CSV</button>
             </div>
-            
-            {/* User performance cards */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))',gap:'10px',marginBottom:'20px'}}>
-                {users.map(user => {
-                    const s = userStats[user] || { total: 0, today: 0, lastAction: null, types: {} };
-                    const isMe = user === currentUser?.username;
-                    const isActive = userFilter === user;
-                    const topType = Object.entries(s.types).sort((a,b) => b[1]-a[1])[0];
+
+            {auditError && <div className="card" style={{borderColor:'var(--amber)',color:'var(--amber)',fontSize:'12px',marginBottom:'14px'}}>⚠ {auditError}</div>}
+
+            {/* People */}
+            <div className="al-people">
+                {users.map(u => {
+                    const s = userStats[u] || {};
+                    const active = userFilter === u;
                     return (
-                        <div key={user} onClick={() => setUserFilter(isActive ? 'all' : user)} style={{padding:'16px',background: isActive ? 'var(--primary-glow)' : 'var(--bg-card)',border: isActive ? '2px solid var(--primary)' : '1px solid var(--border)',borderRadius:'12px',cursor:'pointer',transition:'all 0.15s'}} onMouseOver={e => { if(!isActive) e.currentTarget.style.borderColor='var(--primary)'; }} onMouseOut={e => { if(!isActive) e.currentTarget.style.borderColor='var(--border)'; }}>
-                            <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'10px'}}>
-                                <div style={{width:'38px',height:'38px',borderRadius:'10px',background: isActive ? 'var(--primary)' : 'var(--bg-input)',border: isActive ? 'none' : '2px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',fontWeight:800,color: isActive ? '#000' : 'var(--text-dim)'}}>
-                                    {user.substring(0,2).toUpperCase()}
-                                </div>
-                                <div>
-                                    <div style={{fontWeight:700,fontSize:'14px',color:'var(--text)'}}>{user}{isMe ? ' ✦' : ''}</div>
-                                    <div style={{fontSize:'10px',color:'var(--text-muted)'}}>{s.lastAction ? timeAgo(s.lastAction) : 'No activity'}</div>
-                                </div>
-                            </div>
-                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
-                                <div>
-                                    <div style={{fontSize:'24px',fontWeight:800,fontFamily:'JetBrains Mono',color: isActive ? 'var(--primary)' : 'var(--text)',lineHeight:1}}>{s.total}</div>
-                                    <div style={{fontSize:'9px',color:'var(--text-muted)',letterSpacing:'0.5px',marginTop:'2px'}}>TOTAL ACTIONS</div>
-                                </div>
-                                <div style={{textAlign:'right'}}>
-                                    <div style={{fontSize:'16px',fontWeight:700,fontFamily:'JetBrains Mono',color: s.today > 0 ? 'var(--green)' : 'var(--text-muted)',lineHeight:1}}>{s.today}</div>
-                                    <div style={{fontSize:'9px',color:'var(--text-muted)',letterSpacing:'0.5px',marginTop:'2px'}}>TODAY</div>
-                                </div>
-                            </div>
-                            {topType && <div style={{marginTop:'10px',paddingTop:'8px',borderTop:'1px solid var(--border)',fontSize:'10px',color:'var(--text-muted)'}}>Top: {getActionType('x'.repeat(0) + topType[0]).icon} {getActionType(topType[0]).label} ({topType[1]})</div>}
-                        </div>
+                        <button key={u} type="button" className={`al-person ${active ? 'active' : ''}`} onClick={() => setUserFilter(active ? 'all' : u)}>
+                            <span className="al-avatar">{u.substring(0, 2).toUpperCase()}</span>
+                            <span className="al-person-main">
+                                <span className="al-person-name">{u}{u === currentUser?.username ? ' (you)' : ''}</span>
+                                <span className="al-person-sub">{s.last ? 'Last active ' + timeAgo(s.last) : '—'}</span>
+                            </span>
+                            <span className="al-person-nums"><b>{s.changes || 0}</b> changes<br/><b>{s.today || 0}</b> today{s.reverted ? <><br/><b style={{color:'var(--amber)'}}>{s.reverted}</b> reverted</> : null}</span>
+                        </button>
                     );
                 })}
             </div>
-            
+
             {/* Filters */}
-            <div style={{display:'flex',gap:'10px',marginBottom:'16px',flexWrap:'wrap',alignItems:'center'}}>
-                <div className="search-box">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" placeholder="Search actions..." value={search} onChange={e => setSearch(e.target.value)} style={{width:'180px'}}/>
-                    {search && <button onClick={() => setSearch('')} style={{position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'14px'}}>✕</button>}
+            <div className="card al-filters">
+                <div className="list-search" style={{minWidth:'220px',flex:'1 1 220px'}}>
+                    <Icon name="search"/>
+                    <input placeholder="Search ship, field, person, text..." value={search} onChange={e => setSearch(e.target.value)}/>
+                    {search && <button type="button" onClick={() => setSearch('')} title="Clear">✕</button>}
                 </div>
-                
-                <div className="btn-group">
-                    {[{k:'all',l:'All'},{k:'today',l:'Today'},{k:'week',l:'This Week'},{k:'month',l:'This Month'}].map(f => (
-                        <button key={f.k} className={`btn btn-sm ${dateFilter===f.k ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setDateFilter(f.k)}>{f.l}</button>
-                    ))}
+                <div className="seg" role="group" aria-label="When">
+                    {[['today', 'Today'], ['week', '7 days'], ['month', '30 days'], ['all', 'All']].map(([k, l]) => <button key={k} type="button" className={dateFilter === k ? 'active' : ''} onClick={() => setDateFilter(k)}>{l}</button>)}
                 </div>
-                
-                <input style={{padding:'6px 10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text)',fontSize:'11px',minWidth:'140px'}} placeholder="Filter by ship name..." value={shipFilter === 'all' ? '' : shipFilter} onChange={e => setShipFilter(e.target.value || 'all')}/>
-                
-                <div style={{display:'flex',gap:'4px',flexWrap:'wrap'}}>
-                    {actionTypes.map(t => {
-                        const info = t === 'all' ? { icon: '📋', label: 'All', color: 'var(--text-muted)' } : getActionType(t);
+                <div className="seg" role="group" aria-label="Type">
+                    {[['all', 'Everything'], ['changes', 'Changes'], ['actions', 'Actions'], ['reverted', 'Reverted']].map(([k, l]) => <button key={k} type="button" className={kindFilter === k ? 'active' : ''} onClick={() => setKindFilter(k)}>{l}</button>)}
+                </div>
+                <select className="form-input" style={{width:'auto',padding:'5px 8px',fontSize:'12px'}} value={areaFilter} onChange={e => setAreaFilter(e.target.value)}>
+                    <option value="all">All areas</option>
+                    {areas.map(a => <option key={a} value={a}>{AUDIT_AREAS[a].icon} {AUDIT_AREAS[a].plural.replace(/^./, c => c.toUpperCase())}</option>)}
+                </select>
+                {userFilter !== 'all' && <button className="btn btn-sm btn-secondary" onClick={() => setUserFilter('all')}>{userFilter} ✕</button>}
+                <span className="al-count">{filtered.length} shown</span>
+            </div>
+
+            {/* Timeline */}
+            {grouped.length === 0 ? (
+                <div className="card" style={{padding:'50px',textAlign:'center',color:'var(--text-muted)',fontSize:'13px'}}>Nothing matches these filters.</div>
+            ) : grouped.map(g => (
+                <div key={g.label} className="al-day">
+                    <div className="al-day-head"><span>{g.label}</span><i/><span>{g.items.length}</span></div>
+                    {g.items.map(i => {
+                        const e = i.entry;
+                        const isOpen = !!open[i.id];
                         return (
-                            <button key={t} onClick={() => setTypeFilter(typeFilter === t ? 'all' : t)} style={{padding:'4px 10px',borderRadius:'8px',border: typeFilter === t ? `2px solid ${info.color}` : '1px solid var(--border)',background: typeFilter === t ? `${info.color}15` : 'transparent',color: typeFilter === t ? info.color : 'var(--text-muted)',fontSize:'11px',fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',transition:'all 0.15s'}}>
-                                {info.icon} {info.label}
-                            </button>
+                            <div key={i.kind + i.id} className={`al-item ${i.kind} ${e && e.revertedAt ? 'is-reverted' : ''} ${e && e.revertOf ? 'is-revert' : ''}`}>
+                                <div className="al-row" onClick={i.kind === 'change' ? () => setOpen(o => ({ ...o, [i.id]: !o[i.id] })) : undefined}>
+                                    <span className="al-icon" style={{color: i.area.color, borderColor: i.area.color}}>{e && e.revertOf ? '↩' : i.area.icon}</span>
+                                    <span className="al-main">
+                                        <span className="al-line"><b>{i.user}</b> {(e && e.notes && e.notes.length) ? e.notes[e.notes.length - 1] : i.summary}</span>
+                                        <span className="al-sub">
+                                            {i.kind === 'change' && e.notes && e.notes.length ? <span>{i.summary}{e.notes.length > 1 ? ` · +${e.notes.length - 1} more` : ''}</span> : null}
+                                            {i.kind === 'action' && <span>{i.area.label}{i.details && i.details.ship ? ' · ' + i.details.ship : ''}</span>}
+                                            {e && e.revertedAt && <span className="al-tag amber">Reverted by {e.revertedBy} · {fullTime(e.revertedAt)}</span>}
+                                            {e && e.revertOf && <span className="al-tag">Undo of an earlier change</span>}
+                                        </span>
+                                    </span>
+                                    <span className="al-time" title={fullTime(i.time)}>
+                                        {new Date(i.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}
+                                        <small>{timeAgo(i.time)}</small>
+                                    </span>
+                                    {i.kind === 'change' && (
+                                        <span className="al-actions" onClick={ev => ev.stopPropagation()}>
+                                            {canRevert(e) && <button className="btn btn-sm btn-secondary" disabled={busy === e.id} onClick={() => revert(e)}>{busy === e.id ? '…' : '↩ Revert'}</button>}
+                                            <button className="al-chevron" onClick={() => setOpen(o => ({ ...o, [i.id]: !o[i.id] }))} aria-label="Show details">{isOpen ? '▴' : '▾'}</button>
+                                        </span>
+                                    )}
+                                </div>
+                                {isOpen && e && <ChangeDetails e={e}/>}
+                            </div>
                         );
                     })}
                 </div>
-                
-                <span style={{marginLeft:'auto',fontSize:'11px',color:'var(--text-muted)',fontFamily:'JetBrains Mono'}}>{filtered.length} actions</span>
-            </div>
-            
-            {/* Timeline */}
-            {filtered.length === 0 ? (
-                <div className="card" style={{padding:'60px',textAlign:'center'}}>
-                    <div style={{fontSize:'36px',marginBottom:'12px',opacity:0.4}}>📋</div>
-                    <div style={{fontSize:'14px',fontWeight:600,color:'var(--text-dim)',marginBottom:'4px'}}>No activity found</div>
-                    <div style={{fontSize:'12px',color:'var(--text-muted)'}}>Try adjusting your filters</div>
-                </div>
-            ) : (
-                <div style={{display:'flex',flexDirection:'column',gap:'20px'}}>
-                    {Object.entries(grouped).map(([dateLabel, items]) => (
-                        <div key={dateLabel}>
-                            {/* Date header */}
-                            <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'10px'}}>
-                                <span style={{fontSize:'12px',fontWeight:700,color:'var(--text-dim)',whiteSpace:'nowrap'}}>{dateLabel}</span>
-                                <div style={{flex:1,height:'1px',background:'var(--border)'}}></div>
-                                <span style={{fontSize:'10px',color:'var(--text-muted)',fontFamily:'JetBrains Mono'}}>{items.length}</span>
-                            </div>
-                            
-                            {/* Actions for this date */}
-                            <div style={{display:'flex',flexDirection:'column',gap:'4px',paddingLeft:'16px',borderLeft:'2px solid var(--border)',marginLeft:'6px'}}>
-                                {items.map(a => {
-                                    const action = getActionType(a.text);
-                                    const isToday = a.time && toDateString(new Date(a.time)) === toDateString(new Date());
-                                    return (
-                                        <div key={a.id} style={{display:'flex',alignItems:'flex-start',gap:'12px',padding:'10px 14px',background: isToday ? 'rgba(16,185,129,0.04)' : 'var(--bg-card)',borderRadius:'10px',border: isToday ? '1px solid rgba(16,185,129,0.2)' : '1px solid var(--border)',position:'relative',transition:'border-color 0.15s'}} onMouseOver={e => e.currentTarget.style.borderColor=action.color} onMouseOut={e => e.currentTarget.style.borderColor= isToday ? 'rgba(16,185,129,0.2)' : 'var(--border)'}>
-                                            {/* Timeline dot */}
-                                            <div style={{position:'absolute',left:'-24px',top:'14px',width:'10px',height:'10px',borderRadius:'50%',background:action.color,border:'2px solid var(--bg-main)',zIndex:1}}></div>
-                                            
-                                            {/* Action icon */}
-                                            <div style={{width:'32px',height:'32px',borderRadius:'8px',background:`${action.color}15`,border:`1px solid ${action.color}33`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',flexShrink:0}}>
-                                                {action.icon}
-                                            </div>
-                                            
-                                            {/* Content */}
-                                            <div style={{flex:1,minWidth:0}}>
-                                                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'3px'}}>
-                                                    <span style={{fontSize:'12px',fontWeight:700,color:action.color}}>{a.user || 'System'}</span>
-                                                    <span style={{fontSize:'9px',padding:'2px 6px',borderRadius:'4px',background:`${action.color}15`,color:action.color,fontWeight:600,border:`1px solid ${action.color}33`}}>{action.label}</span>
-                                                </div>
-                                                <div style={{fontSize:'12px',color:'var(--text)',lineHeight:'1.5',fontWeight:500}}>{a.text}</div>
-                                                {a.details && (
-                                                    <div style={{fontSize:'10px',color:'var(--text-muted)',marginTop:'4px',padding:'4px 8px',background:'var(--bg-input)',borderRadius:'4px',display:'flex',gap:'12px',flexWrap:'wrap'}}>
-                                                        {a.details.ship && <span>🚢 {a.details.ship}</span>}
-                                                        {a.details.contactedBy && <span>👤 {a.details.contactedBy}</span>}
-                                                        {a.details.threat && <span>⚠️ {a.details.threat}</span>}
-                                                        {a.details.resolution && <span>↳ {a.details.resolution.substring(0,40)}</span>}
-                                                        {a.details.notes && <span>📝 {a.details.notes.substring(0,40)}</span>}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            
-                                            {/* Time */}
-                                            <div style={{fontSize:'10px',color:'var(--text-muted)',whiteSpace:'nowrap',flexShrink:0,textAlign:'right'}}>
-                                                <div>{a.time ? new Date(a.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''}</div>
-                                                <div style={{fontSize:'9px',marginTop:'1px'}}>{a.time ? timeAgo(a.time) : ''}</div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+            ))}
+            {auditEntries.length >= auditLimit && <div style={{textAlign:'center',margin:'16px 0'}}><button className="btn btn-secondary" onClick={() => setAuditLimit(n => n + 300)}>Load older changes</button></div>}
         </div>
     );
 }
