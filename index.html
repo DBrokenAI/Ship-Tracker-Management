@@ -284,45 +284,52 @@
         @media (max-width: 1380px) { .topnav-btn { width: 70px; font-size: 10px; } }
         @media (max-width: 1100px) { .topbar { grid-template-columns: auto minmax(0, 1fr) auto; } .topbar-logo span { display: none; } .topnav { justify-content: center; } .topnav-btn { width: 46px; } .topnav-btn > span:not(.badge-count):not(.nav-dot) { display: none; } }
 
-        /* Dashboard: status ring + offline + open issues, then all ships */
-        .dash-top { display: grid; grid-template-columns: 320px minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
-        .dash-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-        .dash-ring { align-items: center; justify-content: center; gap: 12px; }
-        .dash-ring svg { width: 190px; height: 190px; font-family: 'Outfit', sans-serif; }
-        .dash-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 12px; color: var(--text-dim); }
-        .dash-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; box-sizing: border-box; }
-        .dash-panel-head { display: flex; align-items: center; gap: 10px; }
-        .dash-panel-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
-        .dash-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .dash-panel-count { margin-left: auto; font-size: 26px; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-        .dash-item { text-align: left; width: 100%; padding: 11px 14px; border-radius: 12px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text); font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 3px; transition: border-color .15s; }
-        .dash-item:hover { border-color: var(--primary); }
-        .dash-item-top { display: flex; align-items: center; gap: 8px; }
-        .dash-item-top strong { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-        .dash-item-age { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-        .dash-item-text { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .dash-tag-urgent { font-size: 9px; font-weight: 800; letter-spacing: .6px; padding: 2px 6px; border-radius: 4px; background: var(--red-glow); color: var(--red); }
-        .dash-empty { padding: 18px; text-align: center; color: var(--green); font-size: 13px; background: var(--bg-input); border-radius: 12px; }
-        .dash-more { background: none; border: none; color: var(--primary); font-family: inherit; font-size: 12px; cursor: pointer; align-self: flex-start; padding: 2px 0; }
-        .dash-all-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
-        .dash-all-title { margin: 0; font-size: 16px; font-weight: 700; }
-        .dash-all-title span { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: 4px; }
-        .dash-filters { margin: 0; }
-        .ship-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-        .ship-tile { text-align: left; border-radius: 10px; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0; transition: border-color .15s, transform .15s; color: var(--text); }
-        .ship-tile:hover { transform: translateY(-1px); border-color: var(--border-focus); }
-        .ship-tile.st-off { background: var(--red-glow); border-color: rgba(255,82,82,0.45); }
-        .ship-tile.st-iss { background: var(--amber-glow); border-color: rgba(255,179,0,0.4); }
-        .ship-tile.st-nc { opacity: .7; }
-        .ship-tile.st-pend { border-style: dashed; }
-        .ship-tile.selected { box-shadow: 0 0 0 2px var(--primary); }
-        .ship-tile-top { display: flex; align-items: baseline; gap: 6px; }
-        .ship-tile .ship-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
-        .ship-tile-type { margin-left: auto; font-size: 9px; color: var(--text-muted); letter-spacing: .5px; text-transform: uppercase; }
-        .ship-tile-port { font-size: 11px; color: var(--text-muted); }
-        .ship-tile-note { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
-        .st-off .ship-tile-note { color: var(--red); } .st-iss .ship-tile-note { color: var(--amber); } .st-on .ship-tile-note { color: var(--green); }
-        @media (max-width: 1200px) { .dash-top { grid-template-columns: 1fr 1fr; } .dash-ring { grid-column: 1 / -1; } }
+        /* Dashboard: key numbers, ship table, needs-attention list */
+        .kpi-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+        .kpi { text-align: left; background: none; border: none; border-left: 1px solid var(--border); padding: 14px 18px; color: var(--text); font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0; transition: background .15s; }
+        .kpi:first-child { border-left: none; }
+        .kpi:hover { background: rgba(255,255,255,0.025); }
+        .kpi.active { background: var(--primary-glow); box-shadow: inset 0 -2px 0 var(--primary); }
+        .kpi-label { font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); }
+        .kpi-value { font-size: 26px; font-weight: 700; line-height: 1.15; font-family: 'JetBrains Mono', monospace; }
+        .kpi-value small { font-size: 15px; color: var(--text-muted); font-weight: 500; }
+        .kpi-sub { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .kpi-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; background: var(--bg-input); margin-top: 2px; }
+        .kpi-bar span { height: 100%; }
+        .dash-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+        .dash-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; min-width: 0; }
+        .dash-card-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+        .dash-card-title { margin: 0; font-size: 14px; font-weight: 600; }
+        .dash-card-title span { font-weight: 400; color: var(--text-muted); margin-left: 6px; font-size: 12px; }
+        .seg { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--bg-input); border: 1px solid var(--border); }
+        .seg button { border: none; background: none; color: var(--text-dim); font-family: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+        .seg button.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+        .ship-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .ship-table th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); padding: 8px 16px; background: var(--bg-input); white-space: nowrap; }
+        .ship-table td { padding: 9px 16px; border-top: 1px solid var(--border); white-space: nowrap; }
+        .ship-table tbody tr { cursor: pointer; }
+        .ship-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+        .ship-table tbody tr.selected { background: var(--primary-glow); }
+        .ship-table .hull { font-family: 'JetBrains Mono', monospace; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .ship-table .muted { color: var(--text-muted); }
+        .ship-table .issue-cell { max-width: 0; width: 40%; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
+        .st-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+        .st-dot.off { background: var(--red); } .st-dot.iss { background: var(--amber); } .st-dot.on { background: var(--green); } .st-dot.nc { background: var(--text-muted); opacity: .5; } .st-dot.pend { border: 1.5px dashed var(--text-muted); box-sizing: border-box; }
+        .st-text.off { color: var(--red); } .st-text.on { color: var(--text-dim); } .st-text.nc, .st-text.pend { color: var(--text-muted); }
+        .sev-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .4px; padding: 1px 6px; border-radius: 4px; margin-right: 8px; vertical-align: 1px; }
+        .sev-tag.urgent { background: var(--red-glow); color: var(--red); } .sev-tag.mild { background: var(--amber-glow); color: var(--amber); }
+        .attn-list { display: flex; flex-direction: column; }
+        .attn-item { display: grid; grid-template-columns: 3px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 16px; border: none; border-top: 1px solid var(--border); background: none; color: var(--text); font-family: inherit; text-align: left; cursor: pointer; width: 100%; }
+        .attn-item:first-child { border-top: none; }
+        .attn-item:hover { background: rgba(255,255,255,0.025); }
+        .attn-bar { align-self: stretch; border-radius: 2px; }
+        .attn-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .attn-main strong { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+        .attn-text { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .attn-age { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+        .attn-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .attn-foot { display: block; width: 100%; padding: 10px 16px; border: none; border-top: 1px solid var(--border); background: none; color: var(--primary); font-family: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+        @media (max-width: 1200px) { .dash-main { grid-template-columns: 1fr; } .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi:nth-child(3) { border-left: none; } .kpi:nth-child(n+3) { border-top: 1px solid var(--border); } .ship-table .col-port { display: none; } }
         @media (max-width: 1200px) { .attn-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fleet-row { grid-template-columns: 110px 48px 150px minmax(0, 1fr) 100px; } .fleet-row > .fleet-port { display: none; } }
         .detail-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; overflow: hidden; max-width: 100%; box-sizing: border-box; }
         .section-title { font-size: 10px; font-weight: 600; color: var(--primary); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
@@ -593,7 +600,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-29T155";
+    var APP_BUILD = "2026-10-30T156";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2159,7 +2166,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T155'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T156'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2170,7 +2177,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T155');
+                                    localStorage.setItem('lastSeenBuild', 'T156');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2180,6 +2187,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T156'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📊 Cleaner Dashboard'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• New row of key numbers at the top of the Dashboard: Online today (with a green and red bar), Offline (names the ships), Open issues (urgent count and how many ships), and All clear\n• Click a number to filter the ship list to just those ships. Click it again to show every ship\n• The status ring and the separate Offline and Open issues boxes are gone\n• Ship tiles are replaced by one Ships table: Ship, Type, Homeport, Today and Open issue, with a colored status dot for each ship\n• The Open issue column shows the most urgent issue, tagged URGENT or OPEN, plus how many more that ship has\n• Activate (pending installs) and Back (in-port ships) buttons now sit in the Today column, and in-port ships show their return date\n• Table filters: All, Needs attention, Full REAP, Mini REAP. Reorder, Done and Reset order are now plain buttons\n• New Needs attention list beside the table: offline ships first, then open issues with how long each has been open. Click one to open that ship\'s details\n• The Recent Activity box at the bottom of the Dashboard is gone. Open the full activity log with the new Activity button next to Weekly Report\n• The date under the Dashboard title is now written out in full (for example Friday, October 30, 2026)\n• The Weekly Report button no longer has an emoji\n• On smaller screens the numbers wrap to two per row, the list moves under the table, and the Homeport column hides'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 29, 2026 — Build T155'),
@@ -3968,6 +3982,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             issues: r.issueShips
         };
         r.ids.attention = new Set([...r.ids.offline, ...r.ids.issues]);
+        r.ids.clear = new Set(r.online.filter(x => !r.issueShips.has(x.id)).map(x => x.id));
         return r;
     }, [ships, dailyChecks, issues, today]);
 
@@ -4573,14 +4588,15 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     return (
         <div className="page active">
             <div className="page-header">
-                <div className="page-header-left"><h1 className="page-title">Dashboard</h1><p className="page-sub">Fleet overview • {today}</p></div>
+                <div className="page-header-left"><h1 className="page-title">Dashboard</h1><p className="page-sub">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div>
                 <div className="flex gap-md">
                     <div className="search-box">
                         <Icon name="search"/>
                         <input ref={searchRef} placeholder="Search ships, issues, emails, notes..." value={globalSearch} onChange={e => setGlobalSearch(e.target.value)}/>
                         <span className="shortcut">/</span>
                     </div>
-                    <SplitButton testId="dash-export" label="📋 Weekly Report" onClick={copyReport} className="btn btn-primary"
+                    <button className="btn btn-secondary" data-testid="dash-activity" onClick={() => setShowAllActivity(true)}>Activity</button>
+                    <SplitButton testId="dash-export" label="Weekly Report" onClick={copyReport} className="btn btn-primary"
                         items={[
                             { label: '⬇️ Download report', onClick: downloadReport },
                             { label: '📊 Power BI export', onClick: exportPowerBI },
@@ -4589,69 +4605,38 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                 </div>
             </div>
             
-            {/* Today: status ring, offline ships and open issues. Click a ship to open its details */}
+            {/* Key numbers. Click one to filter the ship table */}
             {(() => {
-                const issueOnline = attn.online.filter(s => attn.issueShips.has(s.id)).length;
-                const clear = attn.online.length - issueOnline;
                 const counted = attn.online.length + attn.offline.length + attn.unchecked.length;
-                const R = 82, C = 2 * Math.PI * R;
-                let acc = 0;
-                const segs = [
-                    { n: clear, color: 'var(--green)', label: 'clear' },
-                    { n: issueOnline, color: 'var(--amber)', label: 'with issue' },
-                    { n: attn.offline.length, color: 'var(--red)', label: 'offline' },
-                    { n: attn.unchecked.length, color: 'var(--text-muted)', label: 'not checked' },
-                ].filter(x => x.n > 0);
-                const arcs = segs.map(x => { const len = x.n / (counted || 1) * C; const a = { ...x, dash: len + ' ' + C, off: -acc }; acc += len; return a; });
-                const shipName = id => (ships.find(x => x.id === id) || {}).name || '';
-                const daysAgo = d => { if (!d) return ''; const n = Math.floor((new Date() - new Date(d)) / 86400000); return n <= 0 ? 'today' : n === 1 ? '1 day' : n + ' days'; };
-                const offlineDays = s => {
-                    const cs = dailyChecks.filter(c => c.shipId === s.id && c.date <= today).sort((a, b) => a.date < b.date ? 1 : -1);
-                    let n = 0;
-                    for (const c of cs) { if (String(c.pingAM == null ? '' : c.pingAM).trim() || String(c.pingPM == null ? '' : c.pingPM).trim()) break; n++; }
-                    return n;
-                };
-                const issueList = attn.issues.slice(0, 5);
+                const checked = attn.online.length + attn.offline.length > 0;
+                const pct = n => (n / (counted || 1) * 100) + '%';
+                const shipsWithIssues = attn.issueShips.size;
+                const cells = [
+                    { key: 'all', label: 'Online today', value: <>{attn.online.length}<small> / {counted}</small></>,
+                      sub: checked ? null : 'Daily checks not entered yet',
+                      bar: checked },
+                    { key: 'offline', label: 'Offline', value: attn.offline.length, color: attn.offline.length ? 'var(--red)' : undefined,
+                      sub: attn.offline.length ? attn.offline.map(s => s.name).join(', ') : 'Every ship is online' },
+                    { key: 'issues', label: 'Open issues', value: attn.issues.length, color: attn.issues.length ? 'var(--amber)' : undefined,
+                      sub: attn.issues.length ? (attn.urgent ? attn.urgent + ' urgent · ' : '') + shipsWithIssues + (shipsWithIssues === 1 ? ' ship' : ' ships') : 'Nothing open' },
+                    { key: 'clear', label: 'All clear', value: attn.ids.clear.size, color: attn.ids.clear.size ? 'var(--green)' : undefined,
+                      sub: 'Online with no open issues' },
+                ];
                 return (
-                    <div className="dash-top">
-                        <div className="dash-panel dash-ring" data-testid="dash-ring">
-                            <svg viewBox="0 0 200 200" role="img" aria-label={attn.online.length + ' of ' + counted + ' ships online today'}>
-                                <circle cx="100" cy="100" r={R} fill="none" stroke="var(--bg-input)" strokeWidth="18"/>
-                                {arcs.map(a => <circle key={a.label} cx="100" cy="100" r={R} fill="none" stroke={a.color} strokeWidth="18" strokeDasharray={a.dash} strokeDashoffset={a.off} transform="rotate(-90 100 100)"/>)}
-                                <text x="100" y="98" textAnchor="middle" fill="var(--text)" fontSize="42" fontWeight="800">{attn.online.length}/{counted}</text>
-                                <text x="100" y="124" textAnchor="middle" fill="var(--text-muted)" fontSize="14">{attn.online.length + attn.offline.length === 0 && counted > 0 ? 'checks not entered' : 'online today'}</text>
-                            </svg>
-                            <div className="dash-legend">
-                                {segs.map(x => <span key={x.label}><i style={{background: x.color}}/>{x.n} {x.label}</span>)}
-                                {attn.pending.length > 0 && <span><i style={{border: '1.5px dashed var(--text-muted)'}}/>{attn.pending.length} pending</span>}
-                            </div>
-                        </div>
-                        <div className="dash-panel" data-testid="dash-offline">
-                            <div className="dash-panel-head"><i className="dash-dot" style={{background: 'var(--red)'}}/><h2>Offline</h2><span className="dash-panel-count" style={{color: 'var(--red)'}}>{attn.offline.length}</span></div>
-                            {attn.offline.length === 0 ? <div className="dash-empty">✓ No ships offline</div> : attn.offline.map(s => {
-                                const top = attn.issues.find(i => i.shipId === s.id);
-                                const d = offlineDays(s);
-                                return (
-                                    <button key={s.id} type="button" className="dash-item" onClick={() => setSel(s)}>
-                                        <span className="dash-item-top"><strong>{s.name}</strong>{top && top.threat === 'Urgent' && <span className="dash-tag-urgent">URGENT</span>}<span className="dash-item-age">{d > 1 ? d + ' days in a row' : 'today'}</span></span>
-                                        <span className="dash-item-text">{top ? (top.title || top.details || 'Open issue') : 'No ping today'}{s.location ? ' · ' + s.location : ''}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <div className="dash-panel" data-testid="dash-issues">
-                            <div className="dash-panel-head"><i className="dash-dot" style={{background: 'var(--amber)'}}/><h2>Open issues</h2><span className="dash-panel-count" style={{color: 'var(--amber)'}}>{attn.issues.length}</span></div>
-                            {attn.issues.length === 0 ? <div className="dash-empty">✓ No open issues</div> : issueList.map(i => {
-                                const s = ships.find(x => x.id === i.shipId);
-                                return (
-                                    <button key={i.id} type="button" className="dash-item" onClick={() => s && setSel(s)}>
-                                        <span className="dash-item-top"><strong>{shipName(i.shipId)}</strong>{i.threat === 'Urgent' && <span className="dash-tag-urgent">URGENT</span>}<span className="dash-item-age">{daysAgo(i.created)}</span></span>
-                                        <span className="dash-item-text">{i.title || i.details || 'Issue'}</span>
-                                    </button>
-                                );
-                            })}
-                            {attn.issues.length > issueList.length && <button type="button" className="dash-more" onClick={() => setTypeFilter('issues')}>+{attn.issues.length - issueList.length} more · show those ships</button>}
-                        </div>
+                    <div className="kpi-strip">
+                        {cells.map(c => (
+                            <button key={c.key} type="button" data-testid={'kpi-' + c.key} className={'kpi' + (typeFilter === c.key && c.key !== 'all' ? ' active' : '')}
+                                onClick={() => setTypeFilter(c.key === 'all' || typeFilter === c.key ? 'all' : c.key)}>
+                                <span className="kpi-label">{c.label}</span>
+                                <span className="kpi-value" style={c.color ? {color: c.color} : undefined}>{c.value}</span>
+                                {c.bar ? (
+                                    <span className="kpi-bar" title={attn.online.length + ' online, ' + attn.offline.length + ' offline'}>
+                                        <span style={{width: pct(attn.online.length), background: 'var(--green)'}}/>
+                                        <span style={{width: pct(attn.offline.length), background: 'var(--red)'}}/>
+                                    </span>
+                                ) : <span className="kpi-sub">{c.sub}</span>}
+                            </button>
+                        ))}
                     </div>
                 );
             })()}
@@ -4839,44 +4824,76 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             </div>
 
             <div className="dash-grid dash-grid-v2">
-                <div className="card">
-                    <div className="dash-all-head">
-                        <h2 className="dash-all-title">All ships<span>{sorted.length}</span></h2>
-                        <div className="filters dash-filters">
-                            <button className={'filter-btn' + (typeFilter === 'all' ? ' active' : '')} onClick={() => setTypeFilter('all')}>All</button>
-                            <button className={'filter-btn' + (typeFilter === 'Full REAP' ? ' active' : '')} onClick={() => setTypeFilter('Full REAP')}>Full REAP ({chartData.fullReap})</button>
-                            <button className={'filter-btn' + (typeFilter === 'Mini REAP' ? ' active' : '')} onClick={() => setTypeFilter('Mini REAP')}>Mini REAP ({chartData.miniReap})</button>
-                            <button className={'filter-btn' + (typeFilter === 'attention' ? ' active' : '')} onClick={() => setTypeFilter(typeFilter === 'attention' ? 'all' : 'attention')}>⚠ Needs attention ({attn.ids.attention.size})</button>
-                            {['offline', 'issues'].includes(typeFilter) && <button className="filter-btn active" onClick={() => setTypeFilter('all')} title="Clear filter">{{ offline: 'Offline', issues: 'Open issues' }[typeFilter]} ✕</button>}
+                <div className="dash-main">
+                    <div className="dash-card">
+                        <div className="dash-card-head">
+                            <h2 className="dash-card-title">Ships<span>{sorted.length}</span></h2>
+                            <div className="seg" role="group" aria-label="Filter ships">
+                                {[['all', 'All'], ['attention', 'Needs attention'], ['Full REAP', 'Full REAP'], ['Mini REAP', 'Mini REAP']].map(([k, l]) => (
+                                    <button key={k} type="button" className={typeFilter === k ? 'active' : ''} onClick={() => setTypeFilter(k)}>{l}</button>
+                                ))}
+                            </div>
+                            {['offline', 'issues', 'clear'].includes(typeFilter) && <button type="button" className="filter-btn active" style={{margin:0}} onClick={() => setTypeFilter('all')} title="Clear filter">{{ offline: 'Offline', issues: 'Open issues', clear: 'All clear' }[typeFilter]} ✕</button>}
+                            <span style={{marginLeft:'auto',display:'flex',gap:'6px'}}>{dashReorder ? <><button className="btn btn-sm btn-primary" onClick={() => setDashReorder(false)}>Done</button><button className="btn btn-sm btn-secondary" onClick={resetDashOrder}>Reset order</button></> : <button className="btn btn-sm btn-secondary" onClick={() => setDashReorder(true)}>Reorder</button>}</span>
                         </div>
-                        <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'8px'}}>{dashReorder ? <><button className="btn btn-sm" style={{fontSize:'10px',padding:'3px 10px',background:'var(--primary)',color:'#000',fontWeight:700}} onClick={() => setDashReorder(false)}>✓ Done</button><button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 8px'}} onClick={resetDashOrder}>↩ Reset</button></> : <button className="btn btn-sm btn-secondary" style={{fontSize:'10px',padding:'3px 10px'}} onClick={() => setDashReorder(true)}>↕ Reorder</button>}</span>
+                        <table className="ship-table">
+                            <thead><tr><th>Ship</th><th>Type</th><th className="col-port">Homeport</th><th>Today</th><th>Open issue</th></tr></thead>
+                            <tbody>
+                                {sorted.length === 0 && <tr><td colSpan="5" className="muted" style={{textAlign:'center',padding:'24px'}}>No ships match this filter.</td></tr>}
+                                {sorted.map(ship => {
+                                    const si = issues.filter(i => i.shipId === ship.id && !i.resolved);
+                                    const topIssue = si.find(i => i.threat === 'Urgent') || si[0];
+                                    const t = shipToday(ship);
+                                    const isInPort = ship.inPort && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
+                                    const st = t.state === 'pending' ? 'pend' : t.state === 'offline' ? 'off' : si.length ? 'iss' : t.state === 'unchecked' ? 'nc' : 'on';
+                                    return (
+                                        <tr key={ship.id} data-testid={'ship-row-' + ship.name} className={sel?.id === ship.id ? 'selected' : ''} onClick={() => setSel(ship)}
+                                            draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
+                                            style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, boxShadow: dashDragOver === ship.id && dashDragShip !== ship.id ? 'inset 0 2px 0 var(--primary)' : undefined}}>
+                                            <td><span className="hull"><i className={'st-dot ' + st}/>{dashReorder && <span className="muted">⋮⋮</span>}{ship.name}</span></td>
+                                            <td className="muted">{ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type}</td>
+                                            <td className="muted col-port">{ship.location || '—'}</td>
+                                            <td>
+                                                <span className={'st-text ' + (st === 'iss' ? 'on' : st)}>{t.label}</span>
+                                                {ship.pendingInstall && <button className="fleet-mini-btn" style={{marginLeft:'8px'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>Activate</button>}
+                                                {isInPort && !ship.pendingInstall && <><span className="muted" style={{marginLeft:'8px'}}>In port until {fmtDate(ship.inPortUntil)}</span><button className="fleet-mini-btn" style={{marginLeft:'8px'}} onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>Back</button></>}
+                                            </td>
+                                            <td className="issue-cell" title={topIssue ? (topIssue.title || topIssue.details || '') : ''}>
+                                                {topIssue ? <><span className={'sev-tag ' + (topIssue.threat === 'Urgent' ? 'urgent' : 'mild')}>{topIssue.threat === 'Urgent' ? 'URGENT' : 'OPEN'}</span>{topIssue.title || topIssue.details || 'Issue'}{si.length > 1 && <span className="muted"> +{si.length - 1}</span>}</> : <span className="muted">—</span>}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-                    <div className="ship-tiles">
-                        {sorted.length === 0 && <div className="fleet-empty">No ships match this filter.</div>}
-                        {sorted.map(ship => {
-                            const si = issues.filter(i => i.shipId === ship.id && !i.resolved);
-                            const topIssue = si.find(i => i.threat === 'Urgent') || si[0];
-                            const t = shipToday(ship);
-                            const isInPort = ship.inPort && parseLocalDate(ship.inPortUntil) >= new Date(new Date().setHours(0,0,0,0));
-                            const st = t.state === 'pending' ? 'pend' : t.state === 'offline' ? 'off' : si.length ? 'iss' : t.state === 'unchecked' ? 'nc' : 'on';
-                            const note = t.state === 'pending' ? t.label : topIssue ? (topIssue.title || topIssue.details || 'Open issue') : isInPort ? '⚓ In port until ' + fmtDate(ship.inPortUntil) : t.label;
-                            return (
-                                <div key={ship.id} role="button" tabIndex={0} data-testid={'ship-tile-' + ship.name}
-                                    className={'ship-tile st-' + st + (sel?.id === ship.id ? ' selected' : '')}
-                                    onClick={() => setSel(ship)} onKeyDown={e => { if (e.key === 'Enter') setSel(ship); }}
-                                    draggable={dashReorder} onDragStart={dashReorder ? (e) => handleDashDragStart(e, ship.id) : undefined} onDragOver={dashReorder ? (e) => handleDashDragOver(e, ship.id) : undefined} onDrop={dashReorder ? (e) => handleDashDrop(e, ship.id) : undefined} onDragEnd={dashReorder ? handleDashDragEnd : undefined} onDragLeave={dashReorder ? () => setDashDragOver(null) : undefined}
-                                    style={{cursor: dashReorder ? 'grab' : 'pointer', opacity: dashDragShip === ship.id ? 0.4 : 1, outline: dashDragOver === ship.id && dashDragShip !== ship.id ? '2px solid var(--primary)' : undefined}}>
-                                    <div className="ship-tile-top"><span className="ship-name">{dashReorder && <span style={{color:'var(--text-muted)',marginRight:'4px'}}>⋮⋮</span>}{ship.name}</span><span className="ship-tile-type">{ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type}</span></div>
-                                    <div className="ship-tile-port">{ship.location || '—'}</div>
-                                    <div className="ship-tile-note" title={note}>
-                                        <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{note}</span>
-                                        {ship.pendingInstall && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity(`Marked ${ship.name} as installed`); toast(`${ship.name} is now active!`, 'success'); }}>✓ Activate</button>}
-                                        {isInPort && !ship.pendingInstall && <button className="fleet-mini-btn" onClick={(e) => { e.stopPropagation(); const updated = {...ship, inPort: false, inPortUntil: null}; if (sel?.id === ship.id) setSel(updated); setShips(p => p.map(s => s.id === ship.id ? updated : s)); logActivity('Cleared In Port status for ' + ship.name); toast(ship.name + ' is back online!', 'success'); }}>✓ Back</button>}
+
+                    {(() => {
+                        const shipById = id => ships.find(x => x.id === id);
+                        const age = d => { if (!d) return ''; const n = Math.floor((new Date() - new Date(d)) / 86400000); return n <= 0 ? 'Today' : n === 1 ? '1 day' : n + ' days'; };
+                        const items = [
+                            ...attn.offline.map(s => { const u = attn.issues.find(i => i.shipId === s.id && i.threat === 'Urgent'); return { key: 'o' + s.id, ship: s, color: 'var(--red)', text: u ? 'Offline · ' + (u.title || u.details || 'urgent issue') : 'Offline today', age: '' }; }),
+                            ...attn.issues.filter(i => !attn.ids.offline.has(i.shipId) || i.threat !== 'Urgent').map(i => ({ key: 'i' + i.id, ship: shipById(i.shipId), color: i.threat === 'Urgent' ? 'var(--red)' : 'var(--amber)', text: i.title || i.details || 'Open issue', age: age(i.created) })),
+                        ].filter(x => x.ship);
+                        const shown = items.slice(0, 8);
+                        return (
+                            <div className="dash-card" data-testid="dash-attention">
+                                <div className="dash-card-head"><h2 className="dash-card-title">Needs attention<span>{items.length}</span></h2></div>
+                                {items.length === 0 ? <div className="attn-empty">All ships online with no open issues.</div> : (
+                                    <div className="attn-list">
+                                        {shown.map(x => (
+                                            <button key={x.key} type="button" className="attn-item" onClick={() => setSel(x.ship)}>
+                                                <span className="attn-bar" style={{background: x.color}}/>
+                                                <span className="attn-main"><strong>{x.ship.name}</strong><span className="attn-text">{x.text}</span></span>
+                                                <span className="attn-age">{x.age}</span>
+                                            </button>
+                                        ))}
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                )}
+                                {items.length > shown.length && <button type="button" className="attn-foot" onClick={() => setTypeFilter('attention')}>Show all {items.length} in the table</button>}
+                            </div>
+                        );
+                    })()}
                 </div>
                 {sel && <div className="ship-drawer-backdrop" onClick={() => setSel(null)}/>}
                 <div className={'ship-drawer' + (sel ? ' open' : '')} role="dialog" aria-label="Ship details">
@@ -5399,65 +5416,6 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     </div>
                 </>}
             </Modal>
-            
-            {/* Recent Activity Section — Collapsible */}
-            <div className="card" style={{marginTop:'16px'}}>
-                <div className="flex-between mb-md" style={{cursor:'pointer'}} onClick={() => setShowActivity(!showActivity)}>
-                    <span className="card-title" style={{display:'flex',alignItems:'center',gap:'8px'}}>📝 Recent Activity <span style={{fontSize:'10px',color:'var(--text-muted)',fontWeight:400}}>{activityLog.length} entries</span></span>
-                    <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-                        <button className="btn btn-sm btn-secondary" onClick={(e) => { e.stopPropagation(); setShowAllActivity(true); }}>View All</button>
-                        <span style={{fontSize:'12px',color:'var(--text-muted)',transition:'transform 0.2s',transform: showActivity ? 'rotate(0deg)' : 'rotate(-90deg)'}}>{showActivity ? '▼' : '▶'}</span>
-                    </div>
-                </div>
-                {showActivity && (<>
-                {activityLog.length === 0 ? (
-                    <div style={{textAlign:'center',padding:'30px 20px',color:'var(--text-muted)'}}><div style={{fontSize:'28px',marginBottom:'6px',opacity:0.5}}>📋</div><div style={{fontSize:'12px'}}>No activity yet — actions will appear here as your team works</div></div>
-                ) : (
-                    <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
-                        {activityLog.slice(0, 15).map(a => {
-                            const timeAgo = (date) => {
-                                const mins = Math.floor((new Date() - new Date(date)) / 60000);
-                                if (mins < 1) return 'Just now';
-                                if (mins < 60) return `${mins}m ago`;
-                                const hours = Math.floor(mins / 60);
-                                if (hours < 24) return `${hours}h ago`;
-                                const days = Math.floor(hours / 24);
-                                return `${days}d ago`;
-                            };
-                            return (
-                                <div key={a.id} onClick={() => setActivityDetailModal(a)} style={{padding:'10px 12px',background:'var(--bg-input)',borderRadius:'6px',cursor:'pointer',border:'1px solid transparent',transition:'all 0.15s'}} onMouseOver={e => e.currentTarget.style.borderColor='var(--primary)'} onMouseOut={e => e.currentTarget.style.borderColor='transparent'}>
-                                    <div style={{display:'flex',alignItems:'flex-start',gap:'10px'}}>
-                                        {/* User avatar */}
-                                        <div style={{width:'30px',height:'30px',borderRadius:'8px',background:'var(--primary-glow)',border:'1.5px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:800,color:'var(--primary)',flexShrink:0,marginTop:'1px'}}>
-                                            {(a.user || 'SYS').substring(0,2).toUpperCase()}
-                                        </div>
-                                        <div style={{flex:1,minWidth:0}}>
-                                            <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'3px'}}>
-                                                <span style={{fontSize:'12px',fontWeight:700,color:'var(--primary)'}}>{a.user || 'System'}</span>
-                                                <span style={{fontSize:'10px',color:'var(--text-muted)'}}>{timeAgo(a.time)}</span>
-                                            </div>
-                                            <div style={{fontSize:'12px',fontWeight:500,color:'var(--text)',lineHeight:'1.4'}}>{a.text}</div>
-                                            {a.details && (
-                                                <div style={{fontSize:'11px',color:'var(--text-dim)',padding:'4px 8px',background:'var(--bg-card)',borderRadius:'4px',marginTop:'4px'}}>
-                                                    {a.details.resolution && <div>↳ <strong>Resolution:</strong> {a.details.resolution.substring(0, 60)}{a.details.resolution.length > 60 ? '...' : ''}</div>}
-                                                    {a.details.reply && <div>↳ <strong>Reply:</strong> "{a.details.reply.substring(0, 60)}{a.details.reply.length > 60 ? '...' : ''}"</div>}
-                                                    {a.details.details && <div>↳ <strong>Issue:</strong> {a.details.details.substring(0, 60)}{a.details.details.length > 60 ? '...' : ''}</div>}
-                                                    {a.details.threat && <span style={{marginRight:'8px'}}>↳ <strong>Threat:</strong> {a.details.threat}</span>}
-                                                    {a.details.notes && <div>↳ <strong>Notes:</strong> {a.details.notes.substring(0, 60)}{a.details.notes.length > 60 ? '...' : ''}</div>}
-                                                    {a.details.contactedBy && <span style={{marginRight:'8px'}}>↳ <strong>By:</strong> {a.details.contactedBy}</span>}
-                                                    {a.details.waitingReply && <span>↳ Waiting on reply</span>}
-                                                    {a.details.inPortUntil && <div>↳ <strong>Back:</strong> {fmtDate(a.details.inPortUntil)}</div>}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </>)}
-            </div>
             
             {/* Activity Detail Modal */}
             <Modal open={!!activityDetailModal} onClose={() => setActivityDetailModal(null)} title="Activity Details">
