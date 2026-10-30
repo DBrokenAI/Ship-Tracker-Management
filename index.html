@@ -616,7 +616,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T164";
+    var APP_BUILD = "2026-10-30T165";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1463,6 +1463,8 @@ const parseLocalDate = (d) => {
 };
 // Get date string in YYYY-MM-DD format from Date object (local time)
 const isTruthy = (v) => v === true || v === 'true' || v === 1;
+// Partially online in Daily Checks: only one of Primary / Alternate is ticked. Counts as online on the Dashboard.
+const isPartialCheck = (c) => !!c && isTruthy(c.statusAM) !== isTruthy(c.statusPM);
 // ===== REAP STATUS REPORT WORKBOOK =====
 // Fills the team's yearly "REAP Status Report_YYYY.xlsx" template with daily checks.
 // Cells are written straight into the sheet XML so every format, dropdown, formula and
@@ -2229,7 +2231,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T164'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T165'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2240,7 +2242,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T164');
+                                    localStorage.setItem('lastSeenBuild', 'T165');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2250,6 +2252,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T165'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🟢 Partial Ships Count as Online'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Daily Checks ring: the number in the middle now counts partially online ships (online AM or PM only) as online\n• Week strip: each day\'s count includes partial ships too, and the hover text shows how many of them were partial\n• The ring still shows partial ships in amber, and the summary line still lists them (e.g. 2 partial)\n• Dashboard: a partially online ship is no longer red, even when no ping was typed. It shows as online, its row says Partially online, and it no longer adds to the offline count\n• Dashboard last-7-days dots and the days-offline-in-a-row count also treat partial days as online'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T164'),
@@ -4064,6 +4073,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         const am = !!c && String(c.pingAM == null ? '' : c.pingAM).trim() !== '';
         const pm = !!c && String(c.pingPM == null ? '' : c.pingPM).trim() !== '';
         if (!c) return { state: 'unchecked', label: 'Not checked', am, pm };
+        if (isPartialCheck(c)) return { state: 'online', label: 'Partially online', partial: true, am, pm };
         return am || pm ? { state: 'online', label: 'Online', am, pm } : { state: 'offline', label: 'Offline', am, pm };
     };
     const attn = useMemo(() => {
@@ -4128,7 +4138,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         let n = 0; const d = parseLocalDate(today);
         for (let i = 0; i < 60; i++) {
             const c = checkByKey[ship.id + '|' + toDateString(d)];
-            if (!c || hasPing(c.pingAM) || hasPing(c.pingPM)) break;
+            if (!c || hasPing(c.pingAM) || hasPing(c.pingPM) || isPartialCheck(c)) break;
             n++; d.setDate(d.getDate() - 1);
         }
         return n;
@@ -4145,7 +4155,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         for (let i = 6; i >= 0; i--) {
             const d = parseLocalDate(today); d.setDate(d.getDate() - i);
             const c = checkByKey[ship.id + '|' + toDateString(d)];
-            week.push(!c ? 'none' : hasPing(c.pingAM) || hasPing(c.pingPM) ? 'up' : 'down');
+            week.push(!c ? 'none' : hasPing(c.pingAM) || hasPing(c.pingPM) || isPartialCheck(c) ? 'up' : 'down');
         }
         const base = { si, topIssue, isInPort, week };
         if (t.state === 'pending') {
@@ -4158,7 +4168,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             return { ...base, group: 'offline', tone: 'off', glyph: '✕', st: 'off', tag: ['off', 'OFFLINE'], age: n > 1 ? n + 'd' : '', ageTip: n > 1 ? 'Offline ' + n + ' days in a row' : '', sub: issueText || 'No ping today' };
         }
         if (topIssue) return { ...base, group: topIssue.threat === 'Urgent' ? 'urgent' : 'issues', tone: topIssue.threat === 'Urgent' ? 'urgent' : 'iss', glyph: topIssue.threat === 'Urgent' ? '!!' : '!', st: 'iss', tag: topIssue.threat === 'Urgent' ? ['urgent', 'URGENT'] : ['iss', si.length > 1 ? si.length + ' ISSUES' : 'ISSUE'], age: issueAge + 'd', ageTip: 'Open ' + issueAge + (issueAge === 1 ? ' day' : ' days'), sub: issueText };
-        return { ...base, group: 'good', tone: t.state === 'unchecked' ? 'nc' : 'on', glyph: '✓', st: t.state === 'unchecked' ? 'nc' : 'on', tag: null, sub: (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
+        return { ...base, group: 'good', tone: t.state === 'unchecked' ? 'nc' : 'on', glyph: '✓', st: t.state === 'unchecked' ? 'nc' : 'on', tag: null, sub: (t.partial ? 'Partially online · ' : '') + (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
     };
     const listView = useMemo(() => {
         const q = listQuery.trim().toLowerCase();
@@ -7532,7 +7542,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         {ringArcs.map(a => a.len > 0 && <circle key={a.color} className="dc-arc" cx="66" cy="66" r={a.r} fill="none" stroke={`var(--${a.color})`} strokeWidth="12" strokeDasharray={`${a.len} ${a.circ - a.len}`} strokeDashoffset={-a.start}/>)}
                     </svg>
                     <div className="dc-ring-center">
-                        <div className="dc-ring-num">{hero.online}<small>/{hero.total}</small></div>
+                        <div className="dc-ring-num">{hero.online + hero.partial}<small>/{hero.total}</small></div>
                         <div className="dc-ring-label">online</div>
                     </div>
                 </div>
@@ -7559,11 +7569,11 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                     <div className="dc-week">
                         {week.map(w => (
                             <button key={w.ds} type="button" className={`dc-day ${w.ds === date ? 'sel' : ''}`} disabled={w.future} onClick={() => setDate(w.ds)}
-                                title={w.hasData ? `${w.d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}: ${w.online}/${w.total} online${w.partial ? ', ' + w.partial + ' partial' : ''}${w.offline ? ', ' + w.offline + ' offline' : ''}` : w.d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}>
+                                title={w.hasData ? `${w.d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}: ${w.online + w.partial}/${w.total} online${w.partial ? ' (' + w.partial + ' partial)' : ''}${w.offline ? ', ' + w.offline + ' offline' : ''}` : w.d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}>
                                 <span className="wd">{w.d.toLocaleDateString('en-US', {weekday:'short'})}</span>
                                 <span className="dn">{w.d.getDate()}</span>
                                 <span className={`dc-dot ${w.tone}`}></span>
-                                <span className="ct">{w.hasData ? `${w.online}/${w.total}` : ''}</span>
+                                <span className="ct">{w.hasData ? `${w.online + w.partial}/${w.total}` : ''}</span>
                             </button>
                         ))}
                     </div>
