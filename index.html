@@ -282,7 +282,7 @@
         .filter-btn.active { background: var(--primary); color: #000; border-color: var(--primary); font-weight: 600; }
         
         /* Check rows */
-        .check-row { display: grid; grid-template-columns: 70px 80px 70px 70px 70px 80px 80px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); gap: 8px; font-size: 12px; }
+        .check-row { display: grid; grid-template-columns: 70px 80px 80px 70px 80px 80px 80px 90px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); gap: 8px; font-size: 12px; }
         .check-row:nth-child(even) { background: var(--bg-input); }
         .check-row .form-input { padding: 6px 8px; font-size: 12px; }
         .check-header { font-size: 9px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.6px; text-transform: uppercase; }
@@ -2131,7 +2131,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🧭 New Dashboard Layout'),
                                 React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
-                                    '• Dashboard rebuilt from scratch: ship list on the left, the selected ship\'s full details on the right, side by side (same colors as before)\n• Ship details are always visible in the right panel. The slide-in drawer, its close button and its dark backdrop are gone\n• The Dashboard opens with the most urgent ship already selected (offline ships first, then urgent issues)\n• Each ship in the list shows a status dot, a tag (OFFLINE, URGENT, ISSUE, IN PORT or Pending install) and a second line with its top open issue, or its type and homeport when nothing is wrong\n• Activate (pending installs) and Back (in-port ships) buttons now sit on the ship\'s line in the list\n• The ship list stays in view while you scroll the details, and scrolls on its own when the fleet is long\n• List filters: All, Attention, Full, Mini. The bottom of the list shows how many ships are listed, with a Show all link when a filter is on\n• Reorder, Reset and Done moved to the bottom of the list. Starting Reorder switches the list back to All ships\n• The row of four big number boxes is replaced by one line of counts: offline, open issues (with how many are urgent), all good, and pending installs when there are any. Click a count to filter the list, click again to clear it\n• The Ships table and the separate Needs attention list are gone (both live in the new ship list)\n• Removed the Dashboard > ship > tab breadcrumb from the details panel\n• Ship detail tabs scroll sideways if the panel is narrow\n• Esc no longer closes the ship details (there is nothing to close now)\n• On smaller screens the list sits above the details'
+                                    '• Dashboard rebuilt from scratch: ship list on the left, the selected ship\'s full details on the right, side by side (same colors as before)\n• Ship details are always visible in the right panel. The slide-in drawer, its close button and its dark backdrop are gone\n• The Dashboard opens with the most urgent ship already selected (offline ships first, then urgent issues)\n• Each ship in the list shows a status dot, a tag (OFFLINE, URGENT, ISSUE, IN PORT or Pending install) and a second line with its top open issue, or its type and homeport when nothing is wrong\n• Activate (pending installs) and Back (in-port ships) buttons now sit on the ship\'s line in the list\n• The ship list stays in view while you scroll the details, and scrolls on its own when the fleet is long\n• List filters: All, Attention, Full, Mini. The bottom of the list shows how many ships are listed, with a Show all link when a filter is on\n• Reorder, Reset and Done moved to the bottom of the list. Starting Reorder switches the list back to All ships\n• The row of four big number boxes is replaced by one line of counts: offline, open issues (with how many are urgent), all good, and pending installs when there are any. Click a count to filter the list, click again to clear it\n• The Ships table and the separate Needs attention list are gone (both live in the new ship list)\n• Removed the Dashboard > ship > tab breadcrumb from the details panel\n• Ship detail tabs scroll sideways if the panel is narrow\n• Esc no longer closes the ship details (there is nothing to close now)\n• On smaller screens the list sits above the details\n• Daily Checks has two new check boxes for every ship: Diode Up (is the diode up?) and Data Transfer (is data being transferred?)\n• Both new boxes appear in the table view (new Diode Up and Data Transfer columns) and the card view, start checked like Primary and Alternate, and are logged in Activity when changed\n• End of Day report: the Diode column now comes from the Diode Up box, so it shows Down when the box is unchecked, even if the ship is online'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T156'),
@@ -6666,7 +6666,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         handleDragEnd();
     };
 
-    const getCheck = (id, d = date) => checks.find(c => c.shipId === id && c.date === d) || { id: genId('DC'), shipId: id, date: d, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diode: '', phone: '', notes: '' };
+    const getCheck = (id, d = date) => checks.find(c => c.shipId === id && c.date === d) || { id: genId('DC'), shipId: id, date: d, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diodeUp: true, dataTransfer: true, diode: '', phone: '', notes: '' };
 
     // Get yesterday's check for comparison
     const getYesterdayCheck = (id) => {
@@ -6682,11 +6682,13 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             const period = field === 'statusAM' ? 'Primary' : 'Alternate';
             logActivity(`${shipName} ${period} marked ${val ? 'Online' : 'Offline'}`, { ship: shipName, date, field, value: val });
         }
+        if (field === 'diodeUp') logActivity(`${shipName} diode marked ${val ? 'Up' : 'Down'}`, { ship: shipName, date, field, value: val });
+        if (field === 'dataTransfer') logActivity(`${shipName} data transfer marked ${val ? 'Yes' : 'No'}`, { ship: shipName, date, field, value: val });
 
         setChecks(p => {
             const ex = p.find(c => c.shipId === id && c.date === date);
             if (ex) return p.map(c => (c.shipId === id && c.date === date) ? {...c, [field]: val} : c);
-            return [...p, { id: genId('DC'), shipId: id, date, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diode: '', phone: '', notes: '', [field]: val }];
+            return [...p, { id: genId('DC'), shipId: id, date, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diodeUp: true, dataTransfer: true, diode: '', phone: '', notes: '', [field]: val }];
         });
         setSaveStatus('saving');
         clearTimeout(saveTimer.current);
@@ -7100,8 +7102,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 pm: na ? 'N/A' : pm ? 'Online' : 'Offline',
                 pmPing: pm ? pingPM : '',
                 files: na ? '' : String(c.hdSpace == null ? '' : c.hdSpace).trim(),
-                // Diode and phone follow the ship's online status
-                diode: na ? 'N/A' : online ? 'Up' : 'Down',
+                // Diode comes from the Daily Checks "Diode Up" box; phone follows the ship's online status
+                diode: na ? 'N/A' : online && c.diodeUp !== false ? 'Up' : 'Down',
                 phone: na ? 'N/A' : online ? 'Up' : 'Down',
                 // Online ships get no notes at all; notes are only for ships that need attention
                 notes: online ? '' : buildEodNote(s, shipIssues, shipNotes, online),
@@ -7386,6 +7388,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <span className="check-header tip" data-tip="Hard drive free space">HD Space</span>
                         <span className="check-header tip" data-tip="Primary connectivity status">Primary</span>
                         <span className="check-header tip" data-tip="Alternate connectivity status">Alternate</span>
+                        <span className="check-header tip" data-tip="Is the diode up?">Diode Up</span>
+                        <span className="check-header tip" data-tip="Is data being transferred?">Data Transfer</span>
                     </div>
                     <div>{sorted.map((s, idx) => {
                         const c = getCheck(s.id);
@@ -7445,6 +7449,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                 </div>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusAM} onChange={e => update(s.id, 'statusAM', e.target.checked)}/>Online</label>
                                 <label className="checkbox"><input type="checkbox" checked={c.statusPM} onChange={e => update(s.id, 'statusPM', e.target.checked)}/>Online</label>
+                                <label className="checkbox"><input type="checkbox" checked={c.diodeUp !== false} onChange={e => update(s.id, 'diodeUp', e.target.checked)}/>Up</label>
+                                <label className="checkbox"><input type="checkbox" checked={c.dataTransfer !== false} onChange={e => update(s.id, 'dataTransfer', e.target.checked)}/>Yes</label>
                                 </>)}
                             </div>
                         );
@@ -7492,9 +7498,11 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                     </div>
                                 </div>
 
-                                <div style={{display:'flex',gap:'12px'}}>
+                                <div style={{display:'flex',gap:'12px',flexWrap:'wrap'}}>
                                     <label className="checkbox" style={{fontSize:'11px'}}><input type="checkbox" checked={c.statusAM} onChange={e => update(s.id, 'statusAM', e.target.checked)}/>AM</label>
                                     <label className="checkbox" style={{fontSize:'11px'}}><input type="checkbox" checked={c.statusPM} onChange={e => update(s.id, 'statusPM', e.target.checked)}/>PM</label>
+                                    <label className="checkbox" style={{fontSize:'11px'}}><input type="checkbox" checked={c.diodeUp !== false} onChange={e => update(s.id, 'diodeUp', e.target.checked)}/>Diode up</label>
+                                    <label className="checkbox" style={{fontSize:'11px'}}><input type="checkbox" checked={c.dataTransfer !== false} onChange={e => update(s.id, 'dataTransfer', e.target.checked)}/>Data transfer</label>
                                 </div>
                                 </>)}
                             </div>
