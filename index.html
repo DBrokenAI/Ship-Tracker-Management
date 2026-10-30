@@ -310,6 +310,9 @@
         .dash-detail { min-width: 0; }
         .detail-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(460px, 1fr); gap: 12px; align-items: start; }
         .detail-split > .detail-section { margin-bottom: 0; min-width: 0; }
+        .email-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+        .email-facts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-dim); min-width: 0; }
+        .email-facts em { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
         .detail-col-title { display: flex; align-items: center; gap: 8px; margin: -4px 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; }
         .detail-col-title svg { width: 16px; height: 16px; color: var(--primary); }
         .detail-col-title span { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-muted); }
@@ -585,7 +588,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T161";
+    var APP_BUILD = "2026-10-30T162";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1953,7 +1956,7 @@ const SplitButton = ({ label, onClick, items, className, style, testId }) => {
                 <div role="menu" style={{position:'absolute',top:'100%',right:0,marginTop:'4px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'8px',boxShadow:'0 8px 24px rgba(0,0,0,0.35)',zIndex:10001,minWidth:'190px',padding:'4px'}}>
                     {items.map(it => (
                         <button key={it.label} role="menuitem" onClick={() => { setOpen(false); it.onClick(); }}
-                            style={{display:'block',width:'100%',textAlign:'left',padding:'8px 12px',background:'none',border:'none',color:'var(--text)',fontSize:'12px',cursor:'pointer',borderRadius:'6px',whiteSpace:'nowrap'}}
+                            style={{display:'block',width:'100%',textAlign:'left',padding:'8px 12px',background:'none',border:'none',borderTop: it.danger ? '1px solid var(--border)' : 'none',marginTop: it.danger ? '4px' : 0,color: it.danger ? 'var(--red)' : 'var(--text)',fontSize:'12px',cursor:'pointer',borderRadius:'6px',whiteSpace:'nowrap'}}
                             onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-input)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>{it.label}</button>
                     ))}
                 </div>
@@ -2198,7 +2201,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T161'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T162'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2209,7 +2212,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T161');
+                                    localStorage.setItem('lastSeenBuild', 'T162');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2219,6 +2222,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T162'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '✉️ Tidier Email Column'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Ship email column: the four big buttons are replaced by one Log Email button with a small dropdown arrow\n• The dropdown holds the rarely used actions: Scan history, Email templates, and Clear history (in red, at the bottom)\n• Last contact, POC and status now sit on one slim line next to the button instead of three large boxes'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T161'),
@@ -5110,26 +5120,18 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     {/* EMAIL TAB */}
                                     {detailTab === 'email' && (
                                         <div>
-                                            {/* Summary strip */}
-                                            <div style={{display:'flex',gap:'16px',marginBottom:'20px',alignItems:'stretch',flexWrap:'wrap'}}>
-                                                <button className="btn btn-success" style={{borderRadius:'12px',fontWeight:700,padding:'14px 22px',fontSize:'13px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={openContactModal}>✉️ Log Email</button>
-                                                <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch'}} onClick={() => scanEmailHistory(sel.id, sel.name)}>🔍 Scan History</button>
-                                                <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--blue)'}} onClick={() => setTemplateModal(sel)}>📝 Email Templates</button>
-                                                <button className="btn btn-secondary" style={{borderRadius:'12px',fontWeight:600,padding:'14px 16px',fontSize:'12px',whiteSpace:'nowrap',alignSelf:'stretch',color:'var(--red)'}} onClick={() => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } }}>🗑️ Clear History</button>
-                                                <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
-                                                    <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>LAST CONTACT</div>
-                                                    {(() => { var shipEmails = emailHistory.filter(function(h) { return h.shipId === sel.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); }); var lastDate = shipEmails.length > 0 ? shipEmails[0].timestamp : sel.lastContact; return React.createElement('div', {className:'rel-time tip', 'data-tip': lastDate ? fmtDate(lastDate) : 'Never', style:{fontSize:'16px',fontWeight:700,color: lastDate ? 'var(--text)' : 'var(--red)'}}, lastDate ? relTime(lastDate) : 'Never'); })()}
-                                                </div>
-                                                <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',minWidth:'120px'}}>
-                                                    <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>SHIP POC</div>
-                                                    <div style={{fontSize:'14px',fontWeight:600,color: sel.poc ? 'var(--text)' : 'var(--text-muted)'}}>{sel.poc || '—'}</div>
-                                                </div>
-                                                <div style={{flex:'1 1 0',padding:'14px 18px',background:'var(--bg-input)',borderRadius:'12px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',minWidth:'100px'}}>
-                                                    <div style={{fontSize:'9px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'4px'}}>STATUS</div>
-                                                    <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-                                                        <span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'4px 12px',fontSize:'10px',fontWeight:700}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>
-                                                        {sel.waitingReply && <span className="badge badge-info" style={{padding:'4px 10px',fontSize:'10px'}}>⏳</span>}
-                                                    </div>
+                                            {/* Log Email, with the rarely used actions tucked into its dropdown */}
+                                            <div className="email-bar">
+                                                <SplitButton label="✉️ Log Email" onClick={openContactModal} className="btn btn-sm btn-success" testId="email-actions"
+                                                    items={[
+                                                        { label: '🔍 Scan history', onClick: () => scanEmailHistory(sel.id, sel.name) },
+                                                        { label: '📝 Email templates', onClick: () => setTemplateModal(sel) },
+                                                        { label: '🗑️ Clear history…', danger: true, onClick: () => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistory(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } } },
+                                                    ]}/>
+                                                <div className="email-facts">
+                                                    <span><em>Last contact</em> {(() => { var shipEmails = emailHistory.filter(function(h) { return h.shipId === sel.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); }); var lastDate = shipEmails.length > 0 ? shipEmails[0].timestamp : sel.lastContact; return React.createElement('div', {className:'rel-time tip', 'data-tip': lastDate ? fmtDate(lastDate) : 'Never', style:{fontWeight:600,display:'inline',color: lastDate ? 'var(--text)' : 'var(--red)'}}, lastDate ? relTime(lastDate) : 'Never'); })()}</span>
+                                                    <span><em>POC</em> <strong style={{color: sel.poc ? 'var(--text)' : 'var(--text-muted)'}}>{sel.poc || '—'}</strong></span>
+                                                    <span><span className={`badge badge-${getEmailStatus(sel, issues).status.toLowerCase()}`} style={{padding:'2px 10px',fontSize:'10px',fontWeight:700}}>{getEmailStatus(sel, issues).status === 'IN PORT' ? '⚓ IN PORT' : getEmailStatus(sel, issues).status}</span>{sel.waitingReply && <span className="badge badge-info" style={{padding:'2px 8px',fontSize:'10px',marginLeft:'4px'}} title="Waiting on a reply">⏳</span>}</span>
                                                 </div>
                                             </div>
 
