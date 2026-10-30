@@ -250,6 +250,34 @@
         .seg { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--bg-input); border: 1px solid var(--border); }
         .seg button { border: none; background: none; color: var(--text-dim); font-family: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
         .seg button.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+        /* Daily Checks hero: fleet ring + week strip */
+        .dc-hero { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+        .dc-ring { position: relative; width: 132px; height: 132px; flex-shrink: 0; }
+        .dc-ring svg { transform: rotate(-90deg); }
+        .dc-arc { transition: stroke-dasharray 0.6s ease, stroke-dashoffset 0.6s ease; }
+        .dc-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .dc-ring-num { font-size: 28px; font-weight: 800; color: var(--text); font-family: 'JetBrains Mono', monospace; line-height: 1; }
+        .dc-ring-num small { font-size: 16px; color: var(--text-muted); font-weight: 600; }
+        .dc-ring-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+        .dc-hero-main { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 12px; }
+        .dc-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .dc-hero-date { font-size: 22px; font-weight: 800; color: var(--text); }
+        .dc-hero-sum { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .dc-hero-nav { display: flex; align-items: center; gap: 6px; }
+        .dc-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+        .dc-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); font-family: inherit; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+        .dc-day:hover:not(:disabled) { border-color: var(--text-muted); }
+        .dc-day.sel { border-color: var(--primary); background: var(--bg-input); color: var(--text); }
+        .dc-day:disabled { opacity: 0.35; cursor: default; }
+        .dc-day .wd { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+        .dc-day .dn { font-size: 15px; font-weight: 700; }
+        .dc-day .ct { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; min-height: 12px; }
+        .dc-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dc-dot.green { background: var(--green); }
+        .dc-dot.amber { background: var(--amber); }
+        .dc-dot.red { background: var(--red); }
+        .dc-dot.none { border: 1.5px solid var(--text-muted); }
+        @media (max-width: 600px) { .dc-hero { gap: 16px; justify-content: center; } .dc-ring { width: 108px; height: 108px; } .dc-hero-date { font-size: 18px; } .dc-day .ct { display: none; } }
         .list-group { padding-bottom: 4px; }
         .list-group-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px 7px; background: var(--bg-card); border: none; border-bottom: 1px solid var(--border); color: var(--gc, var(--text-dim)); font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; text-align: left; }
         .lg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 0 3px var(--gg, transparent); }
@@ -588,7 +616,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T163";
+    var APP_BUILD = "2026-10-30T164";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2201,7 +2229,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T163'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T164'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2212,7 +2240,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T163');
+                                    localStorage.setItem('lastSeenBuild', 'T164');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2222,6 +2250,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T164'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🎯 Daily Checks Header: Fleet Ring + Week Strip'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• New header at the top of Daily Checks: a ring shows how many ships are online for the selected day (green online, amber partial, red offline, blue in port), with the count in the middle\n• Next to it: the date in big type, a one-line summary (e.g. 1 offline · 2 partial, or All ships online), and the ← Today → buttons plus a date picker\n• Week strip: Mon to Sun of the selected week. Each day shows a colored dot (green all online, amber some partial, red any offline, hollow no checks saved) and its online count. Click a day to jump to it. Future days are greyed out\n• The five stat boxes (Online, Partial, Offline, In Port, Not Checked) are gone. The Not Checked count is removed for good\n• The old DATE row is gone. The Quick Mark row now starts the controls card\n• Ships pending install or deinstall are not counted in the ring, and are listed in the summary instead\n• Removed unused code that worked out average ping'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T163'),
@@ -7380,26 +7415,6 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         return <svg width={width} height={height} style={{marginLeft:'4px'}}><polyline points={points} fill="none" stroke={color} strokeWidth="1.5"/></svg>;
     };
 
-    // Calculate stats
-    const stats = useMemo(() => {
-        const todayChecks = checks.filter(c => c.date === date);
-        const online = todayChecks.filter(c => (isTruthy(c.statusAM)) && (isTruthy(c.statusPM))).length;
-        const partial = todayChecks.filter(c => ((isTruthy(c.statusAM)) && !(isTruthy(c.statusPM))) || (!(isTruthy(c.statusAM)) && (isTruthy(c.statusPM)))).length;
-        const offline = todayChecks.filter(c => !c.statusAM && !c.statusPM).length;
-        const noData = ships.length - todayChecks.length;
-        const inPort = ships.filter(s => s.inPort && parseLocalDate(s.inPortUntil) >= new Date(new Date().setHours(0,0,0,0))).length;
-
-        const pingsAM = todayChecks.map(c => parseInt(c.pingAM)).filter(n => !isNaN(n) && n > 0);
-        const pingsPM = todayChecks.map(c => parseInt(c.pingPM)).filter(n => !isNaN(n) && n > 0);
-        const avgPingAM = pingsAM.length ? Math.round(pingsAM.reduce((a,b) => a+b, 0) / pingsAM.length) : 0;
-        const avgPingPM = pingsPM.length ? Math.round(pingsPM.reduce((a,b) => a+b, 0) / pingsPM.length) : 0;
-
-        const highPing = todayChecks.filter(c => parseInt(c.pingAM) > 300 || parseInt(c.pingPM) > 300).length;
-        const lowDisk = todayChecks.filter(c => parseInt(c.hdSpace) < 200).length;
-
-        return { online, partial, offline, noData, inPort, avgPingAM, avgPingPM, highPing, lowDisk, total: todayChecks.length };
-    }, [checks, date, ships]);
-
     // Get row status for coloring
     const getRowStatus = (ship, check) => {
         if (ship.pendingInstall) return 'pending';
@@ -7411,6 +7426,39 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         if (parseInt(check.pingAM) > 500 || parseInt(check.pingPM) > 500 || parseInt(check.hdSpace) < 100) return 'alert';
         return 'online';
     };
+
+    // Hero: the selected day's fleet ring and the Mon–Sun strip around it (pending install/deinstall ships left out)
+    const activeShips = sorted.filter(s => !s.pendingInstall && !s.pendingDeinstall);
+    const summarizeDay = (d) => {
+        const out = { online: 0, partial: 0, offline: 0, inPort: 0, total: activeShips.length, hasData: checks.some(c => c.date === d) };
+        activeShips.forEach(s => {
+            const st = getRowStatus(s, getCheck(s.id, d));
+            if (st === 'inport') out.inPort++; else if (st === 'offline') out.offline++; else if (st === 'partial') out.partial++; else out.online++;
+        });
+        out.tone = !out.hasData ? 'none' : out.offline > 0 ? 'red' : out.partial > 0 ? 'amber' : 'green';
+        return out;
+    };
+    const hero = summarizeDay(date);
+    const week = (() => {
+        const sel = parseLocalDate(date);
+        const mon = new Date(sel); mon.setDate(sel.getDate() - ((sel.getDay() + 6) % 7));
+        const todayStr = toDateString(new Date());
+        return Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(mon); d.setDate(mon.getDate() + i);
+            const ds = toDateString(d);
+            return { ds, d, future: ds > todayStr, ...summarizeDay(ds) };
+        });
+    })();
+    const ringArcs = (() => {
+        const r = 56, circ = 2 * Math.PI * r, total = hero.total || 1;
+        let start = 0;
+        return [['green', hero.online], ['amber', hero.partial], ['red', hero.offline], ['blue', hero.inPort]].map(([color, n]) => {
+            const len = (n / total) * circ;
+            const arc = { color, r, circ, len, start };
+            start += len;
+            return arc;
+        });
+    })();
 
     // Keyboard navigation
     const handleKeyDown = (e, shipId, field, shipIndex) => {
@@ -7472,48 +7520,60 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             <div className="page-header">
                 <div className="page-header-left">
                     <h1 className="page-title" style={{display:'flex',alignItems:'center',gap:'10px'}}>Daily Checks {saveStatus && <span className={`save-indicator ${saveStatus}`}>{saveStatus === 'saving' ? '● Saving...' : '✓ Saved'}</span>}</h1>
-                    <p className="page-sub">Fleet status monitoring • {parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'})}</p>
+                    <p className="page-sub">Fleet status monitoring</p>
                 </div>
             </div>
 
-            {/* Status Dashboard Cards */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))',gap:'12px',marginBottom:'16px'}}>
-                <div style={{padding:'16px',background:'var(--green-glow)',borderRadius:'8px',border:'1px solid var(--green)',textAlign:'center'}}>
-                    <div style={{fontSize:'28px',fontWeight:700,color:'var(--green)'}}>{stats.online}</div>
-                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>ONLINE</div>
+            {/* Hero: fleet ring + week strip */}
+            <div className="card dc-hero" data-testid="dc-hero">
+                <div className="dc-ring" title={`${hero.online} online · ${hero.partial} partial · ${hero.offline} offline · ${hero.inPort} in port`}>
+                    <svg width="100%" height="100%" viewBox="0 0 132 132">
+                        <circle cx="66" cy="66" r="56" fill="none" stroke="var(--border)" strokeWidth="12"/>
+                        {ringArcs.map(a => a.len > 0 && <circle key={a.color} className="dc-arc" cx="66" cy="66" r={a.r} fill="none" stroke={`var(--${a.color})`} strokeWidth="12" strokeDasharray={`${a.len} ${a.circ - a.len}`} strokeDashoffset={-a.start}/>)}
+                    </svg>
+                    <div className="dc-ring-center">
+                        <div className="dc-ring-num">{hero.online}<small>/{hero.total}</small></div>
+                        <div className="dc-ring-label">online</div>
+                    </div>
                 </div>
-                <div style={{padding:'16px',background: stats.partial > 0 ? 'var(--amber-glow)' : 'var(--bg-card)',borderRadius:'8px',border:`1px solid ${stats.partial > 0 ? 'var(--amber)' : 'var(--border)'}`,textAlign:'center'}}>
-                    <div style={{fontSize:'28px',fontWeight:700,color: stats.partial > 0 ? 'var(--amber)' : 'var(--text-muted)'}}>{stats.partial}</div>
-                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>PARTIAL</div>
-                </div>
-                <div style={{padding:'16px',background: stats.offline > 0 ? 'var(--red-glow)' : 'var(--bg-card)',borderRadius:'8px',border:`1px solid ${stats.offline > 0 ? 'var(--red)' : 'var(--border)'}`,textAlign:'center'}}>
-                    <div style={{fontSize:'28px',fontWeight:700,color: stats.offline > 0 ? 'var(--red)' : 'var(--text-muted)'}}>{stats.offline}</div>
-                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>OFFLINE</div>
-                </div>
-                <div style={{padding:'16px',background:'var(--blue-glow)',borderRadius:'8px',border:'1px solid var(--blue)',textAlign:'center'}}>
-                    <div style={{fontSize:'28px',fontWeight:700,color:'var(--blue)'}}>{stats.inPort}</div>
-                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>IN PORT</div>
-                </div>
-                <div style={{padding:'16px',background: stats.noData > 0 ? 'rgba(156,163,175,0.1)' : 'var(--bg-card)',borderRadius:'8px',border:`1px solid ${stats.noData > 0 ? 'var(--text-muted)' : 'var(--border)'}`,textAlign:'center'}}>
-                    <div style={{fontSize:'28px',fontWeight:700,color: stats.noData > 0 ? 'var(--text-muted)' : 'var(--text-muted)'}}>{stats.noData}</div>
-                    <div style={{fontSize:'11px',color:'var(--text-muted)'}}>NOT CHECKED</div>
+                <div className="dc-hero-main">
+                    <div className="dc-hero-top">
+                        <div>
+                            <div className="dc-hero-date">{parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'})}</div>
+                            <div className="dc-hero-sum">
+                                {hero.partial + hero.offline + hero.inPort === 0 ? <span style={{color:'var(--green)'}}>All ships online</span> : [
+                                    hero.offline > 0 && <span key="off" style={{color:'var(--red)'}}>{hero.offline} offline</span>,
+                                    hero.partial > 0 && <span key="part" style={{color:'var(--amber)'}}>{hero.partial} partial</span>,
+                                    hero.inPort > 0 && <span key="port" style={{color:'var(--blue)'}}>{hero.inPort} in port</span>,
+                                ].filter(Boolean).reduce((acc, el, i) => i ? [...acc, ' · ', el] : [el], [])}
+                                {sorted.length > activeShips.length && <span> · {sorted.length - activeShips.length} pending install/deinstall</span>}
+                            </div>
+                        </div>
+                        <div className="dc-hero-nav">
+                            <button className="btn btn-sm btn-secondary" title="Previous day" onClick={() => { const d = parseLocalDate(date); d.setDate(d.getDate()-1); setDate(toDateString(d)); }}>←</button>
+                            <button className="btn btn-sm btn-primary" onClick={() => setDate(toDateString(new Date()))}>Today</button>
+                            <button className="btn btn-sm btn-secondary" title="Next day" onClick={() => { const d = parseLocalDate(date); d.setDate(d.getDate()+1); setDate(toDateString(d)); }}>→</button>
+                            <input type="date" className="form-input" style={{width:'auto',padding:'4px 8px',fontSize:'12px'}} value={date} onChange={e => e.target.value && setDate(e.target.value)} title="Jump to a date"/>
+                        </div>
+                    </div>
+                    <div className="dc-week">
+                        {week.map(w => (
+                            <button key={w.ds} type="button" className={`dc-day ${w.ds === date ? 'sel' : ''}`} disabled={w.future} onClick={() => setDate(w.ds)}
+                                title={w.hasData ? `${w.d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}: ${w.online}/${w.total} online${w.partial ? ', ' + w.partial + ' partial' : ''}${w.offline ? ', ' + w.offline + ' offline' : ''}` : w.d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}>
+                                <span className="wd">{w.d.toLocaleDateString('en-US', {weekday:'short'})}</span>
+                                <span className="dn">{w.d.getDate()}</span>
+                                <span className={`dc-dot ${w.tone}`}></span>
+                                <span className="ct">{w.hasData ? `${w.online}/${w.total}` : ''}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
             {/* Controls */}
-            <div className="card">
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'12px'}}>
-                    <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
-                        <span style={{fontWeight:600,color:'var(--primary)',fontSize:'12px'}}>DATE:</span>
-                        <input type="date" className="form-input" style={{width:'auto'}} value={date} onChange={e => setDate(e.target.value)}/>
-                        <button className="btn btn-sm btn-secondary" onClick={() => { const d = parseLocalDate(date); d.setDate(d.getDate()-1); setDate(toDateString(d)); }}>←</button>
-                        <button className="btn btn-sm btn-secondary" onClick={() => { const d = parseLocalDate(date); d.setDate(d.getDate()+1); setDate(toDateString(d)); }}>→</button>
-                        <button className="btn btn-sm btn-primary" onClick={() => setDate(toDateString(new Date()))}>Today</button>
-                    </div>
-                </div>
-
+            <div className="card mt-md">
                 {/* Quick Mark: every Daily Checks action in one row */}
-                <div style={{display:'flex',gap:'8px',marginTop:'12px',paddingTop:'12px',borderTop:'1px solid var(--border)',flexWrap:'wrap',alignItems:'center'}}>
+                <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
                     <span style={{fontSize:'11px',color:'var(--text-muted)',alignSelf:'center'}}>Quick Mark:</span>
                     <SplitButton testId="mark-all" label="✓ All online" onClick={() => markAll(true)} className="btn btn-sm btn-success"
                         items={[
