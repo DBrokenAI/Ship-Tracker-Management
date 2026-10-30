@@ -251,9 +251,7 @@
         .seg button { border: none; background: none; color: var(--text-dim); font-family: inherit; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
         .seg button.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
         .list-group { padding-bottom: 4px; }
-        .list-group-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px 7px; background: var(--bg-card); border: none; border-bottom: 1px solid var(--border); color: var(--gc, var(--text-dim)); font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; cursor: pointer; text-align: left; }
-        .list-group-head:hover { filter: brightness(1.15); }
-        .lg-caret { width: 10px; color: var(--text-muted); font-size: 10px; }
+        .list-group-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px 7px; background: var(--bg-card); border: none; border-bottom: 1px solid var(--border); color: var(--gc, var(--text-dim)); font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; text-align: left; }
         .lg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); box-shadow: 0 0 0 3px var(--gg, transparent); }
         .lg-count { margin-left: auto; min-width: 22px; text-align: center; padding: 1px 7px; border-radius: 10px; background: var(--gg, var(--bg-input)); color: var(--gc, var(--text-muted)); font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0; }
         .ship-row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) 22px; gap: 10px; align-items: center; margin: 6px 8px 0; padding: 9px 6px 9px 10px; border-radius: 9px; border: 1px solid var(--border); border-left: 3px solid var(--tc, var(--border)); background: linear-gradient(90deg, var(--tg, transparent), transparent 70%), var(--bg-card); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; outline: none; }
@@ -288,13 +286,6 @@
         .ship-row:hover .ship-row-actions { display: flex; }
         .ship-row-actions button { font-family: inherit; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text); cursor: pointer; white-space: nowrap; }
         .ship-row-actions button:hover { border-color: var(--primary); color: var(--primary); }
-        .good-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 8px; }
-        .good-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 9px; border-radius: 8px; border: 1px solid var(--border); border-top: 2px solid var(--green); background: var(--bg-card); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; text-align: left; min-width: 0; transition: border-color .15s, transform .15s; }
-        .good-chip:hover { border-color: var(--border-focus); border-top-color: var(--green); transform: translateY(-1px); }
-        .good-chip.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
-        .good-chip.nc { border-top-color: var(--border); }
-        .good-chip span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .good-chip .week i { width: 4px; height: 8px; } .good-chip .week i:last-child { height: 11px; }
         .list-search { position: relative; flex: 1; min-width: 120px; }
         .list-search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted); }
         .list-search input { width: 100%; padding: 6px 26px 6px 30px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: inherit; font-size: 12px; }
@@ -585,7 +576,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T157";
+    var APP_BUILD = "2026-10-30T158";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2151,7 +2142,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T157'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T158'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2162,7 +2153,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T157');
+                                    localStorage.setItem('lastSeenBuild', 'T158');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2172,6 +2163,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T158'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '↕ Ship List In Your Order'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• Dashboard ship list now follows your saved order exactly. The status groups (Offline, Urgent, Open issues, In port, Pending, All good) are gone\n• Every ship is shown as a full card (no more small All good tiles), so the colors, badges and tags still show which ships need attention\n• When no order has been saved, the list still puts offline ships and ships with issues first\n• Your saved order now also applies while you search or use a filter\n• Fixed: dragging a ship while a search was active could push the hidden ships out of the saved order\n• Fixed: Reset order on the Dashboard or Daily Checks now reaches coworkers right away. Before, their screens kept the old order\n• While reordering, the list says the order is saved for everyone'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T157'),
@@ -2488,7 +2486,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     // Load dashboard ship order from Firebase and sync to localStorage
     useEffect(() => {
         const unsub = db.collection('settings').doc('dashboardShipOrder').onSnapshot(doc => {
-            if (doc.exists && doc.data().order && doc.data().order.length > 0) {
+            if (doc.exists && Array.isArray(doc.data().order)) {
                 setDashShipOrder(doc.data().order);
                 localStorage.setItem('dashboardShipOrder', JSON.stringify(doc.data().order));
             }
@@ -2508,7 +2506,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const handleDashDrop = (e, targetId) => {
         e.preventDefault();
         if (!dashDragShip || dashDragShip === targetId) { handleDashDragEnd(); return; }
-        const currentIds = sorted.map(s => s.id);
+        const currentIds = [...ships].sort((a, b) => {
+            const aIdx = dashShipOrder.indexOf(a.id), bIdx = dashShipOrder.indexOf(b.id);
+            if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+            if (aIdx !== -1) return -1;
+            if (bIdx !== -1) return 1;
+            return hullNum(a.name) - hullNum(b.name);
+        }).map(s => s.id);
         const fromIdx = currentIds.indexOf(dashDragShip);
         const toIdx = currentIds.indexOf(targetId);
         if (fromIdx === -1 || toIdx === -1) { handleDashDragEnd(); return; }
@@ -4007,7 +4011,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             result = result.filter(s => s.type === typeFilter);
         }
         // If custom order exists, use it; otherwise default sort
-        if (dashShipOrder.length > 0 && !globalSearch && typeFilter === 'all') {
+        if (dashShipOrder.length > 0) {
             return result.sort((a, b) => {
                 const aIdx = dashShipOrder.indexOf(a.id);
                 const bIdx = dashShipOrder.indexOf(b.id);
@@ -4029,10 +4033,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     }, [ships, issues, globalSearch, typeFilter, today, dashShipOrder, attn]);
     
     const selIssues = useMemo(() => sel ? issues.filter(i => i.shipId === sel.id && !i.resolved) : [], [sel, issues]);
-    // Side list: ships grouped by what needs doing, problems first; healthy ships sit quietly at the bottom
+    // Side list: every ship as a status card, in the team's saved order (Reorder), or problems first when no order is saved
     const [listQuery, setListQuery] = useState('');
-    const [collapsedGroups, setCollapsedGroups] = useState(() => { try { return JSON.parse(localStorage.getItem('dashCollapsedGroups')) || {}; } catch(e) { return {}; } });
-    const toggleGroup = (k) => setCollapsedGroups(p => { const n = {...p, [k]: !p[k]}; try { localStorage.setItem('dashCollapsedGroups', JSON.stringify(n)); } catch(e) {} return n; });
     const [rowMenu, setRowMenu] = useState(null);
     const checkByKey = useMemo(() => { const m = {}; dailyChecks.forEach(c => { m[c.shipId + '|' + c.date] = c; }); return m; }, [dailyChecks]);
     const hasPing = v => String(v == null ? '' : v).trim() !== '';
@@ -4072,14 +4074,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         if (topIssue) return { ...base, group: topIssue.threat === 'Urgent' ? 'urgent' : 'issues', tone: topIssue.threat === 'Urgent' ? 'urgent' : 'iss', glyph: topIssue.threat === 'Urgent' ? '!!' : '!', st: 'iss', tag: topIssue.threat === 'Urgent' ? ['urgent', 'URGENT'] : ['iss', si.length > 1 ? si.length + ' ISSUES' : 'ISSUE'], age: issueAge + 'd', ageTip: 'Open ' + issueAge + (issueAge === 1 ? ' day' : ' days'), sub: issueText };
         return { ...base, group: 'good', tone: 'on', glyph: '✓', st: t.state === 'unchecked' ? 'nc' : 'on', tag: null, sub: (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
     };
-    const LIST_GROUPS = [['offline', 'Offline', 'var(--red)', 'var(--red-glow)'], ['urgent', 'Urgent issues', 'var(--red)', 'var(--red-glow)'], ['issues', 'Open issues', 'var(--amber)', 'var(--amber-glow)'], ['port', 'In port', 'var(--blue)', 'var(--blue-glow)'], ['pending', 'Pending install', 'var(--text-muted)', 'var(--bg-input)'], ['good', 'All good', 'var(--green)', 'var(--green-glow)']];
     const listView = useMemo(() => {
         const q = listQuery.trim().toLowerCase();
         const rows = sorted.filter(s => !q || s.name.toLowerCase().includes(q) || (s.location || '').toLowerCase().includes(q) || (s.poc || '').toLowerCase().includes(q)).map(s => ({ ship: s, info: shipInfo(s) }));
-        if (dashReorder) return { groups: [{ key: 'reorder', label: 'Drag ships to reorder', color: 'var(--primary)', glow: 'var(--primary-glow)', rows }], flat: rows.map(r => r.ship) };
-        const groups = LIST_GROUPS.map(([key, label, color, glow]) => ({ key, label, color, glow, rows: rows.filter(r => r.info.group === key) })).filter(g => g.rows.length);
-        return { groups, flat: groups.flatMap(g => collapsedGroups[g.key] ? [] : g.rows.map(r => r.ship)) };
-    }, [sorted, listQuery, dashReorder, collapsedGroups, issues, checkByKey, today]);
+        const groups = rows.length ? [dashReorder ? { key: 'reorder', label: 'Drag ships to reorder · saved for everyone', color: 'var(--primary)', glow: 'var(--primary-glow)', rows } : { key: 'all', rows }] : [];
+        return { groups, flat: rows.map(r => r.ship) };
+    }, [sorted, listQuery, dashReorder, issues, checkByKey, today]);
 
     // The details panel always shows a ship: default to the top of the list (most urgent first)
     useEffect(() => {
@@ -4887,7 +4887,6 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     <div className="dash-list-body" onScroll={() => rowMenu && setRowMenu(null)}>
                         {listView.groups.length === 0 && <div className="dash-empty">No ships match{listQuery ? ' "' + listQuery + '"' : ' this filter'}.</div>}
                         {listView.groups.map(g => {
-                            const collapsed = !dashReorder && !!collapsedGroups[g.key];
                             const weekStrip = (info) => info.week && (
                                 <span className="week" title={'Last 7 days: ' + info.week.filter(w => w === 'up').length + ' online, ' + info.week.filter(w => w === 'down').length + ' offline'}>
                                     {info.week.map((w, i) => <i key={i} className={w}/>)}
@@ -4899,22 +4898,12 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             });
                             return (
                                 <div key={g.key} className="list-group" style={{'--gc': g.color, '--gg': g.glow}}>
-                                    <button type="button" className="list-group-head" onClick={() => !dashReorder && toggleGroup(g.key)} aria-expanded={!collapsed}>
-                                        {!dashReorder && <span className="lg-caret">{collapsed ? '▸' : '▾'}</span>}
+                                    {g.label && <div className="list-group-head">
                                         <span className="lg-dot"/>
                                         <span>{g.label}</span>
                                         <span className="lg-count">{g.rows.length}</span>
-                                    </button>
-                                    {!collapsed && g.key === 'good' && !dashReorder ? (
-                                        <div className="good-grid">
-                                            {g.rows.map(({ ship, info }) => (
-                                                <button key={ship.id} type="button" data-testid={'ship-row-' + ship.name} title={info.sub} className={'good-chip' + (info.st === 'nc' ? ' nc' : '') + (sel?.id === ship.id ? ' selected' : '')} {...menuProps(ship)}>
-                                                    <span>{ship.name}</span>
-                                                    {weekStrip(info)}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : !collapsed && g.rows.map(({ ship, info }) => {
+                                    </div>}
+                                    {g.rows.map(({ ship, info }) => {
                                         const quick = ship.pendingInstall ? [['activate', 'Activate', 'Mark installed and start monitoring']] : info.isInPort ? [['back', 'Back online', 'Clear in-port status']] : [['issue', '+ Issue', 'Add an issue'], ['emailed', 'Emailed', 'Mark as emailed']];
                                         return (
                                             <div key={ship.id} data-testid={'ship-row-' + ship.name} className={'ship-row tone-' + info.tone + (sel?.id === ship.id ? ' selected' : '') + (rowMenu?.ship.id === ship.id ? ' menu-open' : '')}
@@ -6768,7 +6757,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     // Sync with Firebase and persist to localStorage
     useEffect(() => {
         const unsub = db.collection('settings').doc('dailyChecksOrder').onSnapshot(doc => {
-            if (doc.exists && doc.data().order && doc.data().order.length > 0) {
+            if (doc.exists && Array.isArray(doc.data().order)) {
                 setShipOrder(doc.data().order);
                 localStorage.setItem('dailyChecksOrder', JSON.stringify(doc.data().order));
             }
