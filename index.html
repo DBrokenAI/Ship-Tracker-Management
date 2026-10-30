@@ -582,7 +582,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T158";
+    var APP_BUILD = "2026-10-30T159";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1330,6 +1330,38 @@ const defaultActivityLog = [
 ];
 
 const hullNum = (name) => { const m = name.match(/\d+/); return m ? parseInt(m[0]) : 9999; };
+
+// The fleet order everyone shares. It is Daily Checks' saved order (hull numbers); the Dashboard and the
+// reports follow it, and reordering on either page saves it for the whole team.
+const DEFAULT_HULL_ORDER = [67, 70, 54, 56, 62, 63, 55, 57, 72, 77, 96, 98, 101, 103, 109, 111];
+const orderShips = (list, hullOrder) => {
+    const order = hullOrder && hullOrder.length ? hullOrder : DEFAULT_HULL_ORDER;
+    return [...list].sort((a, b) => {
+        const aNum = hullNum(a.name), bNum = hullNum(b.name);
+        const aIdx = order.indexOf(aNum), bIdx = order.indexOf(bNum);
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+        if (aIdx !== -1) return -1;
+        if (bIdx !== -1) return 1;
+        return aNum - bNum;
+    });
+};
+const useFleetOrder = () => {
+    const [order, setOrder] = useState(() => {
+        try { const saved = JSON.parse(localStorage.getItem('dailyChecksOrder')); return saved && saved.length > 0 ? saved : DEFAULT_HULL_ORDER; } catch(e) { return DEFAULT_HULL_ORDER; }
+    });
+    useEffect(() => db.collection('settings').doc('dailyChecksOrder').onSnapshot(doc => {
+        if (!doc.exists || !Array.isArray(doc.data().order)) return;
+        const o = doc.data().order.length > 0 ? doc.data().order : DEFAULT_HULL_ORDER;
+        setOrder(o);
+        try { localStorage.setItem('dailyChecksOrder', JSON.stringify(o)); } catch(e) {}
+    }), []);
+    const save = (o) => {
+        setOrder(o);
+        try { localStorage.setItem('dailyChecksOrder', JSON.stringify(o)); } catch(e) {}
+        db.collection('settings').doc('dailyChecksOrder').set({ order: o, updatedAt: new Date().toISOString() }).catch(err => console.error('Save order error:', err));
+    };
+    return [order, save];
+};
 const sortHull = (a, b) => hullNum(a.name) - hullNum(b.name);
 const fmtDate = (d) => {
     if (!d) return '';
@@ -2163,7 +2195,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T158'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T159'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2174,7 +2206,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T158');
+                                    localStorage.setItem('lastSeenBuild', 'T159');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2184,6 +2216,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T159'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '↕ One Ship Order Everywhere'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• The Dashboard and Daily Checks now use one shared ship order: the order Daily Checks already had\n• Reordering on either page (drag, or the arrows on Daily Checks) changes both pages for everyone right away\n• Reset order on either page puts both back to the default order\n• The End of Day and Morning reports list ships in this same order\n• Ships added later that are not in the saved order yet show at the bottom, by hull number, until someone moves them\n• The Dashboard\'s old separate order is no longer used'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T158'),
@@ -2500,26 +2539,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const [templateModal, setTemplateModal] = useState(null);
     const [dashDragShip, setDashDragShip] = useState(null);
     const [dashDragOver, setDashDragOver] = useState(null);
-    const [dashShipOrder, setDashShipOrder] = useState(() => {
-        try { var s = JSON.parse(localStorage.getItem('dashboardShipOrder')); return s && s.length > 0 ? s : []; } catch(e) { return []; }
-    });
-    
-    // Load dashboard ship order from Firebase and sync to localStorage
-    useEffect(() => {
-        const unsub = db.collection('settings').doc('dashboardShipOrder').onSnapshot(doc => {
-            if (doc.exists && Array.isArray(doc.data().order)) {
-                setDashShipOrder(doc.data().order);
-                localStorage.setItem('dashboardShipOrder', JSON.stringify(doc.data().order));
-            }
-        });
-        return () => unsub();
-    }, []);
-    
-    const saveDashOrder = (order) => {
-        setDashShipOrder(order);
-        localStorage.setItem('dashboardShipOrder', JSON.stringify(order));
-        db.collection('settings').doc('dashboardShipOrder').set({ order, updatedAt: new Date().toISOString() }).catch(err => console.error('Save order error:', err));
-    };
+    const [dashShipOrder, saveDashOrder] = useFleetOrder();
     
     const handleDashDragStart = (e, shipId) => { setDashDragShip(shipId); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', shipId); } catch {} };
     const handleDashDragOver = (e, shipId) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (shipId !== dashDragOver) setDashDragOver(shipId); };
@@ -2527,23 +2547,18 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const handleDashDrop = (e, targetId) => {
         e.preventDefault();
         if (!dashDragShip || dashDragShip === targetId) { handleDashDragEnd(); return; }
-        const currentIds = [...ships].sort((a, b) => {
-            const aIdx = dashShipOrder.indexOf(a.id), bIdx = dashShipOrder.indexOf(b.id);
-            if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-            if (aIdx !== -1) return -1;
-            if (bIdx !== -1) return 1;
-            return hullNum(a.name) - hullNum(b.name);
-        }).map(s => s.id);
-        const fromIdx = currentIds.indexOf(dashDragShip);
-        const toIdx = currentIds.indexOf(targetId);
+        const currentNums = orderShips(ships, dashShipOrder).map(s => hullNum(s.name));
+        const dragged = ships.find(s => s.id === dashDragShip), target = ships.find(s => s.id === targetId);
+        const fromIdx = dragged ? currentNums.indexOf(hullNum(dragged.name)) : -1;
+        const toIdx = target ? currentNums.indexOf(hullNum(target.name)) : -1;
         if (fromIdx === -1 || toIdx === -1) { handleDashDragEnd(); return; }
-        const newOrder = [...currentIds];
-        newOrder.splice(fromIdx, 1);
-        newOrder.splice(toIdx, 0, dashDragShip);
+        const newOrder = [...currentNums];
+        const [moved] = newOrder.splice(fromIdx, 1);
+        newOrder.splice(toIdx, 0, moved);
         saveDashOrder(newOrder);
         handleDashDragEnd();
     };
-    const resetDashOrder = () => { saveDashOrder([]); logActivity('Reset dashboard ship order to default'); toast('Ship order reset', 'info'); };
+    const resetDashOrder = () => { saveDashOrder(DEFAULT_HULL_ORDER); logActivity('Reset ship order to default'); toast('Ship order reset to default', 'info'); };
     const [contactModal, setContactModal] = useState(false);
     const [contactForm, setContactForm] = useState({ name: '', date: toDateString(new Date()), notes: '', waitingReply: false });
     const [activityDetailModal, setActivityDetailModal] = useState(null);
@@ -4030,26 +4045,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         } else if (typeFilter !== 'all') {
             result = result.filter(s => s.type === typeFilter);
         }
-        // If custom order exists, use it; otherwise default sort
-        if (dashShipOrder.length > 0) {
-            return result.sort((a, b) => {
-                const aIdx = dashShipOrder.indexOf(a.id);
-                const bIdx = dashShipOrder.indexOf(b.id);
-                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-                if (aIdx !== -1) return -1;
-                if (bIdx !== -1) return 1;
-                return hullNum(a.name) - hullNum(b.name);
-            });
-        }
-        return result.sort((a, b) => {
-            const ai = issues.filter(i => i.shipId === a.id && !i.resolved), bi = issues.filter(i => i.shipId === b.id && !i.resolved);
-            const au = ai.some(i => i.threat === 'Urgent') ? 2 : ai.some(i => i.threat === 'Mild') ? 1 : 0;
-            const bu = bi.some(i => i.threat === 'Urgent') ? 2 : bi.some(i => i.threat === 'Mild') ? 1 : 0;
-            const ao = shipToday(a).state === 'offline' ? 1 : 0, bo = shipToday(b).state === 'offline' ? 1 : 0;
-            if (bo !== ao) return bo - ao;
-            if (bu !== au) return bu - au;
-            return hullNum(a.name) - hullNum(b.name);
-        });
+        // Same order as Daily Checks
+        return orderShips(result, dashShipOrder);
     }, [ships, issues, globalSearch, typeFilter, today, dashShipOrder, attn]);
     
     const selIssues = useMemo(() => sel ? issues.filter(i => i.shipId === sel.id && !i.resolved) : [], [sel, issues]);
@@ -6768,55 +6765,14 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     const getEmailHistory = () => { try { return JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(e) { return []; } };
     const [saveStatus, setSaveStatus] = useState('');
     
-    // Load dashboard ship order for report
-    const [dashOrder, setDashOrder] = useState([]);
-    useEffect(() => {
-        const unsub = db.collection('settings').doc('dashboardShipOrder').onSnapshot(doc => {
-            if (doc.exists && doc.data().order) setDashOrder(doc.data().order);
-        });
-        return () => unsub();
-    }, []);
     const saveTimer = useRef(null);
     const inputRefs = useRef({});
     const [reorderMode, setReorderMode] = useState(false);
 
-    const defaultOrder = [67, 70, 54, 56, 62, 63, 55, 57, 72, 77, 96, 98, 101, 103, 109, 111];
-    const [shipOrder, setShipOrder] = useState(() => {
-        // Load from localStorage immediately to prevent flash of default order
-        try { 
-            var saved = JSON.parse(localStorage.getItem('dailyChecksOrder'));
-            return saved && saved.length > 0 ? saved : defaultOrder;
-        } catch(e) { return defaultOrder; }
-    });
-    
-    // Sync with Firebase and persist to localStorage
-    useEffect(() => {
-        const unsub = db.collection('settings').doc('dailyChecksOrder').onSnapshot(doc => {
-            if (doc.exists && Array.isArray(doc.data().order)) {
-                setShipOrder(doc.data().order);
-                localStorage.setItem('dailyChecksOrder', JSON.stringify(doc.data().order));
-            }
-        });
-        return () => unsub();
-    }, []);
-    
-    const saveOrder = (order) => { 
-        setShipOrder(order);
-        localStorage.setItem('dailyChecksOrder', JSON.stringify(order));
-        db.collection('settings').doc('dailyChecksOrder').set({ order: order, updatedAt: new Date().toISOString() }).catch(function(err) { console.error('Save order error:', err); });
-    };
+    const defaultOrder = DEFAULT_HULL_ORDER;
+    const [shipOrder, saveOrder] = useFleetOrder();
 
-    const sorted = useMemo(() => {
-        const order = shipOrder;
-        return [...ships].sort((a, b) => {
-            const aNum = hullNum(a.name), bNum = hullNum(b.name);
-            const aIdx = order.indexOf(aNum), bIdx = order.indexOf(bNum);
-            if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-            if (aIdx !== -1) return -1;
-            if (bIdx !== -1) return 1;
-            return aNum - bNum;
-        });
-    }, [ships, shipOrder]);
+    const sorted = useMemo(() => orderShips(ships, shipOrder), [ships, shipOrder]);
 
     const moveShip = (shipName, dir) => {
         const num = hullNum(shipName);
@@ -7273,10 +7229,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     };
 
     const getEndOfDayData = () => {
-        const dashSorted = [...ships].sort((a, b) => {
-            if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
-            return hullNum(a.name) - hullNum(b.name);
-        });
+        const dashSorted = orderShips(ships, shipOrder);
         const fullReap = dashSorted.filter(s => s.type === 'Full REAP');
         const miniReap = dashSorted.filter(s => s.type === 'Mini REAP');
         const reportDay = parseLocalDate(date);
@@ -7361,7 +7314,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 });
         }, 15000);
         return () => clearTimeout(t);
-    }, [checks, ships, issues, quickNotes, date, dashOrder]);
+    }, [checks, ships, issues, quickNotes, date, shipOrder]);
 
     const exportForExcel = () => {
         const fullReapOrder = [67, 70, 54, 56, 62, 63];
@@ -7478,10 +7431,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
 
     const exportMorningReport = () => {
         const dateLabel = parseLocalDate(date).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
-        const dashSorted = [...ships].sort((a, b) => {
-            if (dashOrder.length > 0) { const aIdx = dashOrder.indexOf(a.id); const bIdx = dashOrder.indexOf(b.id); if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx; if (aIdx !== -1) return -1; if (bIdx !== -1) return 1; }
-            return hullNum(a.name) - hullNum(b.name);
-        });
+        const dashSorted = orderShips(ships, shipOrder);
         let r = `REAP Morning Status — ${dateLabel}\n${'─'.repeat(40)}\n\n`;
         dashSorted.forEach(s => {
             const c = getCheck(s.id);
