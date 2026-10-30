@@ -678,7 +678,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T167";
+    var APP_BUILD = "2026-10-30T168";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1914,7 +1914,8 @@ const restructureReapSheet = (xml, shared, sections) => {
 // entries: { 'YYYY-MM-DD': { HULLKEY: {B:'Yes', C:'No', I: 237, ...}, ... }, ... }
 // Returns { buffer, placed, unmatched } — unmatched lists hulls the template has no row for.
 // sections (optional): Ship Tracker ship names per section, applied to every day block of every month
-const fillReapWorkbook = async (JSZip, templateBuffer, entries, sections) => {
+// focusDate (optional, 'YYYY-MM-DD'): the workbook opens on that month's tab, scrolled to that day
+const fillReapWorkbook = async (JSZip, templateBuffer, entries, sections, focusDate) => {
     const zip = await JSZip.loadAsync(templateBuffer);
     const read = (p) => zip.file(p).async('string');
     const attrs = (tag) => { const o = {}; tag.replace(/([\w:]+)="([^"]*)"/g, (m, k, v) => { o[k] = v; return m; }); return o; };
@@ -2029,8 +2030,53 @@ const fillReapWorkbook = async (JSZip, templateBuffer, entries, sections) => {
         zip.file(path, xml);
     }
 
+    // Open on the report day: select its month tab and scroll that sheet to the day's "Date" row
+    let activeTab = -1;
+    const focusMonth = focusDate ? REAP_MONTHS[Number(focusDate.slice(5, 7)) - 1] : null;
+    if (focusMonth && sheetPath[focusMonth] && zip.file(sheetPath[focusMonth])) {
+        const fp = sheetPath[focusMonth];
+        const fx = await read(fp);
+        const dateRows = (fx.match(/<row\b[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g) || []).map(rx => {
+            const r = Number(attrs(rx.match(/<row\b[^>]*>/)[0]).r);
+            const a = rx.match(new RegExp('<c r="A' + r + '"[^>]*?(?:/>|>([\\s\\S]*?)</c>)'));
+            if (!a || a[1] == null) return null;
+            const ca = attrs(a[0].match(/<c\b[^>]*>/)[0]);
+            const v = (a[1].match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+            const is = (a[1].match(/<t[^>]*>([\s\S]*?)<\/t>/) || [])[1];
+            const text = ca.t === 's' && v != null ? shared[Number(v)] : xmlUnesc(is != null ? is : (v || ''));
+            return String(text || '').trim().toLowerCase() === 'date' ? r : null;
+        }).filter(r => r != null);
+        const row = dateRows[Number(focusDate.slice(8, 10)) - 1];
+        activeTab = (wbXml.match(/<sheet\b[^>]*>/g) || []).findIndex(t => xmlUnesc(attrs(t).name) === focusMonth);
+        if (row != null && activeTab >= 0) {
+            for (const name of Object.keys(sheetPath)) {
+                const p = sheetPath[name];
+                if (!zip.file(p)) continue;
+                let x = p === fp ? fx : await read(p);
+                const before = x;
+                x = x.replace(/(<sheetView\b[^>]*?)\s+tabSelected="[^"]*"/, '$1');
+                if (p === fp) {
+                    x = x.replace(/<sheetView\b/, '<sheetView tabSelected="1"');
+                    if (/<pane\b[^>]*topLeftCell="/.test(x)) x = x.replace(/(<pane\b[^>]*?topLeftCell=")[^"]*"/, '$1A' + row + '"');
+                    else x = x.replace(/<sheetView\b([^>]*?)(\s+topLeftCell="[^"]*")?(\s*\/?>)/, '<sheetView$1 topLeftCell="A' + row + '"$3');
+                    // Cursor on the day's date cell (in the scrolling pane when the header rows are frozen)
+                    const sel = '<selection' + (/<pane\b[^>]*activePane="bottomLeft"/.test(x) ? ' pane="bottomLeft"' : '') + ' activeCell="B' + row + '" sqref="B' + row + '"/>';
+                    if (/<selection pane="bottomLeft"[^>]*\/>/.test(x)) x = x.replace(/<selection pane="bottomLeft"[^>]*\/>/, sel);
+                    else if (!/<pane\b/.test(x) && /<selection\b[^>]*\/>/.test(x)) x = x.replace(/<selection\b[^>]*\/>/, sel);
+                    else x = x.replace(/<\/sheetView>/, sel + '</sheetView>');
+                }
+                if (x !== before) zip.file(p, x);
+            }
+        } else activeTab = -1;
+    }
+
     // Recalculate formulas (Y/N and totals) when the file is opened
     let wb = wbXml;
+    if (activeTab >= 0) {
+        if (/<workbookView\b[^>]*activeTab="/.test(wb)) wb = wb.replace(/(<workbookView\b[^>]*?activeTab=")[^"]*"/, '$1' + activeTab + '"');
+        else wb = wb.replace(/<workbookView\b/, '<workbookView activeTab="' + activeTab + '"');
+        wb = wb.replace(/(<workbookView\b[^>]*?)\s+firstSheet="[^"]*"/, '$1');
+    }
     if (/<calcPr\b/.test(wb)) wb = wb.replace(/<calcPr\b([^>]*?)\s*(\/?)>/, (m, a, sl) => '<calcPr' + a.replace(/\s*fullCalcOnLoad="[^"]*"/, '') + ' fullCalcOnLoad="1"' + (sl ? '/' : '') + '>');
     else wb = wb.replace('</workbook>', '<calcPr fullCalcOnLoad="1"/></workbook>');
     zip.file('xl/workbook.xml', wb);
@@ -2477,7 +2523,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T167'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T168'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2488,7 +2534,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T167');
+                                    localStorage.setItem('lastSeenBuild', 'T168');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2498,6 +2544,18 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T168'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📧 End of Day Updates Faster'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• The report the Outlook "EOD Email" button sends now updates about 2 seconds after your last change in Daily Checks (was 15 seconds)\n• It also saves straight away when you leave Daily Checks, switch to another tab or close the page, so your last ticks are never left out\n• Changes made while a save is still running are saved right after it, instead of being skipped'
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📊 Excel Opens on Today'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• The REAP Status Report workbook (the EOD email attachment and the Excel download) now opens on the report day: the right month tab, scrolled to that day\'s block, with the cursor on its date'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T167'),
@@ -7362,7 +7420,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             logEntry.xlsxName = email.xlsxName || '';
         }
         var logs = db.collection('eodLogs');
-        Promise.all(parts.map(function(p, i) { return logs.doc(dateStr + '-xlsx-' + i).set({ xlsxPart: p }); }))
+        return Promise.all(parts.map(function(p, i) { return logs.doc(dateStr + '-xlsx-' + i).set({ xlsxPart: p }); }))
             .then(function() { return logs.doc(dateStr).set(logEntry); })
             .catch(function(err) { console.error('Failed to save EOD log:', err); });
     };
@@ -7413,7 +7471,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                 return pa === pb ? hullNum(a.name) - hullNum(b.name) : (pa < pb ? -1 : 1);
             };
             var namesOf = function(type) { return ships.filter(function(s) { return s.type === type; }).sort(hullOrder).map(function(s) { return s.name; }); };
-            return fillReapWorkbook(res[0], res[1].slice(0), entries, { 'Full REAP': namesOf('Full REAP'), 'Mini REAP': namesOf('Mini REAP') });
+            return fillReapWorkbook(res[0], res[1].slice(0), entries, { 'Full REAP': namesOf('Full REAP'), 'Mini REAP': namesOf('Mini REAP') }, dateStr);
         }).then(function(out) {
             if (out.unmatched.length) console.warn('Ships not in the REAP Status Report template:', out.unmatched.join(', '));
             return out.buffer;
@@ -7641,22 +7699,37 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     };
 
     // Keep the finished email saved so the Outlook "EOD Email" button can build it in one click
+    // Saves 2 seconds after the last change, and right away when you leave Daily Checks, switch tabs or close the page
     const lastEodSaved = useRef('');
+    const eodSave = useRef({ busy: false, again: false, run: null });
+    eodSave.current.run = () => {
+        const st = eodSave.current;
+        if (st.busy) { st.again = true; return; }
+        let eodData, html;
+        try { eodData = getEndOfDayData(); html = buildEodHtmlFromData(eodData, date); } catch (e) { return; }
+        const key = date + '|' + html;
+        if (key === lastEodSaved.current) return;
+        st.busy = true;
+        generateEodExcel(eodData, date)
+            .then(buf => bufferToBase64(buf), () => '')
+            .then(xlsxB64 => {
+                lastEodSaved.current = key;
+                return saveEodLog(date, eodData, { subject: eodSubject(date), html, xlsxB64, xlsxName: eodXlsxName(date) });
+            })
+            .catch(() => {})
+            .then(() => { st.busy = false; if (st.again) { st.again = false; st.run(); } });
+    };
     useEffect(() => {
-        const t = setTimeout(() => {
-            let eodData, html;
-            try { eodData = getEndOfDayData(); html = buildEodHtmlFromData(eodData, date); } catch (e) { return; }
-            const key = date + '|' + html;
-            if (key === lastEodSaved.current) return;
-            generateEodExcel(eodData, date)
-                .then(buf => bufferToBase64(buf), () => '')
-                .then(xlsxB64 => {
-                    lastEodSaved.current = key;
-                    saveEodLog(date, eodData, { subject: eodSubject(date), html, xlsxB64, xlsxName: eodXlsxName(date) });
-                });
-        }, 15000);
+        const t = setTimeout(() => eodSave.current.run(), 2000);
         return () => clearTimeout(t);
     }, [checks, ships, issues, quickNotes, date, shipOrder]);
+    useEffect(() => {
+        const flush = () => eodSave.current.run();
+        const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+        document.addEventListener('visibilitychange', onHide);
+        window.addEventListener('pagehide', flush);
+        return () => { document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', flush); flush(); };
+    }, []);
 
 
     const isAbnormal = (val, type) => {
