@@ -678,7 +678,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-10-30T168";
+    var APP_BUILD = "2026-11-02T169";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1358,8 +1358,9 @@ function AdminPanel({ users, currentUid, onClose }) {
     );
 }
 
-// Admin: get the Outlook macro to hand out to the team (no auto-update / push)
-function VBAConfigPanel() {
+// Load → Copy the Outlook macro, with install steps. Shared by the Admin Panel and the
+// "Get Outlook macro" dialog on End of Day, so every user can grab it without it being emailed around.
+function OutlookMacroBox() {
     var [codeText, setCodeText] = React.useState('');
     var [version, setVersion] = React.useState('');
     var [msg, setMsg] = React.useState('');
@@ -1380,15 +1381,21 @@ function VBAConfigPanel() {
 
     var copyCode = function() {
         navigator.clipboard.writeText(codeText).then(
-            function() { setMsg('Copied! Paste it into Outlook, or send it to the team.'); },
+            function() { setMsg('Copied! In Outlook press Alt+F11, open ThisOutlookSession, Ctrl+A, Ctrl+V.'); },
             function() { setMsg('Could not copy. Click in the box, press Ctrl+A then Ctrl+C.'); });
     };
 
     var btn = {padding:'8px 14px',background:'var(--primary-glow)',border:'1px solid var(--primary)',borderRadius:'8px',color:'var(--primary)',fontWeight:700,fontSize:'12px',cursor:'pointer'};
-    return React.createElement('div', {style: {marginTop:'24px',borderTop:'1px solid var(--border)',paddingTop:'20px'}},
-        React.createElement('h3', {style: {fontSize:'14px',fontWeight:700,marginBottom:'4px'}}, '🔧 Outlook Macro'),
-        React.createElement('div', {style: {fontSize:'11px',color:'var(--text-muted)',marginBottom:'12px',lineHeight:'1.6'}},
-            'Load → Copy → in Outlook press Alt+F11, open ThisOutlookSession, Ctrl+A, Ctrl+V, set MY_NAME to the person’s name, Ctrl+S, restart Outlook.'),
+    var steps = [
+        '1. Click Load latest macro, then Copy code.',
+        '2. In Outlook press Alt+F11, open ThisOutlookSession, Ctrl+A, Ctrl+V.',
+        '3. Set MY_NAME near the top to your own name, then Ctrl+S and restart Outlook.',
+        '4. Add the button: File > Options > Quick Access Toolbar > Choose commands from: Macros > CreateEodEmail > Add.',
+        '5. First click asks for an 8-character code — get it from End of Day ▾ > Link Outlook.'
+    ];
+    return React.createElement('div', null,
+        React.createElement('ol', {style: {fontSize:'11px',color:'var(--text-muted)',margin:'0 0 12px',paddingLeft:'18px',lineHeight:'1.7'}},
+            steps.map(function(s, i) { return React.createElement('li', {key:i, style:{listStyle:'none',marginLeft:'-18px'}}, s); })),
         React.createElement('div', {style: {display:'flex',gap:'10px',alignItems:'center',marginBottom:'10px',flexWrap:'wrap'}},
             React.createElement('button', {onClick: loadLatestMacro, style: btn}, '⬇ Load latest macro'),
             codeText ? React.createElement('button', {onClick: copyCode, style: btn}, '📋 Copy code') : null,
@@ -1400,6 +1407,14 @@ function VBAConfigPanel() {
             style: {width:'100%',minHeight:'200px',padding:'10px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'10px',fontFamily:'monospace',resize:'vertical',lineHeight:'1.4'},
             value: codeText
         }) : null
+    );
+}
+
+// Admin Panel wrapper around the shared macro box
+function VBAConfigPanel() {
+    return React.createElement('div', {style: {marginTop:'24px',borderTop:'1px solid var(--border)',paddingTop:'20px'}},
+        React.createElement('h3', {style: {fontSize:'14px',fontWeight:700,marginBottom:'12px'}}, '🔧 Outlook Macro'),
+        React.createElement(OutlookMacroBox, null)
     );
 }
 
@@ -2523,7 +2538,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                     {(() => {
                         var hasNewUpdate = false;
-                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T168'; } catch(e2) {}
+                        try { var lastSeenBuild = localStorage.getItem('lastSeenBuild'); hasNewUpdate = lastSeenBuild !== 'T169'; } catch(e2) {}
                         return React.createElement('span', {style:{position:'relative'}},
                             React.createElement('button', {
                                 onClick: function() { 
@@ -2534,7 +2549,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                         el.style.display = show ? 'block' : 'none';
                                         overlay.style.display = show ? 'block' : 'none';
                                     }
-                                    localStorage.setItem('lastSeenBuild', 'T168');
+                                    localStorage.setItem('lastSeenBuild', 'T169');
                                 },
                                 className: 'build-link' + (hasNewUpdate ? ' has-new' : ''),
                                 title: hasNewUpdate ? 'New updates \u2014 click to see what changed' : 'What\u2019s new'
@@ -2544,6 +2559,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 2, 2026 — Build T169'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔧 Get the Outlook Macro From the Website'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px'}},
+                                    '• New "Get Outlook macro" option under End of Day ▾, open to everyone — you no longer need an admin to email the macro to you\n• It loads the latest macro (currently v3.9), copies it to your clipboard, and shows the full install steps: paste into ThisOutlookSession, set MY_NAME, add the CreateEodEmail button to the Quick Access Toolbar\n• The box reminds you the first EOD Email click asks for a link code (End of Day ▾ > Link Outlook)\n• The Admin Panel Outlook Macro box now uses the same shared loader, so both places always show the same version'.split('\n').map(function(line, i) { return React.createElement('div', {key:i}, line); })
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Oct 30, 2026 — Build T168'),
@@ -7681,6 +7703,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
 
     // ===== LINK OUTLOOK — short one-time code so nobody types a password into Outlook =====
     const [linkCode, setLinkCode] = useState(null);   // { code, expires } while the dialog is open
+    const [showMacro, setShowMacro] = useState(false);   // Get Outlook macro dialog (open to all users)
     const linkOutlook = () => {
         const u = auth.currentUser;
         if (!u) { toast('Please log in again first.', 'error'); return; }
@@ -7945,6 +7968,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                             { label: '📋 Copy report only', onClick: copyEndOfDay },
                             { label: '📊 Download Excel only', onClick: downloadEodExcel },
                             { label: '🔗 Link Outlook (one-time)', onClick: linkOutlook },
+                            { label: '🔧 Get Outlook macro', onClick: () => setShowMacro(true) },
                         ]}/>
                     <button className="btn btn-sm btn-secondary" onClick={exportMorningReport}>☀️ Morning</button>
                     <span style={{marginLeft:'auto',display:'flex',gap:'6px',flexWrap:'wrap',alignItems:'center'}}>
@@ -8137,6 +8161,18 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
                             <button className="btn btn-secondary" onClick={() => navigator.clipboard.writeText(linkCode.code).then(() => toast('Code copied', 'success'), () => {})}>📋 Copy code</button>
                             <button className="btn btn-primary" onClick={() => setLinkCode(null)}>Done</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Get Outlook macro — open to all users so nobody has to email the .bas around */}
+            {showMacro && (
+                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}} onClick={e => { if (e.target === e.currentTarget) setShowMacro(false); }}>
+                    <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'14px',padding:'24px',width:'100%',maxWidth:'640px',maxHeight:'88vh',overflowY:'auto'}}>
+                        <div style={{fontSize:'16px',fontWeight:800,marginBottom:'6px'}}>🔧 Get Outlook Macro</div>
+                        <OutlookMacroBox/>
+                        <div style={{display:'flex',justifyContent:'flex-end',marginTop:'16px'}}>
+                            <button className="btn btn-primary" onClick={() => setShowMacro(false)}>Done</button>
                         </div>
                     </div>
                 </div>
