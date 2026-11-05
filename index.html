@@ -835,7 +835,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-11-05T175";
+    var APP_BUILD = "2026-11-05T176";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1897,6 +1897,18 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Ship name handed from the Dashboard ship menu to Contacts, which opens on that ship with everyone picked
 let pendingContactPick = null;
 const TEAM_NAMES = ['daniel brown', 'clyde grant', 'uriel pena', 'jayleel kazimm', 'kaazim hanif', 'damian pierman', 'eryk kedzierski', 'steven spellman', 'mohammed cardenas'];
+// An email's fingerprint survives re-imports: the Outlook macro re-sends recent mail under new ids, so a deleted
+// email is recognised by sender + subject + the minute it was sent (manual notes: ship + time). '' when there is no time.
+const emailFingerprint = (h) => {
+    if (!h) return '';
+    const when = String(h.receivedAt || h.timestamp || '').substring(0, 16);
+    if (!when) return '';
+    const from = String(h.fromEmail || h.senderEmail || '').toLowerCase().trim();
+    if (!from) return 'm|' + (h.shipId || '') + '|' + when;
+    const subj = String((h.result && h.result.emailSummary) || h._cleanSubject || h.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim().toLowerCase().substring(0, 60);
+    return 'e|' + from + '|' + subj + '|' + when;
+};
+const deletedMarkerId = (h) => 'del_' + String(h.id || emailFingerprint(h)).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 140);
 const isTeamSender = (name, email) => {
     const e = String(email || '').toLowerCase();
     let n = String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -2775,6 +2787,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T176'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🗑️ Deleted Emails Stay Deleted'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px',whiteSpace:'pre-line'}},
+                                    'FIXED: deleted emails kept coming back. There were five causes, all fixed:\n• The delete buttons (Email tab trash, history list ✕, email viewer Delete) only removed the email from your own browser, and the shared copy was synced back on the next load. They now delete it for everyone\n• Clear history removed the shared copies but not the copies already in teammates\' browsers. Deletes now reach every open Ship Tracker live and remove the email there too\n• The Outlook macro re-sends the last 48 hours of mail every time Outlook starts. Re-sent copies of a deleted or dismissed email are now recognised (same sender, subject and minute sent) and dismissed automatically instead of showing in the inbox again\n• Log Email notes were re-created from the ship\'s last said text on every load. Deleted notes are no longer re-created\n• Dismissed inbox emails were only remembered by their inbox id, so re-sent copies got through. Dismissing now counts as a delete for everyone\n• How it works: every delete leaves a small marker in the shared database (Rejected emails) with the email\'s id and fingerprint; every Ship Tracker watches those markers\n• Delete prompts now say the email is removed for everyone. Emails deleted before this update are not marked yet: delete them once more and they stay gone'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T175'),
@@ -3726,6 +3745,60 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         auditLocalList('emailHistory', emailHistory, next);
         setEmailHistory(next);
     };
+
+    // ===== DELETED EMAILS: shared, so a delete sticks for everyone =====
+    // Every delete, Clear history and inbox dismiss leaves a marker in rejectedEmails (reason 'deleted') holding the
+    // email's id and fingerprint. The markers are watched live: matching emails are removed from this browser's
+    // history, skipped by the acceptedEmails sync, never re-imported, and auto-dismissed when the Outlook macro re-sends them.
+    const deletedRef = useRef({ ids: new Set(), fps: new Set(), loaded: false });
+    const [deletedVer, setDeletedVer] = useState(0);
+    const isDeletedEmail = (h) => {
+        if (!h) return false;
+        const d = deletedRef.current, fp = emailFingerprint(h);
+        return (!!h.id && d.ids.has(h.id)) || (!!fp && d.fps.has(fp));
+    };
+    // Inbox items from the Outlook macro, in history-entry shape
+    const asHistoryShape = (item) => ({ id: 'AE_' + item._docId, fromEmail: String(item.senderEmail || item.from || '').toLowerCase(), result: { emailSummary: item._cleanSubject || item.subject || '' }, timestamp: item.receivedAt || item.timestamp, shipName: item.matchedShip || '' });
+    const rememberDeleted = (docs) => {
+        const ids = new Set(), fps = new Set();
+        docs.forEach(d => { if (d.reason !== 'deleted') return; if (d.emailId) ids.add(d.emailId); if (d.fingerprint) fps.add(d.fingerprint); });
+        deletedRef.current = { ids, fps, loaded: true };
+    };
+    useEffect(() => db.collection('rejectedEmails').where('reason', '==', 'deleted').onSnapshot(snap => {
+        const docs = []; snap.forEach(doc => docs.push(doc.data()));
+        rememberDeleted(docs);
+        setDeletedVer(v => v + 1);
+        setEmailHistory(prev => {
+            const kept = prev.filter(h => !isDeletedEmail(h));
+            if (kept.length === prev.length) return prev;
+            localStorage.setItem('emailParseHistory', JSON.stringify(kept));
+            return kept;
+        });
+        setPendingEmails(prev => prev.map(g => {
+            const items = (g.items || [g]).filter(it => {
+                if (!isDeletedEmail(asHistoryShape(it))) return true;
+                auditAsSystem(() => db.collection('incomingEmails').doc(it._docId).update({ processed: true, accepted: false, rejectedReason: 'deleted-before', processedAt: new Date().toISOString() }));
+                return false;
+            });
+            return items.length ? { ...g, items } : null;
+        }).filter(Boolean));
+    }, err => console.error('Deleted emails listener:', err)), []);
+    // Delete for everyone: marker first (so nothing can bring it back), then the shared copy
+    const markEmailDeleted = (h) => {
+        if (!h) return;
+        const fp = emailFingerprint(h);
+        if (h.id) deletedRef.current.ids.add(h.id);
+        if (fp) deletedRef.current.fps.add(fp);
+        db.collection('rejectedEmails').doc(deletedMarkerId(h)).set({ reason: 'deleted', emailId: h.id || '', fingerprint: fp, shipId: h.shipId || '', shipName: h.shipName || '', deletedAt: new Date().toISOString(), deletedBy: (currentUser && currentUser.username) || '' })
+            .catch(err => { console.error('Delete marker failed:', err); toast('Deleted here, but the delete could not be saved for everyone. Try again.', 'error'); });
+        if (h.id) db.collection('acceptedEmails').doc(h._fbDocId || h.id).delete().catch(() => {});
+    };
+    const deleteEmails = (entries) => {
+        (entries || []).forEach(markEmailDeleted);
+        const next = emailHistory.filter(h => !isDeletedEmail(h));
+        setEmailHistoryLogged(next);
+        localStorage.setItem('emailParseHistory', JSON.stringify(next));
+    };
     
     // Sync blocked senders from Firebase (persists across devices/sessions)
     useEffect(function() {
@@ -3966,6 +4039,11 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             var existingHistory = [];
             try { existingHistory = JSON.parse(localStorage.getItem('emailParseHistory') || '[]'); } catch(ex) {}
             var deduped = pending.filter(function(item) {
+                // Key 0: deleted or dismissed before (the macro re-sends recent mail under new ids)
+                if (isDeletedEmail(asHistoryShape(item))) {
+                    auditAsSystem(() => db.collection('incomingEmails').doc(item._docId).update({ processed: true, accepted: false, rejectedReason: 'deleted-before', processedAt: new Date().toISOString() }));
+                    return false;
+                }
                 // Key 1: subject + sender email + date (catches same email from different coworkers)
                 var subjectClean = (item.subject || '').replace(/^(RE|FW|FWD):\s*/gi, '').trim().toLowerCase();
                 var senderClean = (item.senderEmail || '').toLowerCase();
@@ -4152,6 +4230,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         var itemsToReject = item.items || [item];
         itemsToReject.forEach(function(singleItem) {
             db.collection('incomingEmails').doc(singleItem._docId).update({ processed: true, accepted: false, processedAt: new Date().toISOString() });
+            markEmailDeleted(asHistoryShape(singleItem));
             // Record rejection in Firebase so it persists across sessions
             var rejId = singleItem._docId || singleItem.id || (singleItem.senderEmail + '_' + (singleItem.receivedAt || '').substring(0,16));
             db.collection('rejectedEmails').doc(rejId).set({
@@ -4221,6 +4300,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         db.collection('rejectedEmails').get().then(function(rejSnap) {
             var rejectedIds = {};
             var rejectedSenderSubjects = [];
+            // Deleted markers are known before the first sync, so nothing deleted slips back in
+            var rejDocs = []; rejSnap.forEach(function(doc) { rejDocs.push(doc.data()); });
+            if (!deletedRef.current.loaded) rememberDeleted(rejDocs);
             rejSnap.forEach(function(doc) {
                 rejectedIds[doc.id] = true;
                 var d = doc.data();
@@ -4234,6 +4316,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                     fe._fbDocId = doc.id;
                     // Skip if this email was explicitly rejected
                     if (rejectedIds[doc.id]) return;
+                    // Deleted for everyone: remove the shared copy if it is still there
+                    if (isDeletedEmail(fe)) { auditAsSystem(() => doc.ref.delete()); return; }
                     // Skip if sender+subject matches a rejection
                     var feSender = (fe.fromEmail || '').toLowerCase();
                     var feSubj = ((fe.result && fe.result.emailSummary) || '').toLowerCase();
@@ -4301,7 +4385,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     
     // Auto-import existing ship emails into history on first load
     useEffect(() => {
-        if (emailHistoryImported || ships.length === 0) return;
+        if (emailHistoryImported || ships.length === 0 || !deletedRef.current.loaded) return;
         
         const existingHistory = JSON.parse(localStorage.getItem('emailParseHistory') || '[]');
         const shipsWithEmails = ships.filter(s => s.lastSaid && s.lastContact);
@@ -4310,7 +4394,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         shipsWithEmails.forEach(ship => {
             // Check if this ship's last contact already has an entry
             const hasEntry = existingHistory.some(h => h.shipId === ship.id && h.timestamp === ship.lastContact);
-            if (!hasEntry && ship.lastSaid.trim()) {
+            if (!hasEntry && ship.lastSaid.trim() && !isDeletedEmail({ shipId: ship.id, timestamp: ship.lastContact })) {
                 newEntries.push({
                     id: genId('EH'),
                     type: 'manual',
@@ -4335,7 +4419,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             localStorage.setItem('emailParseHistory', JSON.stringify(combined));
         }
         setEmailHistoryImported(true);
-    }, [ships, emailHistoryImported]);
+    }, [ships, emailHistoryImported, deletedVer]);
     
     // Generate Weekly Management Report
     const generateReport = () => {
@@ -6116,7 +6200,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                     items={[
                                                         { label: '🔍 Scan history', onClick: () => scanEmailHistory(sel.id, sel.name) },
                                                         { label: '📝 Email templates', onClick: () => setTemplateModal(sel) },
-                                                        { label: '🗑️ Clear history…', danger: true, onClick: () => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { var updated = emailHistory.filter(function(h) { return h.shipId !== sel.id; }); setEmailHistoryLogged(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { doc.ref.delete(); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } } },
+                                                        { label: '🗑️ Clear history…', danger: true, onClick: () => { if (confirm('Permanently delete ALL email history for ' + sel.name + '? This cannot be undone.')) { deleteEmails(emailHistory.filter(function(h) { return h.shipId === sel.id; })); db.collection('acceptedEmails').where('shipId','==',sel.id).get().then(function(snap) { snap.forEach(function(doc) { markEmailDeleted(Object.assign({}, doc.data(), { _fbDocId: doc.id })); }); }); logActivity('Cleared all email history for ' + sel.name); toast('Email history cleared for ' + sel.name, 'info'); } } },
                                                     ]}/>
                                                 <div className="email-facts">
                                                     <span><em>Last contact</em> {(() => { var shipEmails = emailHistory.filter(function(h) { return h.shipId === sel.id; }).sort(function(a,b) { return new Date(b.timestamp) - new Date(a.timestamp); }); var lastDate = shipEmails.length > 0 ? shipEmails[0].timestamp : sel.lastContact; return React.createElement('div', {className:'rel-time tip', 'data-tip': lastDate ? fmtDate(lastDate) : 'Never', style:{fontWeight:600,display:'inline',color: lastDate ? 'var(--text)' : 'var(--red)'}}, lastDate ? relTime(lastDate) : 'Never'); })()}</span>
@@ -6281,7 +6365,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                             // Actions row
                                                             React.createElement('div', {style: {display:'flex',gap:'6px',marginTop:'4px',fontSize:'10px'}},
                                                                 React.createElement('button', {className:'btn btn-sm btn-secondary', style:{padding:'2px 8px',fontSize:'9px'}, onClick: function(e) { e.stopPropagation(); setEditEmailEntry(h); var lt = h.timestamp ? new Date(h.timestamp) : null; if (lt && isNaN(lt)) lt = null; var p2 = function(n) { return String(n).padStart(2, '0'); }; setEditEmailForm({date: lt ? lt.getFullYear() + '-' + p2(lt.getMonth() + 1) + '-' + p2(lt.getDate()) : '', time: lt ? p2(lt.getHours()) + ':' + p2(lt.getMinutes()) : '', summary: summary, emailText: h.emailText || '', contactedBy: rawName || ''}); }}, '\u270F\uFE0F Edit'),
-                                                                React.createElement('button', {className:'btn btn-sm', style:{padding:'2px 8px',fontSize:'9px',color:'var(--red)'}, onClick: function(e) { e.stopPropagation(); if (confirm('Delete this email entry?')) { var updated = emailHistory.filter(function(x) { return x.id !== h.id; }); setEmailHistoryLogged(updated); localStorage.setItem('emailParseHistory', JSON.stringify(updated)); logActivity('Deleted email entry from ' + sel.name); toast('Email entry deleted', 'info'); } }}, '\uD83D\uDDD1\uFE0F')
+                                                                React.createElement('button', {className:'btn btn-sm', style:{padding:'2px 8px',fontSize:'9px',color:'var(--red)'}, onClick: function(e) { e.stopPropagation(); if (confirm('Delete this email entry? It is removed for everyone.')) { deleteEmails([h]); logActivity('Deleted email entry from ' + sel.name); toast('Email entry deleted', 'info'); } }}, '\uD83D\uDDD1\uFE0F')
                                                             )
                                                             ) // close inner wrapper
                                                         );
@@ -7398,7 +7482,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                                 {h.result?.inPort && <span className="badge" style={{background:'var(--blue)',color:'#fff'}}>⚓ In Port</span>}
                                                 {h.result?.issue?.hasIssue && <span className={`badge badge-${(h.result.issue.threat || 'mild').toLowerCase()}`}>Issue</span>}
                                                 {h.result?.waitingReply && <span className="badge badge-info">Waiting</span>}
-                                                <button className="btn btn-sm btn-danger" style={{padding:'2px 6px',fontSize:'10px'}} onClick={(e) => { e.stopPropagation(); if(confirm('Delete this log entry?')) { const filtered = emailHistory.filter(x => x.id !== h.id); setEmailHistoryLogged(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(h.timestamp)}`); toast('Entry deleted', 'info'); } }}>✕</button>
+                                                <button className="btn btn-sm btn-danger" style={{padding:'2px 6px',fontSize:'10px'}} onClick={(e) => { e.stopPropagation(); if(confirm('Delete this log entry? It is removed for everyone.')) { deleteEmails([h]); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(h.timestamp)}`); toast('Entry deleted', 'info'); } }}>✕</button>
                                             </div>
                                         </div>
                                         {h.result?.emailSummary && <div onClick={() => setViewingHistoryItem(h)} style={{cursor:'pointer',fontSize:'11px',color:'var(--text-dim)',marginTop:'8px',padding:'8px',background:'var(--bg-card)',borderRadius:'4px'}}>{h.result.emailSummary}</div>}
@@ -7541,7 +7625,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         </div>
                         
                         <div style={{padding:'16px',background:'var(--bg-input)',borderRadius:'8px',marginBottom:'16px',position:'relative'}}>
-                            <button className="btn btn-sm btn-danger" style={{position:'absolute',top:'12px',right:'12px',padding:'4px 8px',fontSize:'10px'}} onClick={() => { if(confirm('Delete this log entry?')) { const filtered = emailHistory.filter(x => x.id !== viewingHistoryItem.id); setEmailHistoryLogged(filtered); localStorage.setItem('emailParseHistory', JSON.stringify(filtered)); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(viewingHistoryItem.timestamp)}`); setViewingHistoryItem(null); toast('Entry deleted', 'info'); } }}>🗑️ Delete</button>
+                            <button className="btn btn-sm btn-danger" style={{position:'absolute',top:'12px',right:'12px',padding:'4px 8px',fontSize:'10px'}} onClick={() => { if(confirm('Delete this log entry? It is removed for everyone.')) { deleteEmails([viewingHistoryItem]); logActivity(`Deleted email log for ${sel?.name || 'Unknown'} from ${fmtDate(viewingHistoryItem.timestamp)}`); setViewingHistoryItem(null); toast('Entry deleted', 'info'); } }}>🗑️ Delete</button>
                             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',paddingRight:'80px'}}>
                                 <div>
                                     <div style={{fontWeight:600,fontSize:'14px'}}>{new Date(viewingHistoryItem.timestamp).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
