@@ -651,6 +651,12 @@
         .ct-rail-btn.active .ct-n { background: var(--primary); color: #fff; }
         .ct-rail-btn .ic { width: 18px; text-align: center; flex-shrink: 0; }
         .ct-rail-btn.empty { opacity: .45; }
+        .ct-rail-row { display: flex; align-items: center; gap: 2px; }
+        .ct-rail-row .ct-rail-btn { flex: 1; min-width: 0; }
+        .ct-quick { flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--primary); font: inherit; font-size: 14px; font-weight: 800; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s, background .12s; }
+        .ct-rail-row:hover .ct-quick, .ct-quick:focus-visible, .ct-quick.on { opacity: 1; }
+        .ct-quick:hover { background: var(--primary-glow); border-color: var(--primary); }
+        .ct-quick.on { background: var(--primary); border-color: var(--primary); color: #fff; }
         .ct-stack { display: inline-flex; }
         .ct-stack .ct-av { width: 20px; height: 20px; font-size: 8px; border-radius: 50%; border: 2px solid var(--bg-card); margin-left: -6px; }
         .ct-stack .ct-av:first-child { margin-left: 0; }
@@ -719,6 +725,8 @@
             .ct-rail-label, .ct-rail .ct-stack { display: none; }
             .ct-rail-btn { width: auto; flex-shrink: 0; white-space: nowrap; }
             .ct-rail-btn.active { box-shadow: inset 0 -2px 0 var(--primary); }
+            .ct-rail-row { flex-shrink: 0; }
+            .ct-quick { opacity: 1; }
         }
         @media (max-width: 600px) {
             .ct-grid { grid-template-columns: 1fr; }
@@ -791,7 +799,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-11-05T171";
+    var APP_BUILD = "2026-11-05T172";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1823,6 +1831,26 @@ const fmtDateInput = (d) => {
 // The Outlook macro often hands over only a name (earlier messages in a reply chain, internal Exchange
 // addresses), so the name counts as well as the address.
 const TEAM_EMAIL_HANDLES = ['daniel.k.brown', 'dbrown', 'clyde.a.grant', 'cgrant', 'uriel.pena', 'up_reap', 'kaazim.j.hanif', 'jayreap', 'damian.j.pierman', 'eryk.kedzierski', 'steven.m.spellman', 'mohammed.cardenas'];
+// Every ship has CSO@ and STO@ mailboxes named after its hull, e.g. cso@ddg54.navy.mil
+const shipHullKey = (name) => String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const shipRoleEmails = (name) => { const h = shipHullKey(name); return h ? ['cso@' + h + '.navy.mil', 'sto@' + h + '.navy.mil'] : []; };
+const isRoleMailbox = (email) => /^(cso|sto)@/i.test(String(email || '').trim());
+// mailto link with Outlook's ; between addresses. Duplicates are dropped and CC leaves out anyone already in To.
+const buildMailto = (to, cc) => {
+    const uniq = (l) => l.map(e => String(e || '').trim()).filter(e => e.indexOf('@') !== -1)
+        .filter((e, i, a) => a.findIndex(x => x.toLowerCase() === e.toLowerCase()) === i);
+    const t = uniq(to || []), tl = t.map(e => e.toLowerCase());
+    const c = uniq(cc || []).filter(e => tl.indexOf(e.toLowerCase()) === -1);
+    return 'mailto:' + t.join(';') + (c.length ? '?cc=' + c.join(';') : '');
+};
+// Team addresses CC'd on every email opened from Contacts or the Dashboard (edited on Contacts → Always CC)
+const useAlwaysCc = () => {
+    const [list, setList] = React.useState([]);
+    React.useEffect(() => db.collection('settings').doc('emailCc').onSnapshot(d => setList((d.exists && d.data().list) || []), () => {}), []);
+    return list;
+};
+// Ship name handed from the Dashboard ship menu to Contacts, which opens on that ship with everyone picked
+let pendingContactPick = null;
 const TEAM_NAMES = ['daniel brown', 'clyde grant', 'uriel pena', 'jayleel kazimm', 'kaazim hanif', 'damian pierman', 'eryk kedzierski', 'steven spellman', 'mohammed cardenas'];
 const isTeamSender = (name, email) => {
     const e = String(email || '').toLowerCase();
@@ -2704,6 +2732,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
                                 ),
 
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T172'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📧 CSO/STO in Every Email, Team CC, Quick Select'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px',whiteSpace:'pre-line'}},
+                                    '• Every ship now has its CSO@ and STO@ mailboxes in Contacts (built from the hull, e.g. cso@ddg54.navy.mil and sto@ddg54.navy.mil), shown first in each ship\'s list. If one is already saved as a contact it isn\'t shown twice\n• Picking anyone from a ship also picks that ship\'s CSO and STO automatically (you can untick them)\n• New Always CC button on Contacts: enter the team addresses once (one per line) and they are CC\'d on every email opened from Contacts or the Dashboard. Saved for the whole team\n• The bottom bar shows how many addresses are in To and whether the team CC is set; Copy addresses copies both the To and CC lines\n• If a pick is too big for one Outlook link, the To and CC addresses are copied for pasting instead\n• Quick select: a + button on each ship in the Contacts side list picks that ship\'s CSO, STO and every POC in one click (✓ to unpick). Inside a ship it reads "+ Quick select ship"\n• Dashboard ship menu (⋮ / right-click): new "Quick select contacts" opens Contacts on that ship with everyone already picked\n• Dashboard ship menu: "Email POC" is now "Email POC + CSO/STO". It also includes the CSO and STO, CC\'s the team, and works for ships with no POC email\n• Emailing a single contact from their tile also adds their ship\'s CSO/STO and the team CC\n• CSO/STO tiles can\'t be edited or deleted; the page header counts real contacts separately'
+                                ),
+
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T171'),
 
                                 React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📄 Fresh Blank Start Every Morning'),
@@ -3143,6 +3178,7 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
 }
 
 function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, installs, toast, setPage, setEditingShip, globalSearch, setGlobalSearch, searchRef, logActivity, activityLog, currentUser, allUsers, setAlerts, dismissedAlerts, quickNotes, setQuickNotes }) {
+    const alwaysCc = useAlwaysCc();
     const [sel, setSel] = useState(null);
     const [detailTab, setDetailTab] = useState('info');
     const [showConfirm, setShowConfirm] = useState(false);
@@ -4743,7 +4779,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     }, [sel, sorted, listView]);
 
     const openRowMenu = (ship, x, y) => {
-        const W = 230, H = 320;
+        const W = 230, H = 360;
         setRowMenu({ ship, left: Math.max(8, Math.min(x, window.innerWidth - W - 8)), top: y + H > window.innerHeight ? Math.max(8, y - H) : y });
     };
     const rowAction = (action, ship) => {
@@ -4758,7 +4794,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         else if (action === 'inport') { setInPortDate(''); setInPortModal(true); }
         else if (action === 'back') { putShip({...fresh, inPort: false, inPortUntil: null}); logActivity('Cleared In Port status for ' + fresh.name); toast(fresh.name + ' is back online!', 'success'); }
         else if (action === 'activate') { putShip({...fresh, pendingInstall: false, installDate: '', lastContact: new Date().toISOString()}); logActivity(`Marked ${fresh.name} as installed`); toast(`${fresh.name} is now active!`, 'success'); }
-        else if (action === 'mail' && fresh.email) window.location.href = 'mailto:' + fresh.email;
+        else if (action === 'mail') window.location.href = buildMailto([fresh.email].concat(shipRoleEmails(fresh.name)), alwaysCc);
+        else if (action === 'contacts') { pendingContactPick = fresh.name; setPage(9); }
         else if (action === 'copy' && fresh.email) navigator.clipboard.writeText(fresh.email).then(() => toast('Copied ' + fresh.email, 'success'), () => toast('Could not copy the email', 'error'));
     };
     
@@ -5608,11 +5645,10 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                             <button role="menuitem" onClick={() => rowAction('emailed', m)}>Mark emailed</button>
                             {info.si.length > 0 && <button role="menuitem" onClick={() => rowAction('issues', m)}>View open issues<span className="rm-count">{info.si.length}</span></button>}
                             <button role="menuitem" onClick={() => rowAction('notes', m)}>View notes</button>
-                            {m.email && <>
-                                <div className="row-menu-sep"/>
-                                <button role="menuitem" onClick={() => rowAction('mail', m)}>Email {m.poc || 'POC'}</button>
-                                <button role="menuitem" onClick={() => rowAction('copy', m)}>Copy POC email</button>
-                            </>}
+                            <div className="row-menu-sep"/>
+                            <button role="menuitem" title="Open Contacts with this ship's CSO, STO and POCs picked" onClick={() => rowAction('contacts', m)}>Quick select contacts</button>
+                            <button role="menuitem" title={'To: ' + [m.email].concat(shipRoleEmails(m.name)).filter(Boolean).join('; ') + (alwaysCc.length ? ' · CC: ' + alwaysCc.join('; ') : '')} onClick={() => rowAction('mail', m)}>Email {m.poc || 'ship'} + CSO/STO</button>
+                            {m.email && <button role="menuitem" onClick={() => rowAction('copy', m)}>Copy POC email</button>}
                             <div className="row-menu-sep"/>
                             {m.pendingInstall ? <button role="menuitem" onClick={() => rowAction('activate', m)}>Mark installed</button>
                                 : info.isInPort ? <button role="menuitem" onClick={() => rowAction('back', m)}>Back online (clear in port)</button>
@@ -10644,9 +10680,16 @@ function Suggestions({ suggestions, setSuggestions, toast }) {
 
 
 function POCDirectory({ ships, toast }) {
+    // Opened from the Dashboard's "Quick select contacts": start on that ship and pick everyone once contacts load
+    var presetRef = React.useRef(null);
+    if (presetRef.current === null) { presetRef.current = pendingContactPick || ''; pendingContactPick = null; }
     var [search, setSearch] = React.useState('');
-    var [view, setView] = React.useState('all');
+    var [view, setView] = React.useState(presetRef.current ? 'ship:' + presetRef.current : 'all');
     var [picked, setPicked] = React.useState({});
+    var [loaded, setLoaded] = React.useState(false);
+    var alwaysCc = useAlwaysCc();
+    var [ccModal, setCcModal] = React.useState(false);
+    var [ccDraft, setCcDraft] = React.useState('');
     var [addModal, setAddModal] = React.useState(false);
     var [editContact, setEditContact] = React.useState(null);
     var [contacts, setContacts] = React.useState([]);
@@ -10699,6 +10742,7 @@ function POCDirectory({ ships, toast }) {
             var byId = {};
             snap.forEach(function(doc) { var c = Object.assign({ id: doc.id }, doc.data()); list.push(c); byId[doc.id] = c; });
             setContacts(list);
+            setLoaded(true);
             if (!synced) { synced = true; syncAuto(byId); }
         });
         return function() { unsub(); };
@@ -10763,6 +10807,15 @@ function POCDirectory({ ships, toast }) {
         if (key) seenEmails[key] = true;
         dedupedContacts.push(c);
     });
+    // Every ship's CSO@ and STO@ mailboxes, unless they're already saved as contacts
+    ships.forEach(function(s) {
+        shipRoleEmails(s.name).forEach(function(em, i) {
+            if (seenEmails[em]) return;
+            seenEmails[em] = true;
+            dedupedContacts.push({ id: 'role_' + (i ? 'sto' : 'cso') + '_' + s.id, name: i ? 'STO' : 'CSO', role: (i ? 'STO' : 'CSO') + ' mailbox', email: em, ship: s.name, builtIn: true });
+        });
+    });
+    var peopleCount = dedupedContacts.filter(function(c) { return !c.builtIn; }).length;
     
     // Ships for the side rail, in hull order. Ships with no contacts stay listed (dimmed); contacts on a ship
     // that is no longer in the fleet still get their own entry.
@@ -10812,7 +10865,7 @@ function POCDirectory({ ships, toast }) {
     var q = search.trim().toLowerCase();
     var filtered = (view === 'recent' ? recentlyContacted : dedupedContacts.slice().sort(function(a, b) {
         var ra = a.ship in shipRank ? shipRank[a.ship] : 9999, rb = b.ship in shipRank ? shipRank[b.ship] : 9999;
-        return ra - rb || (a.name || '').localeCompare(b.name || '');
+        return ra - rb || (isRoleMailbox(b.email) ? 1 : 0) - (isRoleMailbox(a.email) ? 1 : 0) || (a.name || '').localeCompare(b.name || '');
     })).filter(function(c) {
         if (!inView(c)) return false;
         if (!q) return true;
@@ -10825,9 +10878,30 @@ function POCDirectory({ ships, toast }) {
     var togglePick = function(c) {
         if (!canPick(c)) { toast((c.name || 'This contact') + ' has no email address', 'error'); return; }
         var next = Object.assign({}, picked);
-        if (next[c.id]) delete next[c.id]; else next[c.id] = true;
+        if (next[c.id]) delete next[c.id];
+        else {
+            next[c.id] = true;
+            if (c.ship && !isRoleMailbox(c.email)) dedupedContacts.forEach(function(x) { if (x.ship === c.ship && isRoleMailbox(x.email)) next[x.id] = true; });
+        }
         setPicked(next);
     };
+    // Quick select: everyone on one ship (CSO, STO and all its POCs). Clicking again when all are picked unpicks them.
+    var shipPickable = function(name) { return dedupedContacts.filter(function(c) { return c.ship === name && canPick(c); }); };
+    var shipAllPicked = function(name) { var l = shipPickable(name); return l.length > 0 && l.every(function(c) { return picked[c.id]; }); };
+    var pickShip = function(name, e) {
+        if (e) e.stopPropagation();
+        var list = shipPickable(name), all = shipAllPicked(name), next = Object.assign({}, picked);
+        list.forEach(function(c) { if (all) delete next[c.id]; else next[c.id] = true; });
+        setPicked(next);
+        if (!all && list.length) toast('Picked ' + plural(list.length, 'address', 'addresses') + ' for ' + name, 'success');
+    };
+    React.useEffect(function() {
+        if (!loaded || !presetRef.current) return;
+        var name = presetRef.current; presetRef.current = '';
+        var next = {};
+        shipPickable(name).forEach(function(c) { next[c.id] = true; });
+        setPicked(next);
+    }, [loaded]);
     var shownPickable = filtered.filter(canPick);
     var allShownPicked = shownPickable.length > 0 && shownPickable.every(function(c) { return picked[c.id]; });
     var pickAllShown = function() {
@@ -10836,11 +10910,25 @@ function POCDirectory({ ships, toast }) {
         setPicked(next);
     };
     var pickedEmails = pickedList.map(function(c) { return c.email.trim(); });
-    // Outlook takes ; between addresses
-    var emailPicked = function() { window.location.href = 'mailto:' + pickedEmails.join(';'); };
+    var ccShown = alwaysCc.filter(function(e) { return pickedEmails.map(function(x) { return x.toLowerCase(); }).indexOf(String(e).toLowerCase()) === -1; });
     var copyPicked = function() {
+        var text = 'To: ' + pickedEmails.join('; ') + (ccShown.length ? '\nCC: ' + ccShown.join('; ') : '');
         if (!navigator.clipboard) { toast('Could not copy the addresses', 'error'); return; }
-        navigator.clipboard.writeText(pickedEmails.join('; ')).then(function() { toast('Copied ' + plural(pickedEmails.length, 'address', 'addresses'), 'success'); }, function() { toast('Could not copy the addresses', 'error'); });
+        navigator.clipboard.writeText(text).then(function() { toast('Copied To' + (ccShown.length ? ' and CC' : '') + ' addresses', 'success'); }, function() { toast('Could not copy the addresses', 'error'); });
+    };
+    // Outlook can't take a very long mailto link, so a big pick is copied for pasting instead
+    var emailPicked = function() {
+        var url = buildMailto(pickedEmails, alwaysCc);
+        if (url.length > 1900) { copyPicked(); toast('Too many addresses for one link. They are copied: paste them into To and CC.', 'info'); return; }
+        window.location.href = url;
+    };
+    var saveCc = function() {
+        var list = ccDraft.split(/[\s,;]+/).map(function(e) { return e.trim(); }).filter(Boolean);
+        var bad = list.filter(function(e) { return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e); });
+        if (bad.length) { toast('Not an email address: ' + bad.join(', '), 'error'); return; }
+        db.collection('settings').doc('emailCc').set({ list: list, updatedAt: new Date().toISOString() })
+            .then(function() { toast(list.length ? 'Always CC saved (' + plural(list.length, 'address', 'addresses') + ')' : 'Always CC cleared', 'success'); setCcModal(false); },
+                  function() { toast('Could not save Always CC', 'error'); });
     };
     var copyText = function(e, text, what) {
         e.stopPropagation();
@@ -10852,14 +10940,22 @@ function POCDirectory({ ships, toast }) {
         setEditContact(c); setAddModal(true);
     };
 
-    var railBtn = function(key, icon, label, list, extraClass) {
-        return (
+    var railBtn = function(key, icon, label, list, extraClass, quickShip) {
+        var btn = (
             <button key={key} type="button" className={'ct-rail-btn' + (view === key ? ' active' : '') + (extraClass || '')} onClick={function() { setView(key); }}>
                 {icon ? <span className="ic">{icon}</span> : null}
                 <span className="nm">{label}</span>
                 {list.length > 0 && <span className="ct-stack">{list.slice(0, 3).map(function(c, i) { return avatar(c, i); })}</span>}
                 <span className="ct-n">{list.length}</span>
             </button>
+        );
+        if (!quickShip) return btn;
+        var all = shipAllPicked(quickShip);
+        return (
+            <div key={key} className="ct-rail-row">
+                {btn}
+                <button type="button" className={'ct-quick' + (all ? ' on' : '')} title={all ? 'Unpick everyone on ' + quickShip : 'Quick select: pick ' + quickShip + "'s CSO, STO and POCs"} aria-label={'Quick select ' + quickShip} onClick={function(e) { pickShip(quickShip, e); }}>{all ? '\u2713' : '+'}</button>
+            </div>
         );
     };
 
@@ -10891,9 +10987,9 @@ function POCDirectory({ ships, toast }) {
                     <span className={'dot' + (lastComm ? (fresh ? ' fresh' : ' old') : '')}/>
                     <span>{lastComm ? 'Last contact ' + relTime(lastComm.timestamp) : 'No emails yet'}</span>
                     <span className="ct-acts" onClick={function(e) { e.stopPropagation(); }}>
-                        {c.email ? <a href={'mailto:' + c.email} title={'Email ' + (c.name || c.email) + ' only'}>{'✉'}</a> : null}
-                        <button type="button" title="Edit" onClick={function(e) { openEdit(e, c); }}>{'✎'}</button>
-                        <button type="button" className="del" title="Delete" onClick={function() { deleteContact(c); }}>{'🗑'}</button>
+                        {c.email ? <a href={buildMailto([c.email].concat(c.ship && !isRoleMailbox(c.email) ? shipRoleEmails(c.ship) : []), alwaysCc)} title={'Email ' + (c.name || c.email) + (c.ship && !isRoleMailbox(c.email) ? ' + ' + c.ship + ' CSO/STO' : '') + (alwaysCc.length ? ', team CC\'d' : '')}>{'\u2709'}</a> : null}
+                        {!c.builtIn && <button type="button" title="Edit" onClick={function(e) { openEdit(e, c); }}>{'\u270E'}</button>}
+                        {!c.builtIn && <button type="button" className="del" title="Delete" onClick={function() { deleteContact(c); }}>{'\uD83D\uDDD1'}</button>}
                     </span>
                 </div>
             </div>
@@ -10907,10 +11003,14 @@ function POCDirectory({ ships, toast }) {
             <div className="page-header">
                 <div className="page-header-left">
                     <h1 className="page-title">Contacts</h1>
-                    <p className="page-sub">{plural(dedupedContacts.length, 'ship contact')} · click people to add them to one email</p>
+                    <p className="page-sub">{plural(peopleCount, 'ship contact')} + CSO/STO for every ship · click people to add them to one email</p>
                 </div>
+                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                <button className="btn btn-secondary" style={{borderRadius: '10px', fontWeight: 600, padding: '10px 14px'}} title={alwaysCc.length ? 'CC on every email: ' + alwaysCc.join('; ') : 'Set the team addresses to CC on every email'}
+                    onClick={function() { setCcDraft(alwaysCc.join('\n')); setCcModal(true); }}>{'Always CC (' + alwaysCc.length + ')'}</button>
                 <button className="btn btn-primary" style={{borderRadius: '10px', fontWeight: 700, padding: '10px 18px'}}
                     onClick={function() { setForm({ name: '', rank: '', role: '', email: '', phone: '', ship: view.indexOf('ship:') === 0 ? view.slice(5) : '', notes: '' }); setEditContact(null); setAddModal(true); }}>+ Add Contact</button>
+                </div>
             </div>
 
             <div className="ct-wrap">
@@ -10918,7 +11018,7 @@ function POCDirectory({ ships, toast }) {
                     {railBtn('all', '▦', 'All contacts', dedupedContacts)}
                     {railBtn('recent', '⏱', 'Recently contacted', recentlyContacted)}
                     <div className="ct-rail-label">Ships</div>
-                    {shipNames.map(function(n) { var list = byShip[n] || []; return railBtn('ship:' + n, null, n, list, list.length ? '' : ' empty'); })}
+                    {shipNames.map(function(n) { var list = byShip[n] || []; return railBtn('ship:' + n, null, n, list, list.length ? '' : ' empty', n); })}
                     {(byShip[''] || []).length > 0 && railBtn('none', null, 'No ship', byShip[''])}
                 </nav>
 
@@ -10945,7 +11045,7 @@ function POCDirectory({ ships, toast }) {
                     <div className="ct-head">
                         <h2>{viewTitle}</h2>
                         <span className="sub">{plural(filtered.length, 'contact')}{q ? ' matching "' + search.trim() + '"' : ''}</span>
-                        {shownPickable.length > 0 && <button type="button" className="ct-link" onClick={pickAllShown}>{allShownPicked ? 'Unselect these' : 'Select all ' + shownPickable.length}</button>}
+                        {shownPickable.length > 0 && <button type="button" className="ct-link" onClick={pickAllShown}>{allShownPicked ? 'Unselect these' : view.indexOf('ship:') === 0 && !q ? '+ Quick select ship (' + shownPickable.length + ')' : 'Select all ' + shownPickable.length}</button>}
                     </div>
 
                     {filtered.length === 0
@@ -10959,12 +11059,29 @@ function POCDirectory({ ships, toast }) {
         pickedList.length > 0 ? (
             <div className="ct-tray" role="region" aria-label="Email recipients">
                 <span className="ct-stack">{pickedList.slice(0, 5).map(function(c, i) { return avatar(c, i); })}</span>
-                <span className="cnt">{plural(pickedList.length, 'person', 'people')} picked
-                    <small title={pickedList.map(function(c) { return c.name || c.email; }).join(', ')}>{pickedList.map(function(c) { return (c.name || c.email).split(' ')[0]; }).join(', ')}</small>
+                <span className="cnt">{plural(pickedList.length, 'address', 'addresses')} in To
+                    <small title={'To: ' + pickedEmails.join('; ') + (ccShown.length ? '\nCC: ' + ccShown.join('; ') : '')}>{pickedList.map(function(c) { return c.builtIn ? c.name + ' ' + c.ship : (c.name || c.email).split(' ')[0]; }).join(', ')}</small>
+                    <small>{ccShown.length ? 'CC: team (' + ccShown.length + ')' : <a href="#" onClick={function(e) { e.preventDefault(); setCcDraft(''); setCcModal(true); }} style={{color: 'var(--amber)'}}>No team CC set</a>}</small>
                 </span>
-                <button type="button" className="btn btn-primary" onClick={emailPicked}>{'✉ Email ' + (pickedList.length === 1 ? '1 person' : 'all ' + pickedList.length)}</button>
+                <button type="button" className="btn btn-primary" onClick={emailPicked}>{'\u2709 Email ' + (pickedList.length === 1 ? '1 address' : 'all ' + pickedList.length)}</button>
                 <button type="button" className="btn btn-secondary" onClick={copyPicked}>Copy addresses</button>
                 <button type="button" className="x" title="Clear selection" onClick={function() { setPicked({}); }}>{'✕'}</button>
+            </div>
+        ) : null,
+
+        // Always CC editor (shared by the whole team)
+        ccModal ? (
+            <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'}} onClick={function(e) { if (e.target === e.currentTarget) setCcModal(false); }}>
+                <div style={{background: 'var(--bg-card)', borderRadius: '16px', padding: '24px', width: '440px', maxWidth: '100%', boxSizing: 'border-box', border: '1px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.4)'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                        <h3 style={{fontSize: '18px', fontWeight: 800, margin: 0}}>Always CC</h3>
+                        <button onClick={function() { setCcModal(false); }} style={{background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '20px', cursor: 'pointer'}}>{'\u2715'}</button>
+                    </div>
+                    <p style={{fontSize: '12px', color: 'var(--text-dim)', margin: '0 0 12px'}}>These addresses are CC'd on every email opened from Contacts and the Dashboard ship menu. One per line. Saved for the whole team.</p>
+                    <textarea autoFocus value={ccDraft} onChange={function(e) { setCcDraft(e.target.value); }} placeholder={'first.last@us.navy.mil\nfirst.last@us.navy.mil'}
+                        style={{width: '100%', boxSizing: 'border-box', minHeight: '120px', padding: '10px 14px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical'}}/>
+                    <button className="btn btn-primary" style={{width: '100%', padding: '12px', fontWeight: 700, borderRadius: '10px', marginTop: '12px'}} onClick={saveCc}>Save</button>
+                </div>
             </div>
         ) : null,
 
