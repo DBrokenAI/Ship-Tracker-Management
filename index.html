@@ -191,6 +191,7 @@
         .badge-ok, .badge-complete, .badge-resolved { background: var(--green-glow); color: var(--green); border: 1px solid var(--green); }
         .badge-overdue, .badge-missing { background: var(--red-glow); color: var(--red); border: 1px solid var(--red); }
         .badge-info { background: var(--blue-glow); color: var(--blue); border: 1px solid var(--blue); }
+        .badge-none { display: none; }
         
         /* Layout */
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -638,6 +639,93 @@
         .check-row.drag-over { border-top: 3px solid var(--primary) !important; background: var(--primary-glow) !important; }
         .drag-handle { color: var(--text-muted); font-size: 14px; cursor: grab; user-select: none; padding: 0 4px; }
         .drag-handle:active { cursor: grabbing; }
+        /* ===== Contacts: ship rail + contact tiles + pick-to-email tray ===== */
+        .ct-wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 20px; align-items: start; padding-bottom: 90px; }
+        .ct-rail { position: sticky; top: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 10px; max-height: calc(100vh - 120px); overflow-y: auto; }
+        .ct-rail-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); padding: 10px 10px 6px; }
+        .ct-rail-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: none; background: none; color: var(--text-dim); font: inherit; font-size: 13px; text-align: left; border-radius: 9px; cursor: pointer; transition: background .12s, color .12s; }
+        .ct-rail-btn:hover { background: var(--bg-input); color: var(--text); }
+        .ct-rail-btn.active { background: var(--primary-glow); color: var(--text); box-shadow: inset 3px 0 0 var(--primary); }
+        .ct-rail-btn .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+        .ct-rail-btn .ct-n { font-size: 10px; font-weight: 700; color: var(--text-muted); background: var(--bg-input); border-radius: 10px; padding: 1px 7px; }
+        .ct-rail-btn.active .ct-n { background: var(--primary); color: #fff; }
+        .ct-rail-btn .ic { width: 18px; text-align: center; flex-shrink: 0; }
+        .ct-rail-btn.empty { opacity: .45; }
+        .ct-stack { display: inline-flex; }
+        .ct-stack .ct-av { width: 20px; height: 20px; font-size: 8px; border-radius: 50%; border: 2px solid var(--bg-card); margin-left: -6px; }
+        .ct-stack .ct-av:first-child { margin-left: 0; }
+
+        .ct-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+        .ct-search { flex: 1 1 240px; min-width: 0; position: relative; }
+        .ct-search input { width: 100%; box-sizing: border-box; padding: 11px 14px 11px 38px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font: inherit; font-size: 14px; }
+        .ct-search input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .ct-search::before { content: '⌕'; position: absolute; left: 14px; top: 50%; transform: translateY(-52%); font-size: 18px; color: var(--text-muted); }
+        .ct-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
+        .ct-head h2 { margin: 0; font-size: 20px; font-weight: 800; }
+        .ct-head .sub { font-size: 12px; color: var(--text-muted); }
+        .ct-head .ct-link { margin-left: auto; background: none; border: none; color: var(--primary); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+        .ct-head .ct-link:hover { background: var(--primary-glow); }
+
+        .ct-recent { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 22px; }
+        .ct-recent-chip { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; flex-shrink: 0; font: inherit; color: var(--text); transition: border-color .12s; }
+        .ct-recent-chip:hover { border-color: var(--primary); }
+        .ct-recent-chip.sel { border-color: var(--primary); background: var(--primary-glow); }
+        .ct-recent-chip .t { text-align: left; line-height: 1.25; }
+        .ct-recent-chip .t b { display: block; font-size: 12px; }
+        .ct-recent-chip .t span { font-size: 10px; color: var(--text-muted); }
+
+        .ct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+        .ct-card { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; cursor: pointer; display: flex; flex-direction: column; gap: 10px; transition: border-color .15s, transform .15s, box-shadow .15s; user-select: none; }
+        .ct-card:hover { border-color: var(--border-focus); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+        .ct-card.sel { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .ct-card.noemail { cursor: default; }
+        .ct-card.flash { box-shadow: 0 0 0 3px var(--primary); }
+        .ct-check { position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--border-focus); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; transition: all .12s; }
+        .ct-card:hover .ct-check { border-color: var(--primary); }
+        .ct-card.sel .ct-check { background: var(--primary); border-color: var(--primary); }
+        .ct-card.noemail .ct-check { opacity: .3; border-style: dashed; }
+        .ct-top { display: flex; align-items: center; gap: 12px; padding-right: 26px; }
+        .ct-av { width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: var(--av); background: color-mix(in srgb, var(--av) 18%, transparent); border: 1px solid color-mix(in srgb, var(--av) 45%, transparent); }
+        .ct-name { font-weight: 700; font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ct-rank { font-size: 10px; font-weight: 700; color: var(--text-dim); background: var(--bg-input); border-radius: 5px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
+        .ct-role { font-size: 11px; color: var(--blue); font-weight: 600; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ct-ship { display: inline-flex; align-self: flex-start; font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text-dim); background: var(--bg-input); border-radius: 6px; padding: 3px 8px; }
+        .ct-lines { display: flex; flex-direction: column; gap: 4px; font-size: 11px; min-width: 0; }
+        .ct-lines span { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: copy; }
+        .ct-lines span:hover { color: var(--primary); }
+        .ct-note { font-size: 10px; color: var(--amber); background: var(--amber-glow); border-radius: 6px; padding: 4px 8px; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ct-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text-muted); }
+        .ct-foot .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+        .ct-foot .dot.fresh { background: var(--green); } .ct-foot .dot.old { background: var(--amber); }
+        .ct-acts { margin-left: auto; display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+        .ct-card:hover .ct-acts, .ct-card:focus-within .ct-acts { opacity: 1; }
+        .ct-acts button, .ct-acts a { background: none; border: none; color: var(--text-muted); font-size: 13px; padding: 3px 6px; border-radius: 6px; cursor: pointer; text-decoration: none; line-height: 1; }
+        .ct-acts button:hover, .ct-acts a:hover { background: var(--bg-input); color: var(--text); }
+        .ct-acts .del:hover { color: var(--red); }
+        .ct-empty { text-align: center; padding: 70px 20px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 14px; }
+
+        .ct-tray { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 150; display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px; background: var(--bg-card); border: 1px solid var(--primary); border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,.45); max-width: calc(100vw - 32px); box-sizing: border-box; animation: ctTrayIn .18s ease-out; }
+        @keyframes ctTrayIn { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        .ct-tray .ct-stack .ct-av { width: 28px; height: 28px; font-size: 10px; border-color: var(--bg-card); }
+        .ct-tray .cnt { font-size: 13px; font-weight: 700; white-space: nowrap; }
+        .ct-tray .cnt small { display: block; font-size: 10px; font-weight: 500; color: var(--text-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+        .ct-tray .btn { white-space: nowrap; border-radius: 10px; }
+        .ct-tray .x { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+        .ct-tray .x:hover { background: var(--bg-input); color: var(--text); }
+
+        @media (max-width: 900px) {
+            .ct-wrap { grid-template-columns: 1fr; }
+            .ct-rail { position: static; max-height: none; display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
+            .ct-rail-label, .ct-rail .ct-stack { display: none; }
+            .ct-rail-btn { width: auto; flex-shrink: 0; white-space: nowrap; }
+            .ct-rail-btn.active { box-shadow: inset 0 -2px 0 var(--primary); }
+        }
+        @media (max-width: 600px) {
+            .ct-grid { grid-template-columns: 1fr; }
+            .ct-acts { opacity: 1; }
+            .ct-tray { left: 16px; right: 16px; transform: none; flex-wrap: wrap; animation: none; }
+            .ct-tray .ct-stack { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -703,7 +791,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-11-03T170";
+    var APP_BUILD = "2026-11-05T171";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1764,9 +1852,11 @@ const parseLocalDate = (d) => {
 const isTruthy = (v) => v === true || v === 'true' || v === 1;
 // Partially online in Daily Checks: only one of Primary / Alternate is ticked. Counts as online on the Dashboard.
 const isPartialCheck = (c) => !!c && isTruthy(c.statusAM) !== isTruthy(c.statusPM);
-// Online for a day: Primary or Alternate box ticked. A day nobody saved defaults to online (both boxes start ticked).
+// Online for a day: Primary or Alternate box ticked. Offline: a saved day with both boxes unticked.
+// A day nobody saved is blank (neither online nor offline), so every morning starts as a clean sheet.
 // Pings are display-only and never decide online/offline.
-const isCheckOnline = (c) => !c || isTruthy(c.statusAM) || isTruthy(c.statusPM);
+const isCheckOnline = (c) => !!c && (isTruthy(c.statusAM) || isTruthy(c.statusPM));
+const isCheckOffline = (c) => !!c && !isTruthy(c.statusAM) && !isTruthy(c.statusPM);
 // In port right now (no return date = still in port)
 const isInPortNow = (s) => !!s && !!s.inPort && parseLocalDate(s.inPortUntil) >= new Date(new Date().setHours(0, 0, 0, 0));
 // ===== REAP STATUS REPORT WORKBOOK =====
@@ -2612,6 +2702,18 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T171'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '📄 Fresh Blank Start Every Morning'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px',whiteSpace:'pre-line'}},
+                                    '• Each morning starts blank: a ship with nothing saved for the day is no longer counted as online or offline. It shows as a plain grey row with no colour or tag\n• Daily Checks: the Primary, Alternate, Diode Up and Data Transfer boxes now start unticked. Tick them (or use the bulk "All online" buttons) to mark ships online\n• A ship only shows red/Offline when someone saves it with both Primary and Alternate unticked\n• Dashboard: blank ships are left out of the offline and "all good" counts; empty days in the 7-day strip are grey; "days offline in a row" only counts days that were actually marked offline\n• Daily Checks top summary stays empty until checks are entered, then shows online / offline / partial counts; the ring only fills for entered ships; card view shows no badge for blank ships\n• Inventory Status column shows a grey dash for ships not entered yet\n• Weekly report uptime and daily totals only count days that were entered; Power BI Status is empty for ships not entered yet today\n• Morning report, End of Day report and CSV/Excel exports treat a ship nobody entered as not online'
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '👥 Contacts Rebuilt + Multi-Pick Email'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px',whiteSpace:'pre-line'}},
+                                    '• Pick people for one email: click any contact (or press Space) to tick it, then use the bar at the bottom to "Email all N". One Outlook email opens with everyone picked in the To line\n• The bottom bar shows who is picked, can copy all the addresses, and ✕ clears the picks. Contacts with no email address can\'t be picked\n• "Select all" picks everyone in the list you\'re looking at (for example one ship\'s whole crew); click again to unselect them\n• New layout: a side rail of ships (in hull order, with contact counts and faces) plus All contacts, Recently contacted and No ship. The main area shows only the group you choose, as a grid of tiles instead of one long list\n• Tiles show a coloured initials badge, name, rank, role, ship, email and phone (click either to copy), notes, and a last-contact dot (green within a week, amber older)\n• Email-only-this-person, Edit and Delete buttons appear when you hover a tile\n• Recently contacted people show as quick-pick chips at the top of All contacts\n• Search now also checks phone numbers; the A–Z letter bar and ship dropdown are replaced by the rail\n• Adding a contact while a ship is open fills in that ship\n• On phones the rail becomes a row of scrollable chips and the tiles stack one per row'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 3, 2026 — Build T170'),
@@ -4151,7 +4253,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             weekDates.push(toDateString(d));
         }
         
-        // Same online rule as the Dashboard / Daily Checks: Primary or Alternate ticked (unsaved day = online, partial = online).
+        // Same online rule as the Dashboard / Daily Checks: Primary or Alternate ticked (partial = online). Blank days are not counted.
         // Pending install/deinstall and in-port ships are left out; days after today are not counted.
         const todayStr = toDateString(now);
         const reportShips = ships.filter(s => !s.pendingInstall && !s.pendingDeinstall && !isInPortNow(s));
@@ -4159,8 +4261,10 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         let totalChecks = 0, onlineChecks = 0;
         pastDates.forEach(date => {
             reportShips.forEach(ship => {
+                const check = dailyChecks.find(c => c.shipId === ship.id && c.date === date);
+                if (!check) return;
                 totalChecks++;
-                if (isCheckOnline(dailyChecks.find(c => c.shipId === ship.id && c.date === date))) onlineChecks++;
+                if (isCheckOnline(check)) onlineChecks++;
             });
         });
         const weeklyUptime = totalChecks > 0 ? Math.round((onlineChecks / totalChecks) * 100) : 0;
@@ -4194,7 +4298,8 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             let online = 0, partial = 0, offline = 0;
             reportShips.forEach(ship => {
                 const check = dailyChecks.find(c => c.shipId === ship.id && c.date === date);
-                if (!isCheckOnline(check)) offline++;
+                if (!check) return;
+                if (isCheckOffline(check)) offline++;
                 else if (isPartialCheck(check)) partial++;
                 else online++;
             });
@@ -4344,13 +4449,14 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
         };
         const fmtD = (d) => fmtDate(d);
-        // Today's status, same rule as the Dashboard: Primary or Alternate ticked = Up (unsaved day = Up)
+        // Today's status, same rule as the Dashboard: Primary or Alternate ticked = Up, both unticked = Offline, not entered yet = blank
         const pbiToday = toDateString(new Date());
         const getStatus = (ship) => {
             if (ship.pendingInstall) return 'Pending Install';
             if (ship.pendingDeinstall) return 'Pending Deinstall';
             if (isInPortNow(ship)) return 'In Port';
-            return isCheckOnline(dailyChecks.find(c => c.shipId === ship.id && c.date === pbiToday)) ? 'Up' : 'Offline';
+            const c = dailyChecks.find(x => x.shipId === ship.id && x.date === pbiToday);
+            return !c ? '' : isCheckOnline(c) ? 'Up' : 'Offline';
         };
         const headers = ['ShipHull#','ShipType','Location','Status','Priority','IssueTitle','IssueCategory','IssueDetails','IssueOpenedDate','DateResolved','LastResponseDate','LastShipResponse','ResolutionSummary','Notes','AssignedTo'];
         let rows = [headers.join(',')];
@@ -4523,12 +4629,13 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         if (s.pendingDeinstall) return { state: 'pending', label: 'Pending deinstall' };
         if (isInPortNow(s)) return { state: 'port', label: 'In port' };
         const c = dailyChecks.find(x => x.shipId === s.id && x.date === today);
+        if (!c) return { state: 'blank', label: '' };
         if (!isCheckOnline(c)) return { state: 'offline', label: 'Offline' };
         if (isPartialCheck(c)) return { state: 'online', label: 'Partially online', partial: true };
         return { state: 'online', label: 'Online' };
     };
     const attn = useMemo(() => {
-        const r = { online: [], offline: [], port: [], pending: [], issueShips: new Set() };
+        const r = { online: [], offline: [], blank: [], port: [], pending: [], issueShips: new Set() };
         ships.forEach(s => {
             const t = shipToday(s);
             r[t.state].push(s);
@@ -4588,7 +4695,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         let n = 0; const d = parseLocalDate(today);
         for (let i = 0; i < 60; i++) {
             const c = checkByKey[ship.id + '|' + toDateString(d)];
-            if (isCheckOnline(c)) break;
+            if (!isCheckOffline(c)) break;
             n++; d.setDate(d.getDate() - 1);
         }
         return n;
@@ -4605,7 +4712,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         for (let i = 6; i >= 0; i--) {
             const d = parseLocalDate(today); d.setDate(d.getDate() - i);
             const c = checkByKey[ship.id + '|' + toDateString(d)];
-            week.push(isCheckOnline(c) ? 'up' : 'down');
+            week.push(isCheckOnline(c) ? 'up' : isCheckOffline(c) ? 'down' : '');
         }
         const base = { si, topIssue, isInPort, week };
         if (t.state === 'pending') {
@@ -4618,6 +4725,9 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
             return { ...base, group: 'offline', tone: 'off', glyph: '✕', st: 'off', tag: ['off', 'OFFLINE'], age: n > 1 ? n + 'd' : '', ageTip: n > 1 ? 'Offline ' + n + ' days in a row' : '', sub: issueText || 'Offline today' };
         }
         if (topIssue) return { ...base, group: topIssue.threat === 'Urgent' ? 'urgent' : 'issues', tone: topIssue.threat === 'Urgent' ? 'urgent' : 'iss', glyph: topIssue.threat === 'Urgent' ? '!!' : '!', st: 'iss', tag: topIssue.threat === 'Urgent' ? ['urgent', 'URGENT'] : ['iss', si.length > 1 ? si.length + ' ISSUES' : 'ISSUE'], age: issueAge + 'd', ageTip: 'Open ' + plural(issueAge, 'day'), sub: issueText };
+        const shipSub = (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '');
+        // Nothing entered yet today: a plain grey row, no tag
+        if (t.state === 'blank') return { ...base, group: 'blank', tone: 'nc', glyph: '', st: 'nc', tag: null, sub: shipSub };
         return { ...base, group: 'good', tone: 'on', glyph: '✓', st: 'on', tag: null, sub: (t.partial ? 'Partially online · ' : '') + (ship.type === 'Full REAP' ? 'Full' : ship.type === 'Mini REAP' ? 'Mini' : ship.type) + (ship.location ? ' · ' + ship.location : '') };
     };
     const listView = useMemo(() => {
@@ -5438,7 +5548,7 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                         {listView.groups.length === 0 && <div className="dash-empty">No ships match{listQuery ? ' "' + listQuery + '"' : ' this filter'}.</div>}
                         {listView.groups.map(g => {
                             const weekStrip = (info) => info.week && (
-                                <span className="week" title={'Last 7 days: ' + info.week.filter(w => w === 'up').length + ' online, ' + info.week.filter(w => w === 'down').length + ' offline'}>
+                                <span className="week" title={'Last 7 days: ' + info.week.filter(w => w === 'up').length + ' online, ' + info.week.filter(w => w === 'down').length + ' offline' + (info.week.some(w => !w) ? ', ' + info.week.filter(w => !w).length + ' blank' : '')}>
                                     {info.week.map((w, i) => <i key={i} className={w}/>)}
                                 </span>
                             );
@@ -7337,7 +7447,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         handleDragEnd();
     };
 
-    const getCheck = (id, d = date) => checks.find(c => c.shipId === id && c.date === d) || { id: genId('DC'), shipId: id, date: d, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diodeUp: true, dataTransfer: true, diode: '', phone: '', notes: '' };
+    const getCheck = (id, d = date) => checks.find(c => c.shipId === id && c.date === d) || { id: genId('DC'), shipId: id, date: d, pingAM: '', pingPM: '', hdSpace: '', statusAM: false, statusPM: false, diodeUp: false, dataTransfer: false, diode: '', phone: '', notes: '' };
 
     // Get yesterday's check for comparison
     const getYesterdayCheck = (id) => {
@@ -7360,7 +7470,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         setChecks(p => {
             const ex = p.find(c => c.shipId === id && c.date === date);
             if (ex) return p.map(c => (c.shipId === id && c.date === date) ? {...c, [field]: val} : c);
-            return [...p, { id: genId('DC'), shipId: id, date, pingAM: '', pingPM: '', hdSpace: '', statusAM: true, statusPM: true, diodeUp: true, dataTransfer: true, diode: '', phone: '', notes: '', [field]: val }];
+            return [...p, { id: genId('DC'), shipId: id, date, pingAM: '', pingPM: '', hdSpace: '', statusAM: false, statusPM: false, diodeUp: false, dataTransfer: false, diode: '', phone: '', notes: '', [field]: val }];
         });
         setSaveStatus('saving');
         clearTimeout(saveTimer.current);
@@ -7724,7 +7834,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
             var c = getCheck(s.id);
             var na = !!(s.pendingInstall || s.pendingDeinstall);
             // Online follows the Primary / Alternate boxes, same as the Daily Checks ring
-            // (no saved check = online, one box ticked = online). The ping is only a sub-label.
+            // (one box ticked = online, nothing saved = not online). The ping is only a sub-label.
             var pingAM = numericPing(c.pingAM);
             var pingPM = numericPing(c.pingPM);
             var am = !na && isTruthy(c.statusAM);
@@ -7863,6 +7973,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
         if (ship.pendingDeinstall) return 'deinstall';
         const isInPort = ship.inPort && ship.inPortUntil && parseLocalDate(ship.inPortUntil) >= parseLocalDate(d);
         if (isInPort) return 'inport';
+        // Nothing saved for this ship and day yet: blank, not offline
+        if (!checks.some(c => c.shipId === ship.id && c.date === check.date)) return 'blank';
         const pri = isTruthy(check.statusAM), alt = isTruthy(check.statusPM);
         if (!pri && !alt) return 'offline';
         if (!pri || !alt) return 'partial';
@@ -7873,9 +7985,10 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
     // Hero: the selected day's fleet ring and the Mon–Sun strip around it (pending install/deinstall ships left out)
     const activeShips = sorted.filter(s => !s.pendingInstall && !s.pendingDeinstall);
     const summarizeDay = (d) => {
-        const out = { online: 0, partial: 0, offline: 0, inPort: 0, total: activeShips.length, hasData: checks.some(c => c.date === d) };
+        const out = { online: 0, partial: 0, offline: 0, inPort: 0, blank: 0, total: activeShips.length, hasData: checks.some(c => c.date === d) };
         activeShips.forEach(s => {
             const st = getRowStatus(s, getCheck(s.id, d), d);
+            if (st === 'blank') { out.blank++; return; }
             if (st === 'inport') out.inPort++; else if (st === 'offline') out.offline++; else if (st === 'partial') out.partial++; else out.online++;
         });
         out.tone = !out.hasData ? 'none' : out.offline > 0 ? 'red' : out.partial > 0 ? 'amber' : 'green';
@@ -7978,7 +8091,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <div>
                             <div className="dc-hero-date">{parseLocalDate(date).toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'})}</div>
                             <div className="dc-hero-sum">
-                                {hero.partial + hero.offline + hero.inPort === 0 ? <span style={{color:'var(--green)'}}>All ships online</span> : [
+                                {hero.online + hero.partial + hero.offline + hero.inPort === 0 ? null : hero.partial + hero.offline + hero.inPort + hero.blank === 0 ? <span style={{color:'var(--green)'}}>All ships online</span> : [
+                                    hero.blank > 0 && hero.online > 0 && <span key="on" style={{color:'var(--green)'}}>{hero.online} online</span>,
                                     hero.offline > 0 && <span key="off" style={{color:'var(--red)'}}>{hero.offline} offline</span>,
                                     hero.partial > 0 && <span key="part" style={{color:'var(--amber)'}}>{hero.partial} partial</span>,
                                     hero.inPort > 0 && <span key="port" style={{color:'var(--blue)'}}>{hero.inPort} in port</span>,
@@ -8137,8 +8251,8 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                                         {reorderMode && <span className="drag-handle" title="Drag to reorder">⋮⋮</span>}
                                         <div style={{fontWeight:700,fontSize:'16px',fontFamily:'JetBrains Mono'}}>{s.name}</div>
                                     </div>
-                                    <span title={status === 'alert' ? 'Online, but a ping is over 500 ms or HD space is under 100 GB' : undefined} className={`badge badge-${status === 'online' ? 'ok' : status === 'alert' ? 'mild' : status === 'offline' ? 'urgent' : status === 'partial' ? 'mild' : 'info'}`} style={status === 'pending' ? {background:'var(--amber)',color:'#fff'} : status === 'deinstall' ? {background:'var(--red)',color:'#fff'} : {}}>
-                                        {status === 'online' ? '✓ Online' : status === 'alert' ? '⚠ Online, check values' : status === 'offline' ? '✕ Offline' : status === 'partial' ? '⚠ Partial' : status === 'pending' ? '🔧 Pending Install' : status === 'deinstall' ? '🔻 Pending Deinstall' : '⚓ In Port'}
+                                    <span title={status === 'alert' ? 'Online, but a ping is over 500 ms or HD space is under 100 GB' : undefined} className={`badge badge-${status === 'online' ? 'ok' : status === 'alert' ? 'mild' : status === 'offline' ? 'urgent' : status === 'partial' ? 'mild' : status === 'blank' ? 'none' : 'info'}`} style={status === 'pending' ? {background:'var(--amber)',color:'#fff'} : status === 'deinstall' ? {background:'var(--red)',color:'#fff'} : {}}>
+                                        {status === 'online' ? '✓ Online' : status === 'alert' ? '⚠ Online, check values' : status === 'offline' ? '✕ Offline' : status === 'partial' ? '⚠ Partial' : status === 'blank' ? '' : status === 'pending' ? '🔧 Pending Install' : status === 'deinstall' ? '🔻 Pending Deinstall' : '⚓ In Port'}
                                     </span>
                                 </div>
                                 <div style={{fontSize:'11px',color:'var(--text-muted)',marginBottom:'12px'}}>{status === 'pending' ? `Pending Install${s.installDate ? ' • Est. ' + fmtDate(s.installDate) : ''}` : status === 'deinstall' ? `Pending Deinstall${s.deinstallDate ? ' • Est. ' + fmtDate(s.deinstallDate) : ''}` : s.location || 'No location'}</div>
@@ -8311,8 +8425,9 @@ function Inventory({ ships, setShips, dailyChecks, toast, logActivity }) {
     const hasStar = (s) => !!(s.hddStar || s.hdd);
     const isComplete = (s) => !!(s.ciscoRouter && hasStar(s) && s.hddData);
     // Today's check, same rule as the Daily Checks ring: nothing saved = online, one box ticked = online
-    const todayCheck = (s, today) => (dailyChecks || []).find(dc => dc.shipId === s.id && dc.date === today) || { statusAM: true, statusPM: true, dataTransfer: true };
+    const todayCheck = (s, today) => (dailyChecks || []).find(dc => dc.shipId === s.id && dc.date === today) || { statusAM: false, statusPM: false, dataTransfer: false };
     const isOnlineToday = (s) => { const c = todayCheck(s, toDateString(new Date())); return isTruthy(c.statusAM) || isTruthy(c.statusPM); };
+    const isOfflineToday = (s) => isCheckOffline((dailyChecks || []).find(dc => dc.shipId === s.id && dc.date === toDateString(new Date())));
     // Export values: ping only when it is a number, blank otherwise
     const exportPing = (v) => { const n = parseFloat(String(v == null ? '' : v).trim()); return /^\d+(?:\.\d+)?\s*(?:ms)?$/i.test(String(v == null ? '' : v).trim()) ? n : ''; };
     const filtered = useMemo(() => { let r = [...ships].sort(sortHull); if (filter === 'missing') r = r.filter(s => !isComplete(s)); else if (filter === 'complete') r = r.filter(isComplete); else if (filter === 'inport') r = r.filter(s => isShipInPort(s)); return r; }, [ships, filter]);
@@ -8488,7 +8603,7 @@ function Inventory({ ships, setShips, dailyChecks, toast, logActivity }) {
             </div>
             
             {/* Ship Table */}
-            <div className="card"><span className="card-title">Ship Documentation Status <span style={{fontWeight:'normal',color:'var(--text-muted)',marginLeft:'8px'}}>({plural(filtered.length, 'ship')})</span></span><div style={{overflowX:'auto'}}><table className="table mt-md"><thead><tr><th>Ship</th><th>Type</th><th>Status</th><th>Cisco Router</th><th>HDD Star</th><th>HDD Data</th><th>Docs</th><th></th></tr></thead><tbody>{filtered.map(s => { const st = getStatus(s); const missing = getMissing(s); const inPort = isShipInPort(s); return (<tr key={s.id} className={sel?.id === s.id ? 'selected' : ''} onClick={() => select(s)} style={{cursor:'pointer', background: inPort ? 'rgba(59,130,246,0.06)' : sel?.id === s.id ? 'var(--primary-glow)' : 'transparent'}}><td style={{fontWeight:600,fontFamily:'JetBrains Mono'}}>{s.name}</td><td>{s.type}</td><td>{s.pendingInstall ? <span style={{fontSize:'10px',color:'var(--amber)'}}>🔧 Pending Install</span> : s.pendingDeinstall ? <span style={{fontSize:'10px',color:'var(--red)'}}>🔻 Pending Deinstall</span> : inPort ? <span className="badge" style={{background:'var(--blue)',color:'#fff',fontSize:'9px',padding:'3px 8px'}}>⚓ IN PORT</span> : isOnlineToday(s) ? <span style={{fontSize:'10px',color:'var(--green)'}}>🟢 Online</span> : <span style={{fontSize:'10px',color:'var(--red)'}}>🔴 Offline</span>}</td><td style={{color:s.ciscoRouter?'var(--text)':'var(--red)',fontSize:'11px',fontFamily:'monospace'}}>{s.ciscoRouter||<span style={{opacity: inPort ? 0.4 : 1}}>---</span>}</td><td style={{color:(s.hddStar||s.hdd)?'var(--text)':'var(--red)',fontSize:'11px',fontFamily:'monospace'}}>{s.hddStar||s.hdd||<span style={{opacity: inPort ? 0.4 : 1}}>---</span>}</td><td style={{color:s.hddData?'var(--text)':'var(--red)',fontSize:'11px',fontFamily:'monospace'}}>{s.hddData||<span style={{opacity: inPort ? 0.4 : 1}}>---</span>}</td><td><span className={`badge ${st==='Complete'?'badge-complete':'badge-missing'}`}>{st}</span></td><td>{missing.length > 0 && !inPort && <button className="btn btn-sm" style={{padding:'2px 8px',fontSize:'9px',background:'var(--blue)',color:'#fff',borderRadius:'4px'}} onClick={(e) => { e.stopPropagation(); setEmailModal({ship: s, text: buildEmail(s)}); }}>📧</button>}</td></tr>); })}</tbody></table></div></div>
+            <div className="card"><span className="card-title">Ship Documentation Status <span style={{fontWeight:'normal',color:'var(--text-muted)',marginLeft:'8px'}}>({plural(filtered.length, 'ship')})</span></span><div style={{overflowX:'auto'}}><table className="table mt-md"><thead><tr><th>Ship</th><th>Type</th><th>Status</th><th>Cisco Router</th><th>HDD Star</th><th>HDD Data</th><th>Docs</th><th></th></tr></thead><tbody>{filtered.map(s => { const st = getStatus(s); const missing = getMissing(s); const inPort = isShipInPort(s); return (<tr key={s.id} className={sel?.id === s.id ? 'selected' : ''} onClick={() => select(s)} style={{cursor:'pointer', background: inPort ? 'rgba(59,130,246,0.06)' : sel?.id === s.id ? 'var(--primary-glow)' : 'transparent'}}><td style={{fontWeight:600,fontFamily:'JetBrains Mono'}}>{s.name}</td><td>{s.type}</td><td>{s.pendingInstall ? <span style={{fontSize:'10px',color:'var(--amber)'}}>🔧 Pending Install</span> : s.pendingDeinstall ? <span style={{fontSize:'10px',color:'var(--red)'}}>🔻 Pending Deinstall</span> : inPort ? <span className="badge" style={{background:'var(--blue)',color:'#fff',fontSize:'9px',padding:'3px 8px'}}>⚓ IN PORT</span> : isOnlineToday(s) ? <span style={{fontSize:'10px',color:'var(--green)'}}>🟢 Online</span> : isOfflineToday(s) ? <span style={{fontSize:'10px',color:'var(--red)'}}>🔴 Offline</span> : <span style={{fontSize:'10px',color:'var(--text-muted)'}}>—</span>}</td><td style={{color:s.ciscoRouter?'var(--text)':'var(--red)',fontSize:'11px',fontFamily:'monospace'}}>{s.ciscoRouter||<span style={{opacity: inPort ? 0.4 : 1}}>---</span>}</td><td style={{color:(s.hddStar||s.hdd)?'var(--text)':'var(--red)',fontSize:'11px',fontFamily:'monospace'}}>{s.hddStar||s.hdd||<span style={{opacity: inPort ? 0.4 : 1}}>---</span>}</td><td style={{color:s.hddData?'var(--text)':'var(--red)',fontSize:'11px',fontFamily:'monospace'}}>{s.hddData||<span style={{opacity: inPort ? 0.4 : 1}}>---</span>}</td><td><span className={`badge ${st==='Complete'?'badge-complete':'badge-missing'}`}>{st}</span></td><td>{missing.length > 0 && !inPort && <button className="btn btn-sm" style={{padding:'2px 8px',fontSize:'9px',background:'var(--blue)',color:'#fff',borderRadius:'4px'}} onClick={(e) => { e.stopPropagation(); setEmailModal({ship: s, text: buildEmail(s)}); }}>📧</button>}</td></tr>); })}</tbody></table></div></div>
             
             {/* Email Modal */}
             {emailModal && (
@@ -10530,12 +10645,12 @@ function Suggestions({ suggestions, setSuggestions, toast }) {
 
 function POCDirectory({ ships, toast }) {
     var [search, setSearch] = React.useState('');
-    var [filterShip, setFilterShip] = React.useState('all');
+    var [view, setView] = React.useState('all');
+    var [picked, setPicked] = React.useState({});
     var [addModal, setAddModal] = React.useState(false);
     var [editContact, setEditContact] = React.useState(null);
     var [contacts, setContacts] = React.useState([]);
     var [form, setForm] = React.useState({ name: '', rank: '', role: '', email: '', phone: '', ship: '', notes: '' });
-    var [letterFilter, setLetterFilter] = React.useState('');
 
     React.useEffect(function() {
         var synced = false;
@@ -10621,7 +10736,7 @@ function POCDirectory({ ships, toast }) {
     };
     
     // Team members to exclude from contacts
-    var teamEmailPatterns = ['daniel.k.brown', 'dbrown', 'clyde.a.grant', 'cgrant', 'uriel.pena', 'up_reap', 'kaazim.j.hanif', 'jayreap', 'damian.j.pierman', 'eryk.kedzierski', 'steven.m.spellman', 'mohammed.cardenas'];
+    var teamEmailPatterns = TEAM_EMAIL_HANDLES;
     var isTeamContact = function(email) {
         if (!email) return false;
         var e = email.toLowerCase();
@@ -10649,39 +10764,15 @@ function POCDirectory({ ships, toast }) {
         dedupedContacts.push(c);
     });
     
-    // Filter
-    var filtered = dedupedContacts.filter(function(c) {
-        if (filterShip !== 'all' && c.ship !== filterShip) return false;
-        if (letterFilter && (c.name || '').charAt(0).toUpperCase() !== letterFilter) return false;
-        if (search) {
-            var s = search.toLowerCase();
-            return (c.name||'').toLowerCase().indexOf(s) !== -1 || (c.email||'').toLowerCase().indexOf(s) !== -1 || (c.ship||'').toLowerCase().indexOf(s) !== -1 || (c.rank||'').toLowerCase().indexOf(s) !== -1 || (c.role||'').toLowerCase().indexOf(s) !== -1;
-        }
-        return true;
-    });
-    
-    // Recently contacted
-    var recentlyContacted = dedupedContacts.filter(function(c) {
-        return c.email && getLastComm(c.email);
-    }).sort(function(a, b) {
-        var aComm = getLastComm(a.email);
-        var bComm = getLastComm(b.email);
-        return new Date(bComm.timestamp) - new Date(aComm.timestamp);
-    }).slice(0, 5);
-    
-    // Group by ship for main list
-    var grouped = {};
-    filtered.sort(function(a,b) { return (a.name||'').localeCompare(b.name||''); }).forEach(function(c) {
-        var key = c.ship || 'Unassigned';
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(c);
-    });
-    
-    // Alphabet for sidebar
-    var alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-    var usedLetters = {};
-    dedupedContacts.forEach(function(c) { if (c.name) usedLetters[c.name.charAt(0).toUpperCase()] = true; });
-    
+    // Ships for the side rail, in hull order. Ships with no contacts stay listed (dimmed); contacts on a ship
+    // that is no longer in the fleet still get their own entry.
+    var byShip = {};
+    dedupedContacts.forEach(function(c) { var k = c.ship || ''; (byShip[k] = byShip[k] || []).push(c); });
+    var shipNames = ships.slice().sort(sortHull).map(function(s) { return s.name; });
+    Object.keys(byShip).forEach(function(k) { if (k && shipNames.indexOf(k) === -1) shipNames.push(k); });
+    var shipRank = {};
+    shipNames.forEach(function(n, i) { shipRank[n] = i; });
+
     var relTime = function(date) {
         if (!date) return '';
         var mins = Math.floor((new Date() - new Date(date)) / 60000);
@@ -10694,119 +10785,189 @@ function POCDirectory({ ships, toast }) {
         return Math.floor(days / 30) + 'mo ago';
     };
 
-    // Contact card renderer
-    var renderCard = function(c, showShip) {
-        var lastComm = getLastComm(c.email);
-        return React.createElement('div', {key: c.id, id: 'poc_' + c.id, style: {padding:'14px 16px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'12px',display:'flex',gap:'12px',alignItems:'flex-start',transition:'border-color 0.15s'}, onMouseOver:function(e){e.currentTarget.style.borderColor='var(--primary)';}, onMouseOut:function(e){e.currentTarget.style.borderColor='var(--border)';}},
-            React.createElement('div', {style:{width:'44px',height:'44px',borderRadius:'12px',background:'var(--primary-glow)',border:'1.5px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'15px',fontWeight:800,color:'var(--primary)',flexShrink:0}}, (c.name||'?').substring(0,2).toUpperCase()),
-            React.createElement('div', {style:{flex:1,minWidth:0}},
-                React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'2px'}},
-                    React.createElement('span', {style:{fontWeight:700,fontSize:'14px',color:'var(--text)'}}, c.name || 'Unknown'),
-                    c.rank ? React.createElement('span', {style:{fontSize:'10px',padding:'2px 6px',background:'var(--bg-input)',borderRadius:'4px',color:'var(--text-muted)',fontWeight:600}}, c.rank) : null
-                ),
-                c.role ? React.createElement('div', {style:{fontSize:'11px',color:'var(--blue)',fontWeight:500,marginBottom:'4px'}}, c.role) : null,
-                showShip && c.ship ? React.createElement('div', {style:{fontSize:'10px',color:'var(--text-muted)',fontWeight:600,marginBottom:'4px'}}, '\uD83D\uDEA2 ' + c.ship) : null,
-                React.createElement('div', {style:{display:'flex',gap:'12px',flexWrap:'wrap',marginTop:'6px'}},
-                    c.email ? React.createElement('span', {style:{fontSize:'11px',color:'var(--primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}, onClick:function(){ navigator.clipboard.writeText(c.email); toast('Email copied!','success'); }, title:'Click to copy'}, '\uD83D\uDCE7 ' + c.email) : null,
-                    c.phone ? React.createElement('span', {style:{fontSize:'11px',color:'var(--text-dim)',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}, onClick:function(){ navigator.clipboard.writeText(c.phone); toast('Phone copied!','success'); }, title:'Click to copy'}, '\uD83D\uDCDE ' + c.phone) : null
-                ),
-                c.notes ? React.createElement('div', {style:{fontSize:'10px',color:'var(--amber)',marginTop:'6px',fontStyle:'italic',background:'rgba(245,158,11,0.08)',padding:'4px 8px',borderRadius:'4px'}}, '\uD83D\uDCDD ' + c.notes) : null,
-                lastComm ? React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)',marginTop:'6px',display:'flex',alignItems:'center',gap:'6px'}},
-                    React.createElement('span', {style:{width:'6px',height:'6px',borderRadius:'50%',background: (new Date() - new Date(lastComm.timestamp)) < 604800000 ? 'var(--green)' : 'var(--amber)',display:'inline-block'}}),
-                    'Last contact: ' + relTime(lastComm.timestamp)
-                ) : null
-            ),
-            React.createElement('div', {style:{display:'flex',flexDirection:'column',gap:'6px',flexShrink:0}},
-                c.email ? React.createElement('a', {href:'mailto:' + c.email, style:{fontSize:'10px',padding:'4px 8px',background:'var(--primary-glow)',border:'1px solid var(--primary)',borderRadius:'6px',color:'var(--primary)',textDecoration:'none',fontWeight:600,textAlign:'center'}, title:'Send email'}, '\u2709\uFE0F Email') : null,
-                React.createElement('button', {onClick:function(){ setForm({name:c.name||'',rank:c.rank||'',role:c.role||'',email:c.email||'',phone:c.phone||'',ship:c.ship||'',notes:c.notes||''}); setEditContact(c); setAddModal(true); }, style:{fontSize:'10px',padding:'4px 8px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',cursor:'pointer'}}, '\u270F\uFE0F Edit'),
-                React.createElement('button', {onClick:function(){ deleteContact(c); }, style:{fontSize:'10px',padding:'4px 8px',background:'none',border:'1px solid transparent',borderRadius:'6px',color:'var(--red)',cursor:'pointer'}}, '\uD83D\uDDD1\uFE0F')
-            )
+    // Avatar: initials on a colour picked from the name, so the same person always gets the same colour
+    var hue = function(str) { var h = 0; for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360; return h; };
+    var initials = function(c) {
+        var parts = (c.name || c.email || '?').replace(/[^A-Za-z ]/g, ' ').trim().split(/\s+/);
+        var first = parts[0] || '?', last = parts.length > 1 ? parts[parts.length - 1] : '';
+        return (first.charAt(0) + (last ? last.charAt(0) : first.charAt(1))).toUpperCase() || '?';
+    };
+    var avatar = function(c, key) {
+        return <span key={key} className="ct-av" style={{'--av': 'hsl(' + hue(c.name || c.email || '') + ' 65% 58%)'}}>{initials(c)}</span>;
+    };
+
+    // Recently contacted (newest first)
+    var commOf = {};
+    dedupedContacts.forEach(function(c) { commOf[c.id] = getLastComm(c.email); });
+    var recentlyContacted = dedupedContacts.filter(function(c) { return commOf[c.id]; })
+        .sort(function(a, b) { return new Date(commOf[b.id].timestamp) - new Date(commOf[a.id].timestamp); });
+
+    // What the main area shows: the rail choice, then the search box
+    var inView = function(c) {
+        if (view === 'recent') return !!commOf[c.id];
+        if (view === 'none') return !c.ship;
+        if (view.indexOf('ship:') === 0) return c.ship === view.slice(5);
+        return true;
+    };
+    var q = search.trim().toLowerCase();
+    var filtered = (view === 'recent' ? recentlyContacted : dedupedContacts.slice().sort(function(a, b) {
+        var ra = a.ship in shipRank ? shipRank[a.ship] : 9999, rb = b.ship in shipRank ? shipRank[b.ship] : 9999;
+        return ra - rb || (a.name || '').localeCompare(b.name || '');
+    })).filter(function(c) {
+        if (!inView(c)) return false;
+        if (!q) return true;
+        return ['name', 'email', 'ship', 'rank', 'role', 'phone'].some(function(k) { return (c[k] || '').toLowerCase().indexOf(q) !== -1; });
+    });
+
+    // Picking people for one email
+    var canPick = function(c) { return !!c.email && c.email.indexOf('@') !== -1; };
+    var pickedList = dedupedContacts.filter(function(c) { return picked[c.id]; });
+    var togglePick = function(c) {
+        if (!canPick(c)) { toast((c.name || 'This contact') + ' has no email address', 'error'); return; }
+        var next = Object.assign({}, picked);
+        if (next[c.id]) delete next[c.id]; else next[c.id] = true;
+        setPicked(next);
+    };
+    var shownPickable = filtered.filter(canPick);
+    var allShownPicked = shownPickable.length > 0 && shownPickable.every(function(c) { return picked[c.id]; });
+    var pickAllShown = function() {
+        var next = Object.assign({}, picked);
+        shownPickable.forEach(function(c) { if (allShownPicked) delete next[c.id]; else next[c.id] = true; });
+        setPicked(next);
+    };
+    var pickedEmails = pickedList.map(function(c) { return c.email.trim(); });
+    // Outlook takes ; between addresses
+    var emailPicked = function() { window.location.href = 'mailto:' + pickedEmails.join(';'); };
+    var copyPicked = function() {
+        if (!navigator.clipboard) { toast('Could not copy the addresses', 'error'); return; }
+        navigator.clipboard.writeText(pickedEmails.join('; ')).then(function() { toast('Copied ' + plural(pickedEmails.length, 'address', 'addresses'), 'success'); }, function() { toast('Could not copy the addresses', 'error'); });
+    };
+    var copyText = function(e, text, what) {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text).then(function() { toast(what + ' copied', 'success'); }, function() { toast('Could not copy', 'error'); });
+    };
+    var openEdit = function(e, c) {
+        e.stopPropagation();
+        setForm({ name: c.name || '', rank: c.rank || '', role: c.role || '', email: c.email || '', phone: c.phone || '', ship: c.ship || '', notes: c.notes || '' });
+        setEditContact(c); setAddModal(true);
+    };
+
+    var railBtn = function(key, icon, label, list, extraClass) {
+        return (
+            <button key={key} type="button" className={'ct-rail-btn' + (view === key ? ' active' : '') + (extraClass || '')} onClick={function() { setView(key); }}>
+                {icon ? <span className="ic">{icon}</span> : null}
+                <span className="nm">{label}</span>
+                {list.length > 0 && <span className="ct-stack">{list.slice(0, 3).map(function(c, i) { return avatar(c, i); })}</span>}
+                <span className="ct-n">{list.length}</span>
+            </button>
         );
     };
 
-    return React.createElement('div', {style:{display:'flex',gap:'0'}},
-        
-        // Alphabet sidebar
-        React.createElement('div', {style:{position:'sticky',top:'20px',display:'flex',flexDirection:'column',alignItems:'center',gap:'1px',padding:'4px 8px',marginRight:'12px',alignSelf:'flex-start'}},
-            alphabet.map(function(letter) {
-                var hasContacts = usedLetters[letter];
-                var isActive = letterFilter === letter;
-                return React.createElement('div', {key:letter, title: hasContacts ? (isActive ? 'Show all' : 'Show names starting with ' + letter) : undefined, onClick:function() {
-                    if (!hasContacts) return;
-                    setLetterFilter(isActive ? '' : letter);
-                }, style:{fontSize:'10px',fontWeight:700,color: isActive ? 'var(--bg-card)' : hasContacts ? 'var(--primary)' : 'var(--text-muted)',background: isActive ? 'var(--primary)' : 'transparent',cursor: hasContacts ? 'pointer' : 'default',padding:'2px 4px',borderRadius:'3px',opacity: hasContacts ? 1 : 0.3,transition:'all 0.1s'}, onMouseOver:function(e){ if(hasContacts && !isActive) e.currentTarget.style.background='var(--primary-glow)'; }, onMouseOut:function(e){ e.currentTarget.style.background = isActive ? 'var(--primary)' : 'transparent'; }}, letter);
-            }),
-            React.createElement('div', {onClick:function(){setSearch('');setLetterFilter('');}, title:'Clear filters', style:{fontSize:'10px',fontWeight:600,color:'var(--text-muted)',cursor:'pointer',padding:'4px',marginTop:'4px'}}, '\u2715')
-        ),
-        
-        // Main content
-        React.createElement('div', {style:{flex:1,minWidth:0}},
+    var renderCard = function(c) {
+        var lastComm = commOf[c.id];
+        var isPicked = !!picked[c.id];
+        var fresh = lastComm && (new Date() - new Date(lastComm.timestamp)) < 604800000;
+        return (
+            <div key={c.id} id={'poc_' + c.id} className={'ct-card' + (isPicked ? ' sel' : '') + (canPick(c) ? '' : ' noemail')}
+                role="checkbox" aria-checked={isPicked} tabIndex={0}
+                title={canPick(c) ? (isPicked ? 'Remove from the email' : 'Add to the email') : 'No email address'}
+                onClick={function() { togglePick(c); }}
+                onKeyDown={function(e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); togglePick(c); } }}>
+                <span className="ct-check">{isPicked ? '✓' : ''}</span>
+                <div className="ct-top">
+                    {avatar(c)}
+                    <div style={{minWidth: 0}}>
+                        <div className="ct-name">{c.name || 'Unknown'}{c.rank ? <span className="ct-rank">{c.rank}</span> : null}</div>
+                        {c.role ? <div className="ct-role">{c.role}</div> : null}
+                    </div>
+                </div>
+                {c.ship && view.indexOf('ship:') !== 0 ? <span className="ct-ship">{c.ship}</span> : null}
+                <div className="ct-lines">
+                    {c.email ? <span title="Copy email" onClick={function(e) { copyText(e, c.email, 'Email'); }}>{'✉ ' + c.email}</span> : <span style={{cursor: 'default', opacity: .6}}>No email</span>}
+                    {c.phone ? <span title="Copy phone" onClick={function(e) { copyText(e, c.phone, 'Phone'); }}>{'☎ ' + c.phone}</span> : null}
+                </div>
+                {c.notes ? <div className="ct-note" title={c.notes}>{c.notes}</div> : null}
+                <div className="ct-foot">
+                    <span className={'dot' + (lastComm ? (fresh ? ' fresh' : ' old') : '')}/>
+                    <span>{lastComm ? 'Last contact ' + relTime(lastComm.timestamp) : 'No emails yet'}</span>
+                    <span className="ct-acts" onClick={function(e) { e.stopPropagation(); }}>
+                        {c.email ? <a href={'mailto:' + c.email} title={'Email ' + (c.name || c.email) + ' only'}>{'✉'}</a> : null}
+                        <button type="button" title="Edit" onClick={function(e) { openEdit(e, c); }}>{'✎'}</button>
+                        <button type="button" className="del" title="Delete" onClick={function() { deleteContact(c); }}>{'🗑'}</button>
+                    </span>
+                </div>
+            </div>
+        );
+    };
 
-            // Header
-            React.createElement('div', {className:'page-header'},
-                React.createElement('div', {className:'page-header-left'},
-                    React.createElement('h1', {className:'page-title'}, 'Contacts'),
-                    React.createElement('p', {className:'page-sub'}, plural(dedupedContacts.length, 'ship contact') + (letterFilter ? ' • showing names starting with ' + letterFilter : ''))
-                ),
-                React.createElement('div', {style:{display:'flex',gap:'8px',alignItems:'center'}},
-                    React.createElement('button', {className:'btn btn-primary', style:{borderRadius:'10px',fontWeight:700,padding:'10px 18px'}, onClick:function(){ setForm({name:'',rank:'',role:'',email:'',phone:'',ship:'',notes:''}); setEditContact(null); setAddModal(true); }}, '+ Add Contact')
-                )
-            ),
-            
-            // Search bar
-            React.createElement('div', {style:{display:'flex',gap:'10px',marginBottom:'24px',flexWrap:'wrap'}},
-                React.createElement('input', {style:{flex:'1 1 220px',minWidth:0,padding:'12px 16px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',color:'var(--text)',fontSize:'14px'}, placeholder:'\uD83D\uDD0D Search by name, email, rank, role, or ship...', value:search, onChange:function(e){setSearch(e.target.value);}}),
-                React.createElement('select', {style:{padding:'12px 14px',background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:'10px',color:'var(--text)',fontSize:'13px',minWidth:'140px'}, value:filterShip, onChange:function(e){setFilterShip(e.target.value);}},
-                    React.createElement('option', {value:'all'}, 'All Ships'),
-                    ships.map(function(s) { return React.createElement('option', {key:s.id, value:s.name}, s.name); })
-                )
-            ),
-            
-            // Recently Contacted
-            recentlyContacted.length > 0 && !search && !letterFilter && filterShip === 'all' ?  React.createElement('div', {style:{marginBottom:'28px'}},
-                React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--text-muted)',letterSpacing:'1px',marginBottom:'10px',textTransform:'uppercase'}}, '\u23F1\uFE0F Recently Contacted'),
-                React.createElement('div', {style:{display:'flex',gap:'10px',overflowX:'auto',paddingBottom:'6px'}},
-                    recentlyContacted.map(function(c) {
-                        var lastComm = getLastComm(c.email);
-                        return React.createElement('div', {key:'rc_'+c.id, title:'Show contact', onClick:function() {
-                            var el = document.getElementById('poc_' + c.id);
-                            if (!el) return;
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            el.style.borderColor = 'var(--primary)';
-                            el.style.boxShadow = '0 0 0 2px var(--primary-glow)';
-                            setTimeout(function() { el.style.borderColor = 'var(--border)'; el.style.boxShadow = 'none'; }, 1600);
-                        }, style:{minWidth:'160px',padding:'12px',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'10px',cursor:'pointer',flexShrink:0,transition:'border-color 0.15s'}, onMouseOver:function(e){e.currentTarget.style.borderColor='var(--primary)';}, onMouseOut:function(e){e.currentTarget.style.borderColor='var(--border)';}},
-                            React.createElement('div', {style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}},
-                                React.createElement('div', {style:{width:'28px',height:'28px',borderRadius:'8px',background:'var(--primary-glow)',border:'1px solid var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:800,color:'var(--primary)'}}, (c.name||'?').substring(0,2).toUpperCase()),
-                                React.createElement('div', null,
-                                    React.createElement('div', {style:{fontSize:'12px',fontWeight:700,color:'var(--text)'}}, (c.name||'Unknown').split(' ')[0]),
-                                    React.createElement('div', {style:{fontSize:'9px',color:'var(--text-muted)'}}, c.ship || '')
-                                )
-                            ),
-                            React.createElement('div', {style:{fontSize:'9px',color:'var(--green)',display:'flex',alignItems:'center',gap:'4px'}},
-                                React.createElement('span', {style:{width:'5px',height:'5px',borderRadius:'50%',background:'var(--green)',display:'inline-block'}}),
-                                lastComm ? relTime(lastComm.timestamp) : ''
-                            )
-                        );
-                    })
-                )
-            ) : null,
-            
-            // Grouped contacts
-            Object.keys(grouped).length === 0 ? React.createElement('div', {style:{textAlign:'center',padding:'60px',color:'var(--text-muted)'}}, React.createElement('div', {style:{fontSize:'40px',marginBottom:'12px'}}, '\uD83D\uDCCB'), React.createElement('div', {style:{fontSize:'14px'}}, 'No contacts found')) :
-            Object.keys(grouped).sort().map(function(shipName) {
-                return React.createElement('div', {key:shipName, style:{marginBottom:'24px'}},
-                    React.createElement('div', {style:{fontSize:'13px',fontWeight:800,color:'var(--primary)',marginBottom:'10px',paddingBottom:'8px',borderBottom:'2px solid var(--border)',display:'flex',alignItems:'center',gap:'8px'}},
-                        '\uD83D\uDEA2 ' + shipName,
-                        React.createElement('span', {style:{fontSize:'10px',color:'var(--text-muted)',fontWeight:500,background:'var(--bg-input)',padding:'2px 8px',borderRadius:'10px'}}, grouped[shipName].length)
-                    ),
-                    React.createElement('div', {style:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(min(340px, 100%), 1fr))',gap:'10px'}},
-                        grouped[shipName].map(function(c) { return renderCard(c, false); })
-                    )
-                );
-            })
-        ),
-        
+    var viewTitle = view === 'all' ? 'All contacts' : view === 'recent' ? 'Recently contacted' : view === 'none' ? 'No ship' : view.slice(5);
+
+    return React.createElement(React.Fragment, null,
+        <div>
+            <div className="page-header">
+                <div className="page-header-left">
+                    <h1 className="page-title">Contacts</h1>
+                    <p className="page-sub">{plural(dedupedContacts.length, 'ship contact')} · click people to add them to one email</p>
+                </div>
+                <button className="btn btn-primary" style={{borderRadius: '10px', fontWeight: 700, padding: '10px 18px'}}
+                    onClick={function() { setForm({ name: '', rank: '', role: '', email: '', phone: '', ship: view.indexOf('ship:') === 0 ? view.slice(5) : '', notes: '' }); setEditContact(null); setAddModal(true); }}>+ Add Contact</button>
+            </div>
+
+            <div className="ct-wrap">
+                <nav className="ct-rail" aria-label="Contact groups">
+                    {railBtn('all', '▦', 'All contacts', dedupedContacts)}
+                    {railBtn('recent', '⏱', 'Recently contacted', recentlyContacted)}
+                    <div className="ct-rail-label">Ships</div>
+                    {shipNames.map(function(n) { var list = byShip[n] || []; return railBtn('ship:' + n, null, n, list, list.length ? '' : ' empty'); })}
+                    {(byShip[''] || []).length > 0 && railBtn('none', null, 'No ship', byShip[''])}
+                </nav>
+
+                <div style={{minWidth: 0}}>
+                    <div className="ct-tools">
+                        <label className="ct-search">
+                            <input placeholder="Search name, email, rank, role, ship or phone" value={search} onChange={function(e) { setSearch(e.target.value); }}/>
+                        </label>
+                    </div>
+
+                    {view === 'all' && !q && recentlyContacted.length > 0 && (
+                        <div className="ct-recent" aria-label="Recently contacted">
+                            {recentlyContacted.slice(0, 8).map(function(c) {
+                                return (
+                                    <button key={'rc_' + c.id} type="button" className={'ct-recent-chip' + (picked[c.id] ? ' sel' : '')} title={picked[c.id] ? 'Remove from the email' : 'Add to the email'} onClick={function() { togglePick(c); }}>
+                                        {avatar(c)}
+                                        <span className="t"><b>{c.name || c.email}</b><span>{(c.ship ? c.ship + ' · ' : '') + relTime(commOf[c.id].timestamp)}</span></span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <div className="ct-head">
+                        <h2>{viewTitle}</h2>
+                        <span className="sub">{plural(filtered.length, 'contact')}{q ? ' matching "' + search.trim() + '"' : ''}</span>
+                        {shownPickable.length > 0 && <button type="button" className="ct-link" onClick={pickAllShown}>{allShownPicked ? 'Unselect these' : 'Select all ' + shownPickable.length}</button>}
+                    </div>
+
+                    {filtered.length === 0
+                        ? <div className="ct-empty"><div style={{fontSize: '32px', marginBottom: '8px'}}>{'👤'}</div>{q ? 'No contacts match "' + search.trim() + '"' : 'No contacts here yet'}</div>
+                        : <div className="ct-grid">{filtered.map(renderCard)}</div>}
+                </div>
+            </div>
+        </div>,
+
+        // Pick-to-email tray: everyone picked goes into one Outlook email
+        pickedList.length > 0 ? (
+            <div className="ct-tray" role="region" aria-label="Email recipients">
+                <span className="ct-stack">{pickedList.slice(0, 5).map(function(c, i) { return avatar(c, i); })}</span>
+                <span className="cnt">{plural(pickedList.length, 'person', 'people')} picked
+                    <small title={pickedList.map(function(c) { return c.name || c.email; }).join(', ')}>{pickedList.map(function(c) { return (c.name || c.email).split(' ')[0]; }).join(', ')}</small>
+                </span>
+                <button type="button" className="btn btn-primary" onClick={emailPicked}>{'✉ Email ' + (pickedList.length === 1 ? '1 person' : 'all ' + pickedList.length)}</button>
+                <button type="button" className="btn btn-secondary" onClick={copyPicked}>Copy addresses</button>
+                <button type="button" className="x" title="Clear selection" onClick={function() { setPicked({}); }}>{'✕'}</button>
+            </div>
+        ) : null,
+
         // Add/Edit Modal
         addModal ? React.createElement('div', {style:{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}, onClick:function(e){if(e.target===e.currentTarget){setAddModal(false);setEditContact(null);}}},
             React.createElement('div', {style:{background:'var(--bg-card)',borderRadius:'16px',padding:'28px',width:'440px',maxWidth:'100%',boxSizing:'border-box',maxHeight:'80vh',overflow:'auto',border:'1px solid var(--border)',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}},
