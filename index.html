@@ -655,6 +655,12 @@
         .st-mode:hover { border-color: var(--border-focus); color: var(--text); }
         .st-mode.on { border-color: var(--primary); background: var(--primary-glow); color: var(--text); }
         .st-hint { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+        .st-und { font-size: 11px; color: var(--text-dim); display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; line-height: 1.4; }
+        .st-und em { font-style: normal; font-weight: 700; color: var(--text-muted); display: inline-block; min-width: 64px; }
+        .st-und ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+        .st-und li { padding: 4px 8px; border-radius: 6px; background: var(--bg-input); }
+        .st-und li.ok { color: var(--text-dim); }
+        .st-und li.open { color: var(--amber); background: var(--amber-glow); }
         .st-signals { display: flex; flex-wrap: wrap; gap: 6px; }
         .st-sig { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-dim); }
         .st-sig.kb { border-color: var(--blue); color: var(--blue); background: var(--blue-glow); }
@@ -829,7 +835,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-11-05T174";
+    var APP_BUILD = "2026-11-05T175";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -2769,6 +2775,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T175'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🧠 Smarter Send Template Replies'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px',whiteSpace:'pre-line'}},
+                                    '• Smart reply reads the whole email thread (same Outlook conversation or subject), not just one message. If we sent the last email, it writes a follow-up instead of a reply\n• Works out who wrote it (name, and role: CSO, STO, Comms Officer, officer, IT tech, civilian) from their mailbox, signature and rank. Officers get a shorter list addressed to "your IT team"\n• Finds each question and request in their email and answers it: are you seeing us, is data coming through, what should we check, can we power down, can a tech come out, can you send a part, who to contact, when will it be fixed\n• Any question it cannot answer is quoted back with "we are checking on this", and shown in amber in the window so you can fill it in\n• Thanks them for what they already did (power cycled, reseated cables, swapped a cable, ran a ping, checked lights, ipconfig) and leaves those steps out\n• Explains what they reported seeing (amber / no / green link lights, a 169.254 address, pings timing out) and puts the matching steps first\n• Asking to send the router back while it is still down gets "hold off until the checks are done"; a healthy ship that only asked questions gets just the answers\n• New Follow up template; the window shows What it understood: from, role, thread, what they did, what they saw, and each question (✓ answered / ? needs you)'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T174'),
@@ -4795,33 +4808,89 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
     const daysSince = d => d ? Math.max(0, Math.floor((new Date() - new Date(d)) / 86400000)) : 0;
 
     // ===== SEND TEMPLATE: smart reply to the ship's last email =====
-    // Built in the page from the last email, today's Daily Checks and the troubleshooting knowledge base.
+    // Built in the page from the email thread, today's Daily Checks and the troubleshooting knowledge base.
     // Nothing is sent to an outside service; the result is a draft the user edits before it opens in Outlook.
     const TPL_MODES = [
-        { key: 'smart', label: '✨ Smart reply', tip: 'Reads the last email and the ship\'s status and picks the right reply' },
+        { key: 'smart', label: '✨ Smart reply', tip: 'Reads the email thread and the ship\'s status and picks the right reply' },
         { key: 'troubleshoot', label: '🛠 Connectivity fix', tip: 'Step-by-step troubleshooting for the network devices' },
         { key: 'uptime', label: '📈 Uptime check', tip: 'Ask the ship to confirm connectivity, data transfer and uptime' },
         { key: 'online', label: '✅ Back online', tip: 'Confirm the system is back up and say you will keep monitoring' },
+        { key: 'followup', label: '↩ Follow up', tip: 'Nudge the ship when we sent the last email and have not heard back' },
     ];
-    const lastShipEmail = (ship) => {
-        const list = emailHistory.filter(h => h.shipId === ship.id && h.type !== 'manual' && (h.emailText || (h.result && h.result.emailSummary)))
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        // Prefer the ship's own latest message; fall back to the latest one in the thread
-        return list.find(h => !isTeamSender(h.fromName, h.fromEmail)) || list[0] || null;
+    const cleanSubject = (h) => {
+        const s = h && h.result && h.result.emailSummary;
+        return s && s !== 'Imported email' && s !== 'Marked as contacted' ? s.replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim() : '';
+    };
+    // Just the newest message: no quoted thread, no signature block
+    const newestPart = (raw) => {
+        const top = String(raw || '').split(/\n\s*(?:From:\s|-{3,}\s*Original Message|On .{5,80} wrote:|_{8,})/i)[0];
+        const sig = top.search(/\n\s*(?:v\/r|vr|r\/|very respectfully|respectfully|regards|thanks|thank you|best|cheers)[,.!]*\s*(?:\n|$)/i);
+        return { text: (sig > 0 ? top.slice(0, sig) : top).trim(), sig: sig > 0 ? top.slice(sig) : '' };
+    };
+    // The conversation the ship's latest email belongs to (same Outlook thread or same subject), oldest first
+    const shipThread = (ship) => {
+        const all = emailHistory.filter(h => h.shipId === ship.id && h.type !== 'manual' && (h.emailText || cleanSubject(h)))
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const fromShip = all.filter(h => !isTeamSender(h.fromName, h.fromEmail));
+        const anchor = fromShip[fromShip.length - 1] || all[all.length - 1];
+        if (!anchor) return [];
+        const subj = cleanSubject(anchor).toLowerCase();
+        const same = all.filter(h => (anchor.conversationId && h.conversationId === anchor.conversationId) || (subj && cleanSubject(h).toLowerCase() === subj));
+        return same.length ? same : [anchor];
+    };
+    // "Jones, Mark A IT1 USN DDG 54" → "Mark Jones"; role from the mailbox, signature or rank
+    const readSender = (h, sig) => {
+        const rawName = String(h.fromName || (h.result && h.result.sender && h.result.sender.name) || '').replace(/\(.*?\)|<.*?>|"/g, ' ').replace(/\s+/g, ' ').trim();
+        const words = rawName.indexOf(',') !== -1 ? rawName.split(',') : null;
+        const cap = (w) => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '';
+        const name = !rawName || rawName === '__SHIP__' ? '' : words ? cap(words[1].trim().split(' ')[0]) + ' ' + cap(words[0].trim()) : rawName;
+        const hay = (rawName + ' ' + sig + ' ' + (h.fromEmail || '')).toUpperCase();
+        const role = /^CSO@/i.test(h.fromEmail || '') || /COMBAT SYSTEMS OFFICER|\bCSO\b/.test(hay) ? 'CSO'
+            : /^STO@/i.test(h.fromEmail || '') || /SYSTEMS TEST OFFICER|\bSTO\b/.test(hay) ? 'STO'
+            : /COMMUNICATIONS OFFICER|\bCOMMO\b|\bCOMMS? OFFICER\b/.test(hay) ? 'Comms Officer'
+            : /\b(ENS|LTJG|LT|LCDR|CDR|CAPT|CWO[2-5])\b/.test(hay) ? 'Officer'
+            : /\b(IT|ET|FC|CTN|CTT)(1|2|3|C|CS|CM|SN)\b|\bITC\b|NETWORK|SYSADMIN|SYSTEM ADMIN/.test(hay) ? 'IT tech'
+            : /\b(CIV|CTR|CONTRACTOR)\b/.test(hay) ? 'Civilian / contractor' : '';
+        return { name, role, email: h.fromEmail || (h.result && h.result.sender && h.result.sender.email) || '' };
     };
     const buildTemplateEmail = (ship, mode) => {
-        const last = lastShipEmail(ship);
-        const raw = last ? String(last.emailText || '') : '';
-        // Only the newest message, not the quoted thread under it
-        const body = raw.split(/\n\s*(?:From:\s|-{3,}\s*Original Message|On .{5,80} wrote:|_{8,})/i)[0].trim();
+        const thread = shipThread(ship);
+        const latest = thread[thread.length - 1] || null;
+        const shipMsgs = thread.filter(h => !isTeamSender(h.fromName, h.fromEmail));
+        const last = shipMsgs[shipMsgs.length - 1] || null;
+        const weSentLast = !!latest && isTeamSender(latest.fromName, latest.fromEmail);
+        const part = newestPart(last ? last.emailText : '');
+        const body = part.text;
         const t = body.toLowerCase();
+        const sender = last ? readSender(last, part.sig) : null;
+        const senderIsOfficer = sender && ['CSO', 'STO', 'Comms Officer', 'Officer'].indexOf(sender.role) !== -1;
+
         const said = {
             resolved: /\b(back (?:up|online)|is up now|up and running|resolved|fixed|working (?:now|again)|restored|came back)\b/.test(t),
-            rebooted: /\b(reboot(?:ed)?|power[- ]?cycl\w*|restart(?:ed)?)\b/.test(t),
-            emcon: /\b(emcon|river city|minimize|underway|no sat(?:com)?|sat(?:com)? (?:is )?down)\b/.test(t),
-            inPort: /\b(in port|pierside|shore power|yard period|maintenance period|availability)\b/.test(t),
-            parts: /\b(rma|replace(?:ment)?|spare|new (?:cable|router|switch|drive|part))\b/.test(t),
+            emcon: /\b(emcon|river city|minimize)\b|\bno sat(?:com)?\b|\bsat(?:com)? (?:is )?down\b/.test(t),
+            underway: /\bunderway\b|\bdeploy(?:ed|ing|ment)\b/.test(t),
+            inPort: /\b(in port|inport|pierside|shore power|yard period|maintenance period|availability)\b/.test(t),
         };
+        // What they already did, so we thank them for it and don't ask them to do it again
+        const DID = [
+            { re: /\b(power[- ]?cycl\w*|reboot(?:ed)?|restart(?:ed)?|turned (?:it )?off and (?:back )?on)\b/, label: 'power cycled the equipment', skip: /reboot|restart|power cycle|check power/i },
+            { re: /\b(re-?seat(?:ed)?|checked (?:the |all )?cables?|cables? (?:are|look) (?:good|fine|secure))\b/, label: 'checked and reseated the cables', skip: /reseat|cable connections/i },
+            { re: /\b(swapp?ed|replaced|new) (?:the |a |out )?(?:patch |ethernet |network )?cable\b/, label: 'swapped the cable', skip: /known-good cable|cable tester|replace with known/i },
+            { re: /\bping(?:ed|ing)?\b.*\b(gateway|server|times? out|replies|reply|ms)\b|\bping results?\b/, label: 'ran a ping test', skip: /\bping\b/i },
+            { re: /\blights?\b[^.?!]{0,40}\b(green|amber|orange|off|solid|blinking|flashing)\b|\b(link|status) lights?\b/, label: 'checked the link lights', skip: /link light|status light/i },
+            { re: /\bipconfig\b/, label: 'checked the IP settings', skip: /ipconfig/i },
+        ];
+        const did = DID.filter(d => d.re.test(t));
+        const skipStep = (s) => did.some(d => d.skip.test(s));
+        const OBS = [
+            { re: /\blights?\b[^.?!]{0,40}\b(amber|orange)\b|\b(amber|orange)\b[^.?!]{0,20}\blights?\b/, label: 'amber link lights', first: /switch port/i, note: 'Amber link lights usually point to a switch port problem (speed/duplex mismatch or a disabled port), so the switch port is a good place to start.' },
+            { re: /\blights?\b[^.?!]{0,40}\b(off|out|dark)\b|\bno (?:link )?lights?\b/, label: 'no link lights', first: /cable/i, note: 'No link light usually means a bad cable, a loose connection or a dead port.' },
+            { re: /\blights?\b[^.?!]{0,40}\bgreen\b|\bgreen\b[^.?!]{0,20}\blights?\b/, label: 'green link lights', first: /ipconfig|ping/i, note: 'Green link lights mean the physical connection is good, so the problem is more likely the IP settings or the router.' },
+            { re: /\b169\.254\b|\bapipa\b/, label: '169.254 address', first: /ipconfig|dhcp/i, note: 'A 169.254.x.x address means the PC is not getting an IP address from the network (DHCP), so the problem is between the PC and the switch or DHCP server.' },
+            { re: /\b(request timed out|timed? out|no reply|unreachable)\b/, label: 'pings timing out', first: /ping/i, note: 'Pings timing out means the PC cannot reach that address at all, so it is worth working outward from the PC to the gateway.' },
+        ];
+        const seen = OBS.filter(o => o.re.test(t));
+
         // Our side: today's check, or the most recent check in the last week
         let check = null, checkDay = today;
         for (let i = 0; i < 7 && !check; i++) { const d = parseLocalDate(today); d.setDate(d.getDate() - i); checkDay = toDateString(d); check = checkByKey[ship.id + '|' + checkDay] || null; }
@@ -4834,12 +4903,36 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         const inPort = isInPortNow(ship);
         const openIssues = issues.filter(i => i.shipId === ship.id && !i.resolved);
         const healthy = check && pri && alt && !highPing && !noData && !diodeDown;
+        const dayLabel = checkDay === today ? 'today' : 'on ' + fmtDate(checkDay);
+        const statusLine = !check ? 'We don\'t have a daily check for ' + ship.name + ' in the last week yet, so we will confirm once we do.'
+            : offline ? 'As of ' + (checkDay === today ? 'today\'s' : 'our ' + fmtDate(checkDay)) + ' check we are not seeing the REAP system: Primary and Alternate are both down' + (offlineDays(ship) > 1 ? ' (' + offlineDays(ship) + ' days in a row)' : '') + '.'
+            : partial ? 'As of ' + (checkDay === today ? 'today\'s' : 'our ' + fmtDate(checkDay)) + ' check we see ' + (pri ? 'Primary (StarPC) connected but Alternate (DataPC) down' : 'Alternate (DataPC) connected but Primary (StarPC) down') + '.'
+            : 'We are seeing the REAP system online ' + dayLabel + ': both Primary and Alternate are connected' + (noData ? ', but data is not transferring' : '') + '.';
+
+        // Questions and requests in their email, each answered from what we know
+        const sentences = body.replace(/\s*\n\s*/g, ' ').split(/(?<=[.?!])\s+/).map(x => x.trim()).filter(x => x.length > 6);
+        const isAsk = (x) => /\?\s*$/.test(x) || /^(can|could|would|will|do|does|did|is|are|should|when|what|how|who|where|why)\b/i.test(x) || /\b(please (?:send|provide|advise|confirm|let us know)|we (?:need|request)|request(?:ing)? (?:a|an|the)|let us know if)\b/i.test(x);
+        const asked = [];
+        let wantSteps = false;
+        const STEPS_A = 'The steps below should help narrow it down.';
+        sentences.filter(isAsk).slice(0, 6).forEach(q => {
+            const x = q.toLowerCase();
+            let a = null;
+            if (/(see|seeing|getting|receiving|show(?:ing)?)\b.*\b(us|our|it|the system|reap|data)\b|\b(are|is) (?:we|it|the system|reap) (?:up|online|good|connected|working|showing)\b/.test(x) && !/\b(data|files?|transfer)\b/.test(x)) a = statusLine;
+            else if (/\b(data|files?|transfer(?:ring)?|upload|push(?:ing)?)\b/.test(x)) a = !check ? statusLine : offline ? 'No, nothing is coming through while the system is down.' : noData ? 'Not yet: the connection is up but data is not transferring as of ' + dayLabel + '\'s check.' : 'Yes, data is transferring as of ' + dayLabel + '\'s check.';
+            else if (/\b(what|how)\b.*\b(should|do|can|could)\b.*\b(we|i)\b|\bwhat (?:else|next)\b|\bany (?:ideas|suggestions|recommendations)\b|troubleshoot|\bhow (?:to|do we) fix\b|\bwhat should we check\b/.test(x)) { a = STEPS_A; wantSteps = true; }
+            else if (/\b(tech|technician|someone|engineer|rep|team|you)\b.*\b(come|visit|out|onboard|aboard|fly)\b|\bsite visit\b|\bship ?check\b/.test(x)) a = 'We can set up a tech visit. Please send the ship\'s schedule and the best window (dates and location) and we will coordinate.';
+            else if (/\b(send|ship|need|order|replace|rma|spare)\b.*\b(part|cable|router|switch|drive|hdd|ssd|ups|pc|computer|laptop|modem|sfp|power supply|psu)\b/.test(x)) a = (offline || partial) && /\b(router|switch|modem|pc|computer)\b/.test(x) && /\b(back|return|rma)\b/.test(x) ? 'Let\'s hold off on sending anything back until we run through the checks below. If it still won\'t connect after that, we will get a replacement out to you.' : 'We can get a replacement out to you. Please confirm the part (with the serial number if you have it) and who should receive it, with the shipping address.';
+            else if (/\b(ok|okay|alright|fine|permission|good)\b.*\b(turn|power|shut|unplug|disconnect|move)\b|\b(can|may|should) (?:we|i) (?:turn|power|shut|unplug|disconnect|move)\b/.test(x)) a = 'Yes, that\'s fine. Please shut down the PCs normally before cutting power, and let us know when it\'s back on so we can confirm both PCs reconnect.';
+            else if (/\bwho\b.*\b(contact|call|email|reach)\b|\bpoint of contact\b|\bpoc\b/.test(x)) a = 'You can reply to this email directly. The REAP team is CC\'d, so any of us can help.';
+            else if (/\b(when|how long)\b.*\b(fixed|back|up|resolved|done)\b/.test(x)) a = healthy ? 'It is already showing back up on our end.' : 'As soon as the steps below are done we can confirm on our end, usually the same day.';
+            asked.push({ q, a, ok: !!a });
+        });
 
         // Which troubleshooting rules apply: what the email describes first, then what our checks show
         const NET = ['Network', 'Router/Switch', 'Communications', 'Cables/Physical'];
         let rules = runDiagnostics(body + ' ' + openIssues.map(i => (i.title || '') + ' ' + (i.details || '')).join(' ')).filter(r => NET.indexOf(r.category) !== -1);
         const want = [];
-        if (said.emcon) want.push('sat-link');
         if (offline) want.push('net-no-connection', 'rtr-down');
         if (partial) want.push('net-no-connection');
         if (noData) want.push('net-intermittent');
@@ -4847,96 +4940,125 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
         const byId = {};
         runDiagnostics(null).forEach(r => { byId[r.id] = r; });
         want.forEach(id => { if (byId[id] && !rules.some(r => r.id === id)) rules.push(byId[id]); });
+        if (said.emcon) rules = rules.filter(r => r.id !== 'sat-link');
         if (!rules.length) rules = [byId['net-no-connection']].filter(Boolean);
         rules = rules.slice(0, 2);
 
-        if (mode === 'smart') mode = said.resolved && !offline ? 'online' : (offline || partial || noData || highPing || diodeDown || openIssues.length || said.emcon || said.resolved) ? 'troubleshoot' : 'uptime';
+        const problem = offline || partial || noData || highPing || diodeDown;
+        if (mode === 'smart') mode = weSentLast ? 'followup' : said.emcon ? 'emcon' : said.resolved && !problem ? 'online' : (problem || wantSteps || openIssues.length) ? 'troubleshoot' : 'uptime';
 
-        // Status lines from our side
-        const status = [];
-        const dayLabel = checkDay === today ? 'today' : 'on ' + fmtDate(checkDay);
-        if (inPort) status.push('Our records show ' + ship.name + ' in port' + (ship.inPortUntil ? ' until ' + fmtDate(ship.inPortUntil) : '') + '.');
-        if (!check) status.push('We have no daily check entered for ' + ship.name + ' in the last week.');
-        else if (offline) { const n = offlineDays(ship); status.push('Our daily checks show the REAP system offline ' + dayLabel + ' (no Primary or Alternate connection)' + (n > 1 ? ', ' + n + ' days in a row' : '') + '.'); }
-        else if (partial) status.push('Our daily checks ' + dayLabel + ' show ' + (pri ? 'Primary (StarPC) connected but Alternate (DataPC) down' : 'Alternate (DataPC) connected but Primary (StarPC) down') + '.');
-        else status.push('Our daily checks ' + dayLabel + ' show both Primary (StarPC) and Alternate (DataPC) connected.');
-        if (highPing) status.push('Ping times are high (' + pings.map(n => n + ' ms').join(' / ') + ').');
-        if (noData) status.push('Data is not transferring to shore.');
-        if (diodeDown) status.push('The data diode is showing down.');
-        openIssues.slice(0, 2).forEach(i => status.push('Open item on our side: ' + (i.title || i.details || 'issue') + '.'));
-
-        // What we ask for back, by the kind of problem
+        const hour = new Date().getHours();
+        const L = [(hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening') + ',', ''];
+        const me = currentUser && currentUser.username ? mapTeamName(currentUser.username, '') : 'REAP Team';
+        const joinAnd = (l) => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
+        const answerBlock = () => {
+            // The 'steps below' answer only makes sense when the reply has steps
+            const ok = asked.filter(x => x.ok && (x.a !== STEPS_A || mode === 'troubleshoot'));
+            const open = asked.filter(x => !x.ok);
+            if (ok.length === 1 && !open.length) L.push(ok[0].a, '');
+            else if (ok.length || open.length) {
+                L.push(ok.length + open.length === 1 ? 'To answer your question:' : 'To answer your questions:');
+                ok.forEach(x => L.push('  - ' + x.a));
+                open.forEach(x => L.push('  - On "' + x.q.replace(/\s+/g, ' ').slice(0, 140) + '": we are checking on this and will get back to you shortly.'));
+                L.push('');
+            }
+        };
+        const steps = () => {
+            const out = [];
+            rules.forEach((r, ri) => (r.doThis || []).filter(s => !skipStep(s)).slice(0, ri ? 3 : 5).forEach(s => { if (out.indexOf(s) === -1) out.push(s); }));
+            // Steps that follow from what they saw go first
+            const hit = (x) => seen.some(o => o.first.test(x)) ? 0 : 1;
+            out.sort((x, y) => hit(x) - hit(y));
+            return out.slice(0, senderIsOfficer ? 4 : 7);
+        };
         const ASK = {
             Network: ['Link light status on the REAP switch port and on each PC\'s network card (green / amber / off)', 'Result of a ping from the REAP PC to its default gateway'],
             'Router/Switch': ['Router status lights and whether it is reachable from the console', 'Output of "show ip interface brief" (redact addresses if required)'],
-            Communications: ['Current SATCOM status (locked / not locked) and any EMCON or bandwidth restrictions', 'When you expect full comms to be restored'],
+            Communications: ['Current SATCOM status and any EMCON or bandwidth restrictions', 'When you expect full comms to be restored'],
             'Cables/Physical': ['Whether any cables were moved, swapped or damaged recently', 'Link lights after reseating the cables'],
         };
-        const asks = [];
-        rules.forEach(r => (ASK[r.category] || []).forEach(a => { if (asks.indexOf(a) === -1) asks.push(a); }));
-        asks.push('Whether Primary (StarPC) and Alternate (DataPC) both show connected after the steps above');
 
-        // Greeting by time of day only, no name or rank
-        const hour = new Date().getHours();
-        const hi = (hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening') + ',';
-        const me = currentUser && currentUser.username ? mapTeamName(currentUser.username, '') : 'REAP Team';
-        const thanks = !last ? '' : said.resolved ? 'Thank you for the update and for getting the system back up.'
-            : said.emcon ? 'Thank you for letting us know about the comms situation.'
-            : said.rebooted ? 'Thank you for the update and for power cycling the equipment.'
-            : 'Thank you for your email regarding the REAP system aboard ' + ship.name + '.';
-        const L = [hi, ''];
-        if (thanks) L.push(thanks, '');
+        // Opening line: what they told us, in their terms
+        if (last && mode !== 'followup') {
+            if (said.resolved && !problem) L.push('Thank you for letting us know it\'s back up' + (did.length ? ', and for taking care of it (' + joinAnd(did.map(d => d.label)) + ')' : '') + '.', '');
+            else if (did.length) L.push('Thank you for the update and for the work so far: you ' + joinAnd(did.map(d => d.label)) + '.', '');
+            else if (said.emcon) L.push('Thank you for letting us know about the EMCON / comms restrictions.', '');
+            else if (said.underway || said.inPort) L.push('Thank you for the update on the ship\'s schedule.', '');
+            else L.push('Thank you for your email' + (cleanSubject(last) ? ' about "' + cleanSubject(last) + '"' : '') + '.', '');
+        }
 
-        if (mode === 'online') {
-            L.push(healthy ? 'We can confirm the REAP system is back online on our end: both Primary and Alternate are connected' + (check.dataTransfer === false ? '' : ' and data is transferring') + '.' : 'On our end:');
-            if (!healthy) status.forEach(s => L.push('  - ' + s));
-            L.push('', 'We will keep monitoring connectivity and uptime over the next 24-48 hours and will reach out if anything drops again. If you notice any outages, reboots or changes to the network on your side, please let us know so we can match them to our logs.');
+        if (seen.length && (mode === 'troubleshoot' || mode === 'followup')) L.push(seen.map(o => o.note).join(' '), '');
+        if (mode === 'followup') {
+            L.push('Following up on ' + (latest ? 'my email from ' + fmtDate(latest.timestamp) : 'our last email') + (cleanSubject(latest) ? ' about "' + cleanSubject(latest) + '"' : '') + '.', '');
+            L.push(statusLine, '');
+            if (problem) {
+                L.push('When you have a moment, could you please:');
+                steps().slice(0, 3).forEach((s, i) => L.push('  ' + (i + 1) + '. ' + s));
+                L.push('  ' + (Math.min(3, steps().length) + 1) + '. Reply with what you find, even if nothing changed, so we know where things stand');
+            } else L.push('Could you please confirm everything looks good on your side, and let us know about any planned outages or EMCON periods coming up?');
+        } else if (mode === 'emcon') {
+            answerBlock();
+            L.push('Understood. We will expect REAP to be offline or limited while the restrictions are in place, so no action is needed on the REAP equipment until then.', '');
+            L.push('Once comms are restored, could you please:', '  1. Confirm the REAP equipment is powered on and the link lights are green', '  2. Check that Primary (StarPC) and Alternate (DataPC) both show connected', '  3. Send us a quick note so we can confirm data is transferring and resume uptime monitoring');
+            L.push('', 'If you have an expected end date for the restrictions, please let us know so we can note it in our records.');
+        } else if (mode === 'online') {
+            answerBlock();
+            L.push(healthy ? 'We can confirm it on our end: both Primary and Alternate are connected' + (check.dataTransfer === false ? '' : ' and data is transferring') + '.' : statusLine);
+            L.push('', 'We will keep monitoring connectivity and uptime over the next 24-48 hours and will reach out if anything drops again. If you notice any outages, reboots or network changes on your side, please let us know so we can match them to our logs.');
         } else if (mode === 'uptime') {
-            L.push('We are doing a routine uptime check on the REAP system aboard ' + ship.name + '. On our end:');
-            status.forEach(s => L.push('  - ' + s));
-            L.push('', 'Could you please confirm the following when you have a moment:', '  1. The REAP equipment is powered on and all link lights are green', '  2. Primary (StarPC) and Alternate (DataPC) both show connected', '  3. Any planned outages, EMCON periods or network changes coming up that could affect uptime');
-        } else if (said.emcon) {
-            L.push('Understood. We will expect REAP to be offline or limited while EMCON / SATCOM restrictions are in place, so no action is needed on the REAP equipment until then.');
-            L.push('', 'On our end:');
-            status.forEach(s => L.push('  - ' + s));
-            L.push('', 'Once comms are restored, could you please:', '  1. Confirm the REAP equipment is powered on and the link lights are green', '  2. Check that Primary (StarPC) and Alternate (DataPC) both show connected', '  3. Send us a quick note so we can confirm data is transferring and resume uptime monitoring');
-            L.push('', 'If you have an expected end date for the EMCON period, please let us know so we can note it in our records.');
+            answerBlock();
+            if (!last) L.push('We are doing a routine uptime check on the REAP system aboard ' + ship.name + '.', '');
+            L.push(statusLine, '');
+            if (last && asked.length && asked.every(x => x.ok)) L.push('Let us know if anything else comes up.');
+            else L.push('Could you please confirm the following when you have a moment:', '  1. The REAP equipment is powered on and all link lights are green', '  2. Primary (StarPC) and Alternate (DataPC) both show connected', '  3. Any planned outages, EMCON periods or network changes coming up that could affect uptime');
         } else {
-            L.push('On our end:');
-            status.forEach(s => L.push('  - ' + s));
-            L.push('', 'To help get the connection back, could you please try the following and let us know the results:');
-            const steps = [];
-            rules.forEach((r, ri) => (r.doThis || []).slice(0, ri ? 3 : 5).forEach(s => { if (steps.indexOf(s) === -1) steps.push(s); }));
-            steps.slice(0, 7).forEach((s, i) => L.push('  ' + (i + 1) + '. ' + s));
+            answerBlock();
+            if (!asked.some(x => x.a === statusLine)) L.push(statusLine, '');
+            const st = steps();
+            if (st.length) {
+                L.push((senderIsOfficer ? 'Could your IT team please run through the following' : 'Could you please try the following') + ' and let us know the results:');
+                st.forEach((s, i) => L.push('  ' + (i + 1) + '. ' + s));
+            }
             const donts = [];
-            rules.forEach(r => (r.dontDoThis || []).slice(0, 2).forEach(s => { if (donts.indexOf(s) === -1) donts.push(s); }));
-            if (donts.length) { L.push('', 'Please avoid:'); donts.slice(0, 3).forEach(s => L.push('  - ' + s.replace(/^Do NOT\s*/i, 'Do not '))); }
+            rules.forEach(r => (r.dontDoThis || []).filter(s => !skipStep(s)).slice(0, 2).forEach(s => { if (donts.indexOf(s) === -1) donts.push(s); }));
+            if (donts.length) { L.push('', 'Please avoid:'); donts.slice(0, senderIsOfficer ? 2 : 3).forEach(s => L.push('  - ' + s.replace(/^Do NOT\s*/i, 'Do not '))); }
+            const asks = [];
+            rules.forEach(r => (ASK[r.category] || []).filter(a => !skipStep(a)).forEach(a => { if (asks.indexOf(a) === -1) asks.push(a); }));
+            asks.push('Whether Primary (StarPC) and Alternate (DataPC) both show connected afterwards');
             L.push('', 'When you reply, please include:');
             asks.slice(0, 4).forEach(a => L.push('  - ' + a));
             L.push('', 'Once the connection is back, we will confirm on our end that Primary and Alternate are online and data is transferring, and keep monitoring uptime.');
         }
-        if (said.parts && mode !== 'online') L.push('', 'If any hardware needs to be replaced, let us know the part and we will coordinate a spare.');
         L.push('', 'V/r,', me, 'REAP Team');
 
-        const subj0 = last && last.result && last.result.emailSummary && last.result.emailSummary !== 'Imported email' ? last.result.emailSummary.replace(/^(re|fw|fwd):\s*/i, '') : '';
-        const subject = subj0 ? 'RE: ' + subj0 : (mode === 'online' ? 'REAP Back Online — ' : mode === 'uptime' ? 'REAP Uptime Check — ' : 'REAP Connectivity Troubleshooting — ') + ship.name;
-        const shipFrom = last && last.fromEmail && !isTeamSender(last.fromName, last.fromEmail) ? last.fromEmail : '';
+        const subj0 = cleanSubject(last) || cleanSubject(latest);
+        const subject = subj0 ? 'RE: ' + subj0 : (mode === 'online' ? 'REAP Back Online — ' : mode === 'uptime' ? 'REAP Uptime Check — ' : 'REAP Connectivity — ') + ship.name;
+        const shipFrom = sender && sender.email && !isTeamSender('', sender.email) ? sender.email : '';
         const to = [shipFrom, ship.email].concat(shipRoleEmails(ship.name)).filter(Boolean)
             .filter((e, i, a) => a.findIndex(x => x.toLowerCase() === e.toLowerCase()) === i);
         const signals = [];
-        if (said.resolved) signals.push('Ship says it\'s back up');
-        if (said.rebooted) signals.push('Ship rebooted equipment');
-        if (said.emcon) signals.push('EMCON / SATCOM limits');
+        if (said.resolved) signals.push('Says it\'s back up');
+        if (said.emcon) signals.push('EMCON / comms limits');
+        if (said.underway) signals.push('Underway');
         if (said.inPort || inPort) signals.push('In port');
-        if (said.parts) signals.push('Hardware / parts');
         if (offline) signals.push('Offline in our checks');
         if (partial) signals.push('One PC down');
         if (highPing) signals.push('High ping');
         if (noData) signals.push('No data transfer');
         if (diodeDown) signals.push('Diode down');
         if (healthy) signals.push('Online in our checks');
-        rules.forEach(r => signals.push('KB: ' + r.name));
-        return { mode, to: to.join('; '), cc: alwaysCc.join('; '), subject, body: L.join('\n'), last, lastBody: body, signals };
+        if (mode === 'troubleshoot' || mode === 'followup') rules.forEach(r => signals.push('KB: ' + r.name));
+        const understood = {
+            from: sender ? (sender.name || sender.email || 'Ship') : '',
+            role: sender ? sender.role : '',
+            fromEmail: sender ? sender.email : '',
+            threadCount: thread.length,
+            weSentLast, latestDate: latest ? latest.timestamp : null,
+            asked: asked.map(x => ({ q: x.q, ok: x.ok })),
+            did: did.map(d => d.label),
+            noticed: seen.map(o => o.label),
+        };
+        return { mode, to: to.join('; '), cc: alwaysCc.join('; '), subject, body: L.join('\n'), last, lastBody: body, signals, understood };
     };
     const openSendTemplate = (ship, mode) => { setSendTpl({ ship, pick: mode || 'smart', ...buildTemplateEmail(ship, mode || 'smart') }); };
     const sendTemplateNow = () => {
@@ -6480,8 +6602,19 @@ function Dashboard({ ships, setShips, issues, setIssues, dailyChecks, parts, ins
                                     <button key={m.key} type="button" title={m.tip} className={'st-mode' + (sendTpl.pick === m.key ? ' on' : '')} onClick={() => setSendTpl(p => ({ ...p, pick: m.key, ...buildTemplateEmail(p.ship, m.key) }))}>{m.label}</button>
                                 ))}
                             </div>
-                            {sendTpl.pick === 'smart' && <div className="st-hint">Smart reply chose: <strong>{(TPL_MODES.find(m => m.key === sendTpl.mode) || {}).label}</strong></div>}
-                            <div className="st-label">What it picked up</div>
+                            {sendTpl.pick === 'smart' && <div className="st-hint">Smart reply chose: <strong>{sendTpl.mode === 'emcon' ? '📡 EMCON acknowledgement' : (TPL_MODES.find(m => m.key === sendTpl.mode) || {}).label}</strong></div>}
+                            <div className="st-label">What it understood</div>
+                            {sendTpl.understood && sendTpl.understood.from ? (
+                                <div className="st-und">
+                                    <div><em>From</em> {sendTpl.understood.from}{sendTpl.understood.role ? ' · ' + sendTpl.understood.role : ''}</div>
+                                    <div><em>Thread</em> {plural(sendTpl.understood.threadCount, 'email')}{sendTpl.understood.weSentLast ? ' · we sent the last one (' + fmtDate(sendTpl.understood.latestDate) + '), so this is a follow-up' : ' · the ship wrote last'}</div>
+                                    {sendTpl.understood.did.length > 0 && <div><em>They did</em> {sendTpl.understood.did.join(', ')}</div>}
+                                    {sendTpl.understood.noticed.length > 0 && <div><em>They saw</em> {sendTpl.understood.noticed.join(', ')}</div>}
+                                    {sendTpl.understood.asked.length > 0 ? <div><em>They asked</em>
+                                        <ul>{sendTpl.understood.asked.map((x, i) => <li key={i} className={x.ok ? 'ok' : 'open'} title={x.ok ? 'Answered in the draft' : 'Not sure how to answer: the draft says we will get back to them. Edit it if you can answer now.'}>{x.ok ? '✓ ' : '? '}{x.q.length > 110 ? x.q.slice(0, 110) + '…' : x.q}</li>)}</ul>
+                                    </div> : <div><em>They asked</em> no questions</div>}
+                                </div>
+                            ) : null}
                             <div className="st-signals">{sendTpl.signals.length ? sendTpl.signals.map(s => <span key={s} className={'st-sig' + (s.indexOf('KB: ') === 0 ? ' kb' : '')}>{s.replace(/^KB: /, '🛠 ')}</span>) : <span className="st-sig">Nothing unusual</span>}</div>
                         </div>
                         <div className="st-main">
