@@ -835,7 +835,7 @@ const escHtml = (v) => String(v == null ? '' : v)
 <!-- Auto-Update Checker -->
 <script>
 (function() {
-    var APP_BUILD = "2026-11-05T176";
+    var APP_BUILD = "2026-11-18T177";
     window.__APP_BUILD = APP_BUILD;
     
     function checkForUpdate() {
@@ -1523,6 +1523,27 @@ function AdminPanel({ users, currentUid, onClose }) {
     );
 }
 
+// Copy plain text. Work PCs often block navigator.clipboard, so fall back to a hidden textarea. Resolves true/false.
+function copyPlainText(text) {
+    var legacyCopy = function() {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        return ok;
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(function() { return true; }, legacyCopy);
+    }
+    return Promise.resolve(legacyCopy());
+}
+
 // Load → Copy the Outlook macro, with install steps. Shared by the Admin Panel and the
 // "Get Outlook macro" dialog on End of Day, so every user can grab it without it being emailed around.
 function OutlookMacroBox() {
@@ -1545,9 +1566,9 @@ function OutlookMacroBox() {
     };
 
     var copyCode = function() {
-        navigator.clipboard.writeText(codeText).then(
-            function() { setMsg('Copied! In Outlook press Alt+F11, open ThisOutlookSession, Ctrl+A, Ctrl+V.'); },
-            function() { setMsg('Could not copy. Click in the box, press Ctrl+A then Ctrl+C.'); });
+        copyPlainText(codeText).then(function(ok) {
+            setMsg(ok ? 'Copied! In Outlook press Alt+F11, open ThisOutlookSession, Ctrl+A, Ctrl+V.' : 'Could not copy. Click in the box, press Ctrl+A then Ctrl+C.');
+        });
     };
 
     var btn = {padding:'8px 14px',background:'var(--primary-glow)',border:'1px solid var(--primary)',borderRadius:'8px',color:'var(--primary)',fontWeight:700,fontSize:'12px',cursor:'pointer'};
@@ -2787,6 +2808,13 @@ function App({ currentUser, onLogout, isAdmin, pendingCount, onOpenAdminPanel, a
                                 React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
                                     React.createElement("span", {style:{fontSize:"18px",fontWeight:800,color:"var(--primary)"}}, "📋 Recent Improvements"),
                                     React.createElement("span", {onClick:function(){document.getElementById("changelogDrop").style.display="none";document.getElementById("changelogOverlay").style.display="none";},style:{cursor:"pointer",fontSize:"16px",color:"var(--text-muted)"}}, "✕")
+                                ),
+
+                                React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 18, 2026 — Build T177'),
+
+                                React.createElement('div', {style:{fontSize:'11px',fontWeight:700,color:'var(--primary)',marginBottom:'6px'}}, '🔗 Link Outlook Copy Fixed'),
+                                React.createElement('div', {style:{fontSize:'11px',color:'var(--text-dim)',marginBottom:'14px',lineHeight:'1.8',paddingLeft:'12px',whiteSpace:'pre-line'}},
+                                    'FIXED: the 📋 Copy code button in Link Outlook (End of Day ▾ > Link Outlook) did nothing on some PCs\n• Work PCs can block the browser clipboard, and the button silently ignored that. It now falls back to a second copy method that works on locked-down PCs\n• If both copy methods are blocked, it now says so and tells you to type the code into Outlook instead of doing nothing\n• The success message now shows the code that was copied\n• Get Outlook macro / Admin Panel Outlook Macro: 📋 Copy code uses the same fallback, so it also works on locked-down PCs'
                                 ),
 
                                 React.createElement('div', {style:{fontSize:'14px',fontWeight:800,color:'var(--text)',marginBottom:'14px',marginTop:'8px',paddingBottom:'8px',borderBottom:'2px solid var(--border)'}}, 'Nov 5, 2026 — Build T176'),
@@ -8810,7 +8838,7 @@ function DailyChecks({ ships, setShips, checks, setChecks, installs, issues, toa
                         <div data-testid="link-code" style={{fontFamily:'JetBrains Mono, Consolas, monospace',fontSize:'30px',fontWeight:800,letterSpacing:'4px',color:'var(--primary)',padding:'12px',background:'var(--bg-input)',borderRadius:'10px',marginBottom:'10px',userSelect:'all'}}>{linkCode.code.slice(0, 4)}-{linkCode.code.slice(4)}</div>
                         <div style={{fontSize:'11px',color:'var(--text-muted)',marginBottom:'16px'}}>Works once you type it in Outlook · expires at {new Date(linkCode.expires).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>
                         <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
-                            <button className="btn btn-secondary" onClick={() => navigator.clipboard.writeText(linkCode.code).then(() => toast('Code copied', 'success'), () => {})}>📋 Copy code</button>
+                            <button className="btn btn-secondary" onClick={() => copyPlainText(linkCode.code).then(ok => ok ? toast('Code copied: ' + linkCode.code, 'success') : toast('Could not copy. Type the code into Outlook instead.', 'error'))}>📋 Copy code</button>
                             <button className="btn btn-primary" onClick={() => setLinkCode(null)}>Done</button>
                         </div>
                     </div>
